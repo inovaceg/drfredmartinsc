@@ -434,8 +434,22 @@ const Doctor = () => {
 
   const handleSignOut = async () => {
     console.log("Doctor.tsx: Attempting to sign out.");
-    await supabase.auth.signOut();
-    navigate("/");
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Doctor.tsx: Error during sign out:", error);
+      toast({
+        title: "Erro ao sair",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      console.log("Doctor.tsx: Sign out successful.");
+      toast({
+        title: "Sucesso",
+        description: "Você foi desconectado(a).",
+      });
+      navigate("/");
+    }
   };
 
   const handleTabChange = (value: string) => {

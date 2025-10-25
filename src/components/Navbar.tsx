@@ -163,14 +163,17 @@ const Navbar = () => {
           {user ? (
             <Button 
               onClick={async () => {
+                console.log("Navbar: Attempting to sign out.");
                 const { error } = await supabase.auth.signOut();
                 if (error) {
+                  console.error("Navbar: Error during sign out:", error);
                   toast({
                     title: "Erro ao sair",
                     description: error.message,
                     variant: "destructive",
                   });
                 } else {
+                  console.log("Navbar: Sign out successful.");
                   toast({
                     title: "Sucesso",
                     description: "Você foi desconectado(a).",
@@ -274,14 +277,17 @@ const Navbar = () => {
                 {user ? (
                   <Button 
                     onClick={async () => {
+                      console.log("Navbar: Attempting to sign out.");
                       const { error } = await supabase.auth.signOut();
                       if (error) {
+                        console.error("Navbar: Error during sign out:", error);
                         toast({
                           title: "Erro ao sair",
                           description: error.message,
                           variant: "destructive",
                         });
                       } else {
+                        console.log("Navbar: Sign out successful.");
                         toast({
                           title: "Sucesso",
                           description: "Você foi desconectado(a).",
