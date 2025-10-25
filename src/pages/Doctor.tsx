@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar as CalendarIcon, Clock, FileText, LogOut, Users, Video, BarChart3, Loader2, Edit, User as UserIcon, MessageSquare, Trash2, CheckCircle, XCircle, MessageSquareText, MapPin, Phone, Mail, BookOpen, Menu } from "lucide-react"; // Adicionado Menu
+import { Calendar as CalendarIcon, Clock, FileText, LogOut, Users, Video, BarChart3, Loader2, Edit, User as UserIcon, MessageSquare, Trash2, CheckCircle, XCircle, MessageSquareText, MapPin, Phone, Mail, BookOpen, Menu } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/Navbar";
@@ -14,16 +14,16 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditPatientDialog } from "@/components/EditPatientDialog";
-import { formatPhone } from "@/lib/format-phone"; // Importar formatPhone
+import { formatPhone } from "@/lib/format-phone";
 import { DoctorProfileForm } from "@/components/DoctorProfileForm";
 import { DoctorOnlineConsultationTab } from "@/components/DoctorOnlineConsultationTab";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Database } from "@/integrations/supabase/types";
 import { WhatsappTranscriptionsPage } from "@/pages/WhatsappTranscriptionsPage";
-import { DoctorMedicalRecordsTab } from "@/components/doctor/DoctorMedicalRecordsTab"; // Importar o novo componente
-import { DoctorNewsletterSubscriptionsTab } from "@/components/doctor/DoctorNewsletterSubscriptionsTab"; // Importar o novo componente da newsletter
-import { formatDateToDisplay } from "@/lib/utils"; // Import formatDateToDisplay
+import { DoctorMedicalRecordsTab } from "@/components/doctor/DoctorMedicalRecordsTab";
+import { DoctorNewsletterSubscriptionsTab } from "@/components/doctor/DoctorNewsletterSubscriptionsTab";
+import { formatDateToDisplay } from "@/lib/utils";
 import {
   Drawer,
   DrawerClose,
@@ -34,7 +34,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import { useQueryClient } from "@tanstack/react-query"; // Importar useQueryClient
+import { useQueryClient } from "@tanstack/react-query";
 
 const Doctor = () => {
   const navigate = useNavigate();
@@ -42,18 +42,19 @@ const Doctor = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  // Guardamos a data como string no formato 'yyyy-MM-dd' → evita re‑renders infinitos
+  const [selectedDate, setSelectedDate] = useState<string | undefined>(format(new Date(), "yyyy-MM-dd")); // Initialize with current date string
   const [slots, setSlots] = useState<any[]>([]);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false); // Renamed from loadingSlots to isLoadingSlots for clarity
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [doctorProfile, setDoctorProfile] = useState<any>(null);
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false); // Estado para controlar o Drawer
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient(); // Inicializar queryClient
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -118,13 +119,54 @@ const Doctor = () => {
     }
   }, [user, loading, navigate]);
 
-  useEffect(() => {
-    if (user && activeTab === "schedule" && selectedDate) {
-      console.log("Doctor.tsx: useEffect triggered for schedule tab and selectedDate. Calling fetchSlots.");
-      fetchSlots();
-      setSelectedSlotIds([]);
+  // -------------------------------------------------------------------------
+  //  FETCH SLOTS (com intervalo em UTC)
+  // -------------------------------------------------------------------------
+  const fetchSlots = useCallback(async () => {
+    if (!user || !selectedDate) {
+      console.log("Doctor.tsx: Skipping fetchSlots, user or selectedDate is missing. User:", user, "SelectedDate:", selectedDate);
+      setIsLoadingSlots(false); // Ensure loading state is reset
+      return;
     }
-  }, [user, selectedDate, activeTab]);
+    setIsLoadingSlots(true);
+    // início do dia em UTC e fim do dia em UTC
+    const start = new Date(`${selectedDate}T00:00:00.000Z`);
+    const end = new Date(`${selectedDate}T23:59:59.999Z`);
+
+    console.log("Doctor.tsx: fetching slots for", {
+      doctorId: user.id,
+      start: start.toISOString(),
+      end: end.toISOString(),
+    });
+
+    const { data, error } = await supabase
+      .from("availability_slots")
+      .select("*")
+      .eq("doctor_id", user.id)
+      .gte("start_time", start.toISOString())
+      .lte("end_time", end.toISOString()) // Changed from start_time to end_time as per diff
+      .order("start_time", { ascending: true });
+
+    if (error) {
+      console.error("Doctor.tsx: error fetching slots →", error);
+      toast({
+        title: "Erro ao carregar horários",
+        description: error.message,
+        variant: "destructive",
+      });
+      setSlots([]); // garante estado limpo
+    } else {
+      console.log("Doctor.tsx: Slots fetched successfully. Data:", data);
+      setSlots(data ?? []);
+    }
+    setIsLoadingSlots(false);
+  }, [selectedDate, user, toast]);
+
+  // Dispara o fetch sempre que a data (string) mudar
+  useEffect(() => {
+    fetchSlots();
+    setSelectedSlotIds([]); // Clear selected slots when date changes
+  }, [fetchSlots]);
 
   useEffect(() => {
     if (user && activeTab === "appointments") {
@@ -140,53 +182,15 @@ const Doctor = () => {
     }
   }, [user, activeTab]);
 
-  const fetchSlots = async () => {
-    if (!user || !selectedDate) {
-      console.log("Doctor.tsx: Skipping fetchSlots, user or selectedDate is missing. User:", user, "SelectedDate:", selectedDate);
-      setLoadingSlots(false); // Ensure loading state is reset
-      return;
-    }
-    
-    setLoadingSlots(true);
-    const startOfDay = new Date(selectedDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date(selectedDate);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    console.log(`Doctor.tsx: Fetching slots for doctor ${user.id} from ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`);
-    const { data, error } = await supabase
-      .from('availability_slots')
-      .select('*')
-      .eq('doctor_id', user.id)
-      .gte('start_time', startOfDay.toISOString())
-      .lte('start_time', endOfDay.toISOString())
-      .order('start_time', { ascending: true });
-
-    if (error) {
-      console.error("Doctor.tsx: Error fetching slots:", error);
-      console.error("Doctor.tsx: Supabase fetch slots error details:", error.message, error.details, error.hint, error.code);
-      toast({
-        title: "Erro ao carregar horários",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      console.log("Doctor.tsx: Slots fetched successfully. Data:", data);
-      setSlots(data || []);
-    }
-    setLoadingSlots(false);
-  };
-
   const createDefaultSlots = async () => {
     if (!user || !selectedDate) {
       console.log("Doctor.tsx: Skipping createDefaultSlots, user or selectedDate is missing.");
       return;
     }
     
-    setLoadingSlots(true);
-    const newSlots: Database['public']['Tables']['availability_slots']['Insert'][] = []; // Type assertion
-    const date = new Date(selectedDate);
+    setIsLoadingSlots(true); // Use isLoadingSlots
+    const newSlots: Database['public']['Tables']['availability_slots']['Insert'][] = [];
+    const date = new Date(selectedDate); // This will be a Date object from the string
     
     // Inicia às 8:15
     let currentSlotTime = new Date(date);
@@ -202,7 +206,7 @@ const Doctor = () => {
     const breakEnd = new Date(date);
     breakEnd.setHours(16, 15, 0, 0);
 
-    console.log("Doctor.tsx: Attempting to create slots for:", selectedDate.toISOString());
+    console.log("Doctor.tsx: Attempting to create slots for:", selectedDate);
     console.log("Doctor.tsx: Doctor ID:", user.id);
 
     while (currentSlotTime.getTime() < endOfDayLimit.getTime()) {
@@ -238,7 +242,7 @@ const Doctor = () => {
     const { data, error } = await supabase
       .from('availability_slots')
       .insert(newSlots)
-      .select(); // Adicionado .select() para ver os dados inseridos
+      .select();
 
     if (error) {
       console.error("Doctor.tsx: Error creating slots:", error);
@@ -255,10 +259,10 @@ const Doctor = () => {
         description: "Horários criados com sucesso!",
       });
       fetchSlots();
-      queryClient.invalidateQueries({ queryKey: ["availableDates"] }); // Invalida cache do paciente
-      queryClient.invalidateQueries({ queryKey: ["availableSlots"] }); // Invalida cache do paciente
+      queryClient.invalidateQueries({ queryKey: ["availableDates"] });
+      queryClient.invalidateQueries({ queryKey: ["availableSlots"] });
     }
-    setLoadingSlots(false);
+    setIsLoadingSlots(false); // Use isLoadingSlots
   };
 
   const toggleSlotAvailability = async (slotId: string, currentStatus: boolean) => {
@@ -267,7 +271,7 @@ const Doctor = () => {
       .from('availability_slots')
       .update({ is_available: !currentStatus })
       .eq('id', slotId)
-      .select(); // Adicionado .select() para ver os dados atualizados
+      .select();
 
     if (error) {
       console.error("Doctor.tsx: Error toggling slot availability:", error);
@@ -280,12 +284,11 @@ const Doctor = () => {
     } else {
       console.log("Doctor.tsx: Slot availability updated. Data:", data);
       fetchSlots();
-      queryClient.invalidateQueries({ queryKey: ["availableDates"] }); // Invalida cache do paciente
-      queryClient.invalidateQueries({ queryKey: ["availableSlots"] }); // Invalida cache do paciente
+      queryClient.invalidateQueries({ queryKey: ["availableDates"] });
+      queryClient.invalidateQueries({ queryKey: ["availableSlots"] });
     }
   };
 
-  // Handlers para seleção múltipla
   const handleSelectSlot = (slotId: string, isSelected: boolean) => {
     setSelectedSlotIds((prev) =>
       isSelected ? [...prev, slotId] : prev.filter((id) => id !== slotId)
@@ -300,10 +303,9 @@ const Doctor = () => {
     }
   };
 
-  // Ações em massa
   const handleBulkDeleteSlots = async () => {
     if (selectedSlotIds.length === 0) return;
-    setLoadingSlots(true);
+    setIsLoadingSlots(true); // Use isLoadingSlots
     console.log("Doctor.tsx: Attempting to delete slots:", selectedSlotIds);
     const { data, error } = await supabase
       .from('availability_slots')
@@ -326,21 +328,21 @@ const Doctor = () => {
       });
       setSelectedSlotIds([]);
       fetchSlots();
-      queryClient.invalidateQueries({ queryKey: ["availableDates"] }); // Invalida cache do paciente
-      queryClient.invalidateQueries({ queryKey: ["availableSlots"] }); // Invalida cache do paciente
+      queryClient.invalidateQueries({ queryKey: ["availableDates"] });
+      queryClient.invalidateQueries({ queryKey: ["availableSlots"] });
     }
-    setLoadingSlots(false);
+    setIsLoadingSlots(false); // Use isLoadingSlots
   };
 
   const handleBulkToggleAvailability = async (makeAvailable: boolean) => {
     if (selectedSlotIds.length === 0) return;
-    setLoadingSlots(true);
+    setIsLoadingSlots(true); // Use isLoadingSlots
     console.log(`Doctor.tsx: Attempting to set availability for slots ${selectedSlotIds} to ${makeAvailable}`);
     const { data, error } = await supabase
       .from('availability_slots')
       .update({ is_available: makeAvailable })
       .in('id', selectedSlotIds)
-      .select(); // Adicionado .select() para ver os dados atualizados
+      .select();
 
     if (error) {
       console.error("Doctor.tsx: Error bulk toggling availability:", error);
@@ -358,10 +360,10 @@ const Doctor = () => {
       });
       setSelectedSlotIds([]);
       fetchSlots();
-      queryClient.invalidateQueries({ queryKey: ["availableDates"] }); // Invalida cache do paciente
-      queryClient.invalidateQueries({ queryKey: ["availableSlots"] }); // Invalida cache do paciente
+      queryClient.invalidateQueries({ queryKey: ["availableDates"] });
+      queryClient.invalidateQueries({ queryKey: ["availableSlots"] });
     }
-    setLoadingSlots(false);
+    setIsLoadingSlots(false); // Use isLoadingSlots
   };
 
   const fetchAppointments = async () => {
@@ -405,7 +407,7 @@ const Doctor = () => {
       .from('appointments')
       .update({ status })
       .eq('id', id)
-      .select(); // Adicionado .select() para ver os dados atualizados
+      .select();
 
     if (error) {
       console.error("Doctor.tsx: Error updating appointment status:", error);
@@ -448,7 +450,6 @@ const Doctor = () => {
   };
 
   const handleSignOut = async () => {
-    alert("Tentando deslogar do Doctor.tsx..."); // DEBUG ALERT
     console.log("Doctor.tsx: Tentando deslogar...");
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -464,13 +465,12 @@ const Doctor = () => {
         title: "Sucesso",
         description: "Você foi desconectado(a).",
       });
-      // A navegação para /auth será tratada pelo listener onAuthStateChange
     }
   };
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    setIsDrawerOpen(false); // Fecha o drawer ao selecionar uma aba
+    setIsDrawerOpen(false);
   };
 
   if (loading) {
@@ -530,10 +530,6 @@ const Doctor = () => {
               <MessageSquare className="h-4 w-4 mr-2" />
               Consulta Online
             </TabsTrigger>
-            {/* REMOVIDO: <TabsTrigger value="whatsapp-transcriptions" className="px-3 py-2 text-sm whitespace-nowrap">
-              <MessageSquareText className="h-4 w-4 mr-2" />
-              Transcrições WhatsApp
-            </TabsTrigger> */}
             <TabsTrigger value="newsletter-subscriptions" className="px-3 py-2 text-sm whitespace-nowrap">
               <Mail className="h-4 w-4 mr-2" />
               Newsletter
@@ -553,7 +549,6 @@ const Doctor = () => {
                   {activeTab === "patients" && "Pacientes"}
                   {activeTab === "medical-records" && "Prontuários"}
                   {activeTab === "online-consultation" && "Consulta Online"}
-                  {/* REMOVIDO: {activeTab === "whatsapp-transcriptions" && "Transcrições WhatsApp"} */}
                   {activeTab === "newsletter-subscriptions" && "Newsletter"}
                 </Button>
               </DrawerTrigger>
@@ -592,10 +587,6 @@ const Doctor = () => {
                       <MessageSquare className="h-4 w-4 mr-2" />
                       Consulta Online
                     </TabsTrigger>
-                    {/* REMOVIDO: <TabsTrigger value="whatsapp-transcriptions" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("whatsapp-transcriptions")}>
-                      <MessageSquareText className="h-4 w-4 mr-2" />
-                      Transcrições WhatsApp
-                    </TabsTrigger> */}
                     <TabsTrigger value="newsletter-subscriptions" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("newsletter-subscriptions")}>
                       <Mail className="h-4 w-4 mr-2" />
                       Newsletter
@@ -691,19 +682,6 @@ const Doctor = () => {
                 </CardContent>
               </Card>
 
-              {/* REMOVIDO: <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/whatsapp-transcriptions")}>
-                <CardHeader>
-                  <MessageSquareText className="h-8 w-8 mb-2 text-primary" />
-                  <CardTitle>Transcrições WhatsApp</CardTitle>
-                  <CardDescription>
-                    Gerencie prints de conversas do WhatsApp
-                  </GCardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button className="w-full" variant="outline">Ver Transcrições</Button>
-                </CardContent>
-              </Card> */}
-
               <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleTabChange("newsletter-subscriptions")}>
                 <CardHeader>
                   <Mail className="h-8 w-8 mb-2 text-primary" />
@@ -740,11 +718,13 @@ const Doctor = () => {
                 <CardContent>
                   <Calendar
                     mode="single"
-                    selected={selectedDate}
+                    selected={selectedDate ? new Date(selectedDate) : undefined}
                     onSelect={(date) => {
-                      console.log("Doctor Calendar: Date selected:", date);
-                      setSelectedDate(date);
-                      setSelectedSlotIds([]);
+                      // Converte para UTC e guarda apenas a data (sem horário)
+                      const iso = date ? format(date, "yyyy-MM-dd") : undefined;
+                      console.log("Doctor Calendar: Date selected (string):", iso);
+                      setSelectedDate(iso);
+                      setSelectedSlotIds([]); // Clear selected slots when date changes
                     }}
                     locale={ptBR}
                     className="rounded-md border"
@@ -755,14 +735,14 @@ const Doctor = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>
-                    Horários para {selectedDate ? format(selectedDate, "dd 'de' MMMM", { locale: ptBR }) : ""}
+                    Horários para {selectedDate ? format(new Date(selectedDate), "dd 'de' MMMM", { locale: ptBR }) : ""}
                   </CardTitle>
                   <CardDescription>
-                    {slots.length > 0 ? "Selecione horários para ações em massa" : "Nenhum horário cadastrado"}
+                    {isLoadingSlots ? "Carregando horários..." : (slots.length > 0 ? "Selecione horários para ações em massa" : "Nenhum horário cadastrado")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {loadingSlots ? (
+                  {isLoadingSlots ? (
                     <div className="flex justify-center p-8">
                       <Loader2 className="h-8 w-8 animate-spin" />
                     </div>
@@ -784,7 +764,7 @@ const Doctor = () => {
                                 variant="destructive"
                                 size="sm"
                                 onClick={handleBulkDeleteSlots}
-                                disabled={loadingSlots}
+                                disabled={isLoadingSlots}
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Excluir ({selectedSlotIds.length})
@@ -793,7 +773,7 @@ const Doctor = () => {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleBulkToggleAvailability(true)}
-                                disabled={loadingSlots}
+                                disabled={isLoadingSlots}
                               >
                                 <CheckCircle className="h-4 w-4 mr-2" />
                                 Disponibilizar ({selectedSlotIds.length})
@@ -802,7 +782,7 @@ const Doctor = () => {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleBulkToggleAvailability(false)}
-                                disabled={loadingSlots}
+                                disabled={isLoadingSlots}
                               >
                                 <XCircle className="h-4 w-4 mr-2" />
                                 Indisponibilizar ({selectedSlotIds.length})
@@ -844,7 +824,7 @@ const Doctor = () => {
                           <p className="text-muted-foreground mb-4">
                             Nenhum horário cadastrado para esta data
                           </p>
-                          <Button onClick={createDefaultSlots} disabled={loadingSlots}>
+                          <Button onClick={createDefaultSlots} disabled={isLoadingSlots}>
                             Gerar Horários Padrão (8:15-20:00, 45min)
                           </Button>
                         </div>
@@ -1022,10 +1002,6 @@ const Doctor = () => {
           <TabsContent value="online-consultation">
             {user && <DoctorOnlineConsultationTab currentUserId={user.id} />}
           </TabsContent>
-
-          {/* REMOVIDO: <TabsContent value="whatsapp-transcriptions">
-            <WhatsappTranscriptionsPage />
-          </TabsContent> */}
 
           <TabsContent value="newsletter-subscriptions">
             <DoctorNewsletterSubscriptionsTab />
