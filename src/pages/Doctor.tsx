@@ -34,6 +34,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+import { useQueryClient } from "@tanstack/react-query"; // Importar useQueryClient
 
 const Doctor = () => {
   const navigate = useNavigate();
@@ -52,6 +53,7 @@ const Doctor = () => {
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false); // Estado para controlar o Drawer
   const { toast } = useToast();
+  const queryClient = useQueryClient(); // Inicializar queryClient
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -241,6 +243,8 @@ const Doctor = () => {
         description: "Horários criados com sucesso!",
       });
       fetchSlots();
+      queryClient.invalidateQueries({ queryKey: ["availableDates"] }); // Invalida cache do paciente
+      queryClient.invalidateQueries({ queryKey: ["availableSlots"] }); // Invalida cache do paciente
     }
     setLoadingSlots(false);
   };
@@ -263,6 +267,8 @@ const Doctor = () => {
     } else {
       console.log("Doctor.tsx: Slot availability updated:", data);
       fetchSlots();
+      queryClient.invalidateQueries({ queryKey: ["availableDates"] }); // Invalida cache do paciente
+      queryClient.invalidateQueries({ queryKey: ["availableSlots"] }); // Invalida cache do paciente
     }
   };
 
@@ -306,6 +312,8 @@ const Doctor = () => {
       });
       setSelectedSlotIds([]);
       fetchSlots();
+      queryClient.invalidateQueries({ queryKey: ["availableDates"] }); // Invalida cache do paciente
+      queryClient.invalidateQueries({ queryKey: ["availableSlots"] }); // Invalida cache do paciente
     }
     setLoadingSlots(false);
   };
@@ -335,6 +343,8 @@ const Doctor = () => {
       });
       setSelectedSlotIds([]);
       fetchSlots();
+      queryClient.invalidateQueries({ queryKey: ["availableDates"] }); // Invalida cache do paciente
+      queryClient.invalidateQueries({ queryKey: ["availableSlots"] }); // Invalida cache do paciente
     }
     setLoadingSlots(false);
   };
