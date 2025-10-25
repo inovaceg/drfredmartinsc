@@ -156,6 +156,7 @@ const Doctor = () => {
 
     if (error) {
       console.error("Doctor.tsx: Error fetching slots:", error);
+      console.error("Doctor.tsx: Supabase fetch slots error details:", error.message, error.details, error.hint, error.code);
       toast({
         title: "Erro ao carregar horários",
         description: error.message,
@@ -232,13 +233,14 @@ const Doctor = () => {
 
     if (error) {
       console.error("Doctor.tsx: Error creating slots:", error);
+      console.error("Doctor.tsx: Supabase create slots error details:", error.message, error.details, error.hint, error.code);
       toast({
         title: "Erro",
         description: error.message,
         variant: "destructive",
       });
     } else {
-      console.log("Doctor.tsx: Slots created successfully:", data);
+      console.log("Doctor.tsx: Slots created successfully. Data:", data);
       toast({
         title: "Sucesso",
         description: "Horários criados com sucesso!",
@@ -260,13 +262,14 @@ const Doctor = () => {
 
     if (error) {
       console.error("Doctor.tsx: Error toggling slot availability:", error);
+      console.error("Doctor.tsx: Supabase toggle slot error details:", error.message, error.details, error.hint, error.code);
       toast({
         title: "Erro",
         description: error.message,
         variant: "destructive",
       });
     } else {
-      console.log("Doctor.tsx: Slot availability updated:", data);
+      console.log("Doctor.tsx: Slot availability updated. Data:", data);
       fetchSlots();
       queryClient.invalidateQueries({ queryKey: ["availableDates"] }); // Invalida cache do paciente
       queryClient.invalidateQueries({ queryKey: ["availableSlots"] }); // Invalida cache do paciente
@@ -300,13 +303,14 @@ const Doctor = () => {
 
     if (error) {
       console.error("Doctor.tsx: Error deleting bulk slots:", error);
+      console.error("Doctor.tsx: Supabase bulk delete slots error details:", error.message, error.details, error.hint, error.code);
       toast({
         title: "Erro",
         description: "Não foi possível excluir os horários selecionados.",
         variant: "destructive",
       });
     } else {
-      console.log("Doctor.tsx: Slots deleted successfully:", data);
+      console.log("Doctor.tsx: Slots deleted successfully. Data:", data);
       toast({
         title: "Sucesso",
         description: `${selectedSlotIds.length} horários excluídos com sucesso!`,
@@ -331,13 +335,14 @@ const Doctor = () => {
 
     if (error) {
       console.error("Doctor.tsx: Error bulk toggling availability:", error);
+      console.error("Doctor.tsx: Supabase bulk toggle availability error details:", error.message, error.details, error.hint, error.code);
       toast({
         title: "Erro",
         description: "Não foi possível alterar a disponibilidade dos horários selecionados.",
         variant: "destructive",
       });
     } else {
-      console.log("Doctor.tsx: Bulk slot availability updated:", data);
+      console.log("Doctor.tsx: Bulk slot availability updated. Data:", data);
       toast({
         title: "Sucesso",
         description: `${selectedSlotIds.length} horários marcados como ${makeAvailable ? 'disponíveis' : 'indisponíveis'}!`,
@@ -401,7 +406,7 @@ const Doctor = () => {
         variant: "destructive",
       });
     } else {
-      console.log("Doctor.tsx: Appointment status updated:", data);
+      console.log("Doctor.tsx: Appointment status updated. Data:", data);
       toast({
         title: "Sucesso",
         description: "Status atualizado!",
