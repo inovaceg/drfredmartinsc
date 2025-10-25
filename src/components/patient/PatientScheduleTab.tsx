@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query"; // Importar useQueryClient
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
@@ -30,7 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const PatientScheduleTab = () => {
-  const queryClient = useQueryClient(); // Inicializar queryClient
+  const queryClient = useQueryClient();
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
@@ -79,32 +79,30 @@ export const PatientScheduleTab = () => {
         console.log("PatientScheduleTab: Skipping fetch available slots, doctor or date missing. Doctor:", selectedDoctorId, "Date:", selectedDate);
         return [];
       }
-      const startOfDay = new Date(selectedDate);
-      startOfDay.setHours(0, 0, 0, 0); // Ensure we query for the whole day
       
-      // Ajustar para o fuso horário do servidor Supabase (UTC)
-      const startOfDayUTC = new Date(Date.UTC(startOfDay.getFullYear(), startOfDay.getMonth(), startOfDay.getDate(), 0, 0, 0));
+      const startOfDay = new Date(selectedDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(selectedDate);
+      endOfDay.setHours(23, 59, 59, 999);
 
-      console.log("PatientScheduleTab: Fetching available slots for doctor:", selectedDoctorId, "date (startOfDayUTC):", startOfDayUTC.toISOString());
+      // Ajustar para o fuso horário do servidor Supabase (UTC)
+      const startOfDayUTC = new Date(Date.UTC(startOfDay.getFullYear(), startOfDay.getMonth(), startOfDay.getDate(), startOfDay.getHours(), startOfDay.getMinutes(), startOfDay.getSeconds(), startOfDay.getMilliseconds()));
+      const endOfDayUTC = new Date(Date.UTC(endOfDay.getFullYear(), endOfDay.getMonth(), endOfDay.getDate(), endOfDay.getHours(), endOfDay.getMinutes(), endOfDay.getSeconds(), endOfDay.getMilliseconds()));
+
+      console.log("PatientScheduleTab: Fetching available slots for doctor:", selectedDoctorId, "date (startOfDayUTC):", startOfDayUTC.toISOString(), "date (endOfDayUTC):", endOfDayUTC.toISOString());
       const { data, error } = await supabase.rpc("get_truly_available_slots", {
         _doctor_id: selectedDoctorId,
-        _start_time_gte: startOfDayUTC.toISOString(), // Pass start of day in UTC
+        _start_time_gte: startOfDayUTC.toISOString(),
+        _end_time_lte: endOfDayUTC.toISOString(),
       });
       if (error) {
         console.error("PatientScheduleTab: Error fetching available slots:", error);
         throw error;
       }
-      console.log("PatientScheduleTab: Available slots fetched:", data);
+      console.log("PatientScheduleTab: Raw available slots fetched from RPC:", data);
       
-      // Filtrar slots para a data selecionada no fuso horário local do usuário
-      const filteredSlots = data.filter(slot => {
-        const slotStartTime = new Date(slot.start_time);
-        return slotStartTime.getDate() === selectedDate.getDate() &&
-               slotStartTime.getMonth() === selectedDate.getMonth() &&
-               slotStartTime.getFullYear() === selectedDate.getFullYear();
-      });
-
-      return filteredSlots;
+      // No longer need client-side filtering as RPC handles it
+      return data;
     },
     enabled: !!selectedDoctorId && !!selectedDate,
   });
