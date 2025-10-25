@@ -78,10 +78,12 @@ export const PatientScheduleTab = () => {
         console.log("PatientScheduleTab: Skipping fetch available slots, doctor or date missing. Doctor:", selectedDoctorId, "Date:", selectedDate);
         return [];
       }
-      console.log("PatientScheduleTab: Fetching available slots for doctor:", selectedDoctorId, "date:", selectedDate.toISOString());
+      const startOfDay = new Date(selectedDate);
+      startOfDay.setHours(0, 0, 0, 0); // Ensure we query for the whole day
+      console.log("PatientScheduleTab: Fetching available slots for doctor:", selectedDoctorId, "date (startOfDay):", startOfDay.toISOString());
       const { data, error } = await supabase.rpc("get_truly_available_slots", {
         _doctor_id: selectedDoctorId,
-        _start_time_gte: selectedDate.toISOString(),
+        _start_time_gte: startOfDay.toISOString(), // Pass start of day
       });
       if (error) {
         console.error("PatientScheduleTab: Error fetching available slots:", error);
