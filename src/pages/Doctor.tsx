@@ -111,7 +111,7 @@ const Doctor = () => {
 
   useEffect(() => {
     if (user && activeTab === "schedule" && selectedDate) {
-      console.log("Doctor.tsx: Fetching slots for selected date:", selectedDate);
+      console.log("Doctor.tsx: useEffect triggered for schedule tab and selectedDate. Calling fetchSlots.");
       fetchSlots();
       setSelectedSlotIds([]);
     }
@@ -134,6 +134,7 @@ const Doctor = () => {
   const fetchSlots = async () => {
     if (!user || !selectedDate) {
       console.log("Doctor.tsx: Skipping fetchSlots, user or selectedDate is missing. User:", user, "SelectedDate:", selectedDate);
+      setLoadingSlots(false); // Ensure loading state is reset
       return;
     }
     
@@ -161,7 +162,7 @@ const Doctor = () => {
         variant: "destructive",
       });
     } else {
-      console.log("Doctor.tsx: Slots fetched successfully:", data);
+      console.log("Doctor.tsx: Slots fetched successfully. Data:", data);
       setSlots(data || []);
     }
     setLoadingSlots(false);
