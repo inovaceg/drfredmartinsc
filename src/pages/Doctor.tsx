@@ -133,7 +133,7 @@ const Doctor = () => {
 
   const fetchSlots = async () => {
     if (!user || !selectedDate) {
-      console.log("Doctor.tsx: Skipping fetchSlots, user or selectedDate is missing.");
+      console.log("Doctor.tsx: Skipping fetchSlots, user or selectedDate is missing. User:", user, "SelectedDate:", selectedDate);
       return;
     }
     
@@ -161,7 +161,7 @@ const Doctor = () => {
         variant: "destructive",
       });
     } else {
-      console.log("Doctor.tsx: Slots fetched:", data);
+      console.log("Doctor.tsx: Slots fetched successfully:", data);
       setSlots(data || []);
     }
     setLoadingSlots(false);
@@ -711,7 +711,11 @@ const Doctor = () => {
                   <Calendar
                     mode="single"
                     selected={selectedDate}
-                    onSelect={setSelectedDate}
+                    onSelect={(date) => {
+                      console.log("Doctor Calendar: Date selected:", date);
+                      setSelectedDate(date);
+                      setSelectedSlotIds([]);
+                    }}
                     locale={ptBR}
                     className="rounded-md border"
                   />

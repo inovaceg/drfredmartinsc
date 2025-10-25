@@ -39,8 +39,13 @@ export const PatientScheduleTab = () => {
   const { data: doctors, isLoading: isLoadingDoctors } = useQuery({
     queryKey: ["doctors"],
     queryFn: async () => {
+      console.log("PatientScheduleTab: Fetching doctors...");
       const { data, error } = await supabase.rpc("get_doctors_public");
-      if (error) throw error;
+      if (error) {
+        console.error("PatientScheduleTab: Error fetching doctors:", error);
+        throw error;
+      }
+      console.log("PatientScheduleTab: Doctors fetched:", data);
       return data;
     },
   });
@@ -48,11 +53,19 @@ export const PatientScheduleTab = () => {
   const { data: availableDates, isLoading: isLoadingAvailableDates } = useQuery({
     queryKey: ["availableDates", selectedDoctorId],
     queryFn: async () => {
-      if (!selectedDoctorId) return [];
+      if (!selectedDoctorId) {
+        console.log("PatientScheduleTab: Skipping fetch available dates, no doctor selected.");
+        return [];
+      }
+      console.log("PatientScheduleTab: Fetching available dates for doctor:", selectedDoctorId);
       const { data, error } = await supabase.rpc("get_doctor_available_dates", {
         _doctor_id: selectedDoctorId,
       });
-      if (error) throw error;
+      if (error) {
+        console.error("PatientScheduleTab: Error fetching available dates:", error);
+        throw error;
+      }
+      console.log("PatientScheduleTab: Available dates fetched:", data);
       return data.map((d: string) => new Date(d)); // Convert string dates to Date objects
     },
     enabled: !!selectedDoctorId,
@@ -61,12 +74,20 @@ export const PatientScheduleTab = () => {
   const { data: availableSlots, isLoading: isLoadingSlots } = useQuery({
     queryKey: ["availableSlots", selectedDoctorId, selectedDate],
     queryFn: async () => {
-      if (!selectedDoctorId || !selectedDate) return [];
+      if (!selectedDoctorId || !selectedDate) {
+        console.log("PatientScheduleTab: Skipping fetch available slots, doctor or date missing. Doctor:", selectedDoctorId, "Date:", selectedDate);
+        return [];
+      }
+      console.log("PatientScheduleTab: Fetching available slots for doctor:", selectedDoctorId, "date:", selectedDate.toISOString());
       const { data, error } = await supabase.rpc("get_truly_available_slots", {
         _doctor_id: selectedDoctorId,
         _start_time_gte: selectedDate.toISOString(),
       });
-      if (error) throw error;
+      if (error) {
+        console.error("PatientScheduleTab: Error fetching available slots:", error);
+        throw error;
+      }
+      console.log("PatientScheduleTab: Available slots fetched:", data);
       return data;
     },
     enabled: !!selectedDoctorId && !!selectedDate,
@@ -173,6 +194,7 @@ export const PatientScheduleTab = () => {
                 mode="single"
                 selected={selectedDate}
                 onSelect={(date) => {
+                  console.log("Patient Calendar: Date selected:", date);
                   setSelectedDate(date);
                   setSelectedSlotId(null); // Reset slot when date changes
                   setSelectedSlotStartTime(null);
@@ -186,6 +208,7 @@ export const PatientScheduleTab = () => {
 
                   // Desabilita datas no passado
                   if (date < today) {
+                    console.log(`Patient Calendar: Date ${format(date, 'yyyy-MM-dd')} is in the past, disabling.`);
                     return true;
                   }
 
@@ -193,7 +216,9 @@ export const PatientScheduleTab = () => {
                   // desabilita as datas que não estão na lista de datas disponíveis.
                   if (selectedDoctorId && availableDates) {
                     const dateString = format(date, 'yyyy-MM-dd');
-                    return !availableDates.some(d => format(d, 'yyyy-MM-dd') === dateString);
+                    const isDateAvailable = availableDates.some(d => format(d, 'yyyy-MM-dd') === dateString);
+                    console.log(`Patient Calendar: Date ${dateString} is available: ${isDateAvailable}`);
+                    return !isDateAvailable;
                   }
 
                   // Se nenhum profissional foi selecionado, ou as datas disponíveis estão carregando,
