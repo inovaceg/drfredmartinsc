@@ -64,6 +64,9 @@ const Doctor = () => {
         setLoading(false);
         if (session?.user) {
           fetchDoctorProfile(session.user.id);
+        } else if (event === 'SIGNED_OUT') {
+          console.log("Doctor.tsx: Evento SIGNED_OUT detectado. Redirecionando para /auth.");
+          navigate("/auth");
         }
       }
     );
@@ -75,11 +78,17 @@ const Doctor = () => {
       setLoading(false);
       if (session?.user) {
         fetchDoctorProfile(session.user.id);
+      } else {
+        console.log("Doctor.tsx: Nenhum usuário logado inicialmente, redirecionando para /auth.");
+        navigate("/auth");
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      console.log("Doctor.tsx: Desinscrevendo do listener de auth state change.");
+      subscription.unsubscribe();
+    };
+  }, [navigate, toast]);
 
   const fetchDoctorProfile = async (userId: string) => {
     console.log("Doctor.tsx: Fetching doctor profile for userId:", userId);
@@ -439,22 +448,22 @@ const Doctor = () => {
   };
 
   const handleSignOut = async () => {
-    console.log("Doctor.tsx: Attempting to sign out.");
+    console.log("Doctor.tsx: Tentando deslogar...");
     const { error } = await supabase.auth.signOut();
     if (error) {
-      console.error("Doctor.tsx: Error during sign out:", error);
+      console.error("Doctor.tsx: Erro ao deslogar:", error);
       toast({
         title: "Erro ao sair",
         description: error.message,
         variant: "destructive",
       });
     } else {
-      console.log("Doctor.tsx: Sign out successful.");
+      console.log("Doctor.tsx: Deslogado com sucesso.");
       toast({
         title: "Sucesso",
         description: "Você foi desconectado(a).",
       });
-      navigate("/");
+      // A navegação para /auth será tratada pelo listener onAuthStateChange
     }
   };
 
@@ -687,7 +696,7 @@ const Doctor = () => {
                   <CardTitle>Transcrições WhatsApp</CardTitle>
                   <CardDescription>
                     Gerencie prints de conversas do WhatsApp
-                  </CardDescription>
+                  </GCardDescription>
                 </CardHeader>
                 <CardContent>
                   <Button className="w-full" variant="outline">Ver Transcrições</Button>

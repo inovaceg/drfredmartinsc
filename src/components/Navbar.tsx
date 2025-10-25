@@ -163,17 +163,17 @@ const Navbar = () => {
           {user ? (
             <Button 
               onClick={async () => {
-                console.log("Navbar: Attempting to sign out.");
+                console.log("Navbar: Tentando deslogar...");
                 const { error } = await supabase.auth.signOut();
                 if (error) {
-                  console.error("Navbar: Error during sign out:", error);
+                  console.error("Navbar: Erro ao deslogar:", error);
                   toast({
                     title: "Erro ao sair",
                     description: error.message,
                     variant: "destructive",
                   });
                 } else {
-                  console.log("Navbar: Sign out successful.");
+                  console.log("Navbar: Deslogado com sucesso.");
                   toast({
                     title: "Sucesso",
                     description: "Você foi desconectado(a).",
@@ -277,17 +277,17 @@ const Navbar = () => {
                 {user ? (
                   <Button 
                     onClick={async () => {
-                      console.log("Navbar: Attempting to sign out.");
+                      console.log("Navbar (Drawer): Tentando deslogar...");
                       const { error } = await supabase.auth.signOut();
                       if (error) {
-                        console.error("Navbar: Error during sign out:", error);
+                        console.error("Navbar (Drawer): Erro ao deslogar:", error);
                         toast({
                           title: "Erro ao sair",
                           description: error.message,
                           variant: "destructive",
                         });
                       } else {
-                        console.log("Navbar: Sign out successful.");
+                        console.log("Navbar (Drawer): Deslogado com sucesso.");
                         toast({
                           title: "Sucesso",
                           description: "Você foi desconectado(a).",

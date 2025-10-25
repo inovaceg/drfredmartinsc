@@ -36,6 +36,7 @@ const Patient = () => {
   const { toast } = useToast();
 
   const fetchPatientProfile = useCallback(async (userId: string) => {
+    console.log("Patient.tsx: Buscando perfil do paciente para userId:", userId);
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -43,13 +44,14 @@ const Patient = () => {
       .single();
 
     if (error) {
-      console.error("Patient.tsx: Error fetching patient profile:", error);
+      console.error("Patient.tsx: Erro ao buscar perfil do paciente:", error);
       toast({
         title: "Erro ao carregar perfil do paciente",
         description: error.message,
         variant: "destructive",
       });
     } else if (data) {
+      console.log("Patient.tsx: Perfil do paciente encontrado:", data);
       setPatientProfile(data);
     }
   }, [toast]);
@@ -57,26 +59,33 @@ const Patient = () => {
   // Centralized auth state management for this component
   useEffect(() => {
     const handleAuthStateChange = async (event: string, session: Session | null) => {
+      console.log("Patient.tsx: Auth state change event:", event, "Sessão:", session);
       setUser(session?.user ?? null);
       setLoading(false);
 
       if (event === 'SIGNED_OUT') {
+        console.log("Patient.tsx: Evento SIGNED_OUT detectado. Redirecionando para /auth.");
         setPatientProfile(null);
         navigate("/auth");
       } else if (session?.user) {
+        console.log("Patient.tsx: Usuário logado, buscando perfil.");
         await fetchPatientProfile(session.user.id);
       } else {
+        console.log("Patient.tsx: Nenhum usuário logado, redirecionando para /auth.");
         navigate("/auth");
       }
     };
 
     // Initial session check
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      console.log("Patient.tsx: Verificação inicial da sessão. Sessão:", session);
       setUser(session?.user ?? null);
       setLoading(false);
       if (session?.user) {
+        console.log("Patient.tsx: Usuário logado inicialmente, buscando perfil.");
         await fetchPatientProfile(session.user.id);
       } else {
+        console.log("Patient.tsx: Nenhum usuário logado inicialmente, redirecionando para /auth.");
         navigate("/auth");
       }
     });
@@ -84,23 +93,28 @@ const Patient = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
     return () => {
+      console.log("Patient.tsx: Desinscrevendo do listener de auth state change.");
       subscription.unsubscribe();
     };
-  }, [navigate, fetchPatientProfile]);
+  }, [navigate, fetchPatientProfile, toast]);
 
   const handleSignOut = async () => {
+    console.log("Patient.tsx: Tentando deslogar...");
     const { error } = await supabase.auth.signOut();
     if (error) {
+      console.error("Patient.tsx: Erro ao deslogar:", error);
       toast({
         title: "Erro ao sair",
         description: error.message,
         variant: "destructive",
       });
     } else {
+      console.log("Patient.tsx: Deslogado com sucesso.");
       toast({
         title: "Sucesso",
         description: "Você foi desconectado(a).",
       });
+      // A navegação para /auth será tratada pelo listener onAuthStateChange
     }
   };
 
