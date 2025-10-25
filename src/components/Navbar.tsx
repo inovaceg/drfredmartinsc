@@ -163,6 +163,7 @@ const Navbar = () => {
           {user ? (
             <Button 
               onClick={async () => {
+                alert("Tentando deslogar do Navbar..."); // DEBUG ALERT
                 console.log("Navbar: Tentando deslogar...");
                 const { error } = await supabase.auth.signOut();
                 if (error) {
@@ -277,6 +278,7 @@ const Navbar = () => {
                 {user ? (
                   <Button 
                     onClick={async () => {
+                      alert("Tentando deslogar do Navbar (Drawer)..."); // DEBUG ALERT
                       console.log("Navbar (Drawer): Tentando deslogar...");
                       const { error } = await supabase.auth.signOut();
                       if (error) {

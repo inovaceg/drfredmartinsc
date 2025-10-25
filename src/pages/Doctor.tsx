@@ -448,6 +448,7 @@ const Doctor = () => {
   };
 
   const handleSignOut = async () => {
+    alert("Tentando deslogar do Doctor.tsx..."); // DEBUG ALERT
     console.log("Doctor.tsx: Tentando deslogar...");
     const { error } = await supabase.auth.signOut();
     if (error) {

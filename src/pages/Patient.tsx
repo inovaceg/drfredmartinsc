@@ -99,6 +99,7 @@ const Patient = () => {
   }, [navigate, fetchPatientProfile, toast]);
 
   const handleSignOut = async () => {
+    alert("Tentando deslogar do Patient.tsx..."); // DEBUG ALERT
     console.log("Patient.tsx: Tentando deslogar...");
     const { error } = await supabase.auth.signOut();
     if (error) {
