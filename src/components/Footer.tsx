@@ -4,9 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Instagram, Phone, Mail, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { formatPhone } from "@/lib/format-phone"; // Importar formatPhone
 
 const Footer = () => {
   const [email, setEmail] = useState("");
+  const [name, setName] = useState(""); // Novo estado para o nome
+  const [whatsapp, setWhatsapp] = useState(""); // Novo estado para o WhatsApp
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -25,7 +28,11 @@ const Footer = () => {
     try {
       const { error } = await supabase
         .from('newsletter_subscriptions')
-        .insert({ email: email.trim() });
+        .insert({ 
+          email: email.trim(),
+          name: name.trim() || null, // Adiciona o nome, ou null se vazio
+          whatsapp: whatsapp.trim() ? unformatPhone(whatsapp.trim()) : null, // Adiciona o WhatsApp formatado, ou null se vazio
+        });
 
       if (error) {
         if (error.code === '23505') { // Unique violation code
@@ -43,6 +50,8 @@ const Footer = () => {
           description: "Obrigado por se inscrever na nossa newsletter!",
         });
         setEmail(""); // Limpa o campo de e-mail
+        setName(""); // Limpa o campo de nome
+        setWhatsapp(""); // Limpa o campo de WhatsApp
       }
     } catch (error: any) {
       console.error("Erro ao inscrever na newsletter:", error);
@@ -152,12 +161,30 @@ const Footer = () => {
             </p>
             <form onSubmit={handleNewsletterSubmit} className="flex flex-col space-y-4">
               <Input
+                type="text"
+                placeholder="Seu nome"
+                className="bg-white/5 border-white/10 placeholder:text-white/50 text-white"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={loading}
+              />
+              <Input
+                type="tel"
+                placeholder="Seu WhatsApp (opcional)"
+                className="bg-white/5 border-white/10 placeholder:text-white/50 text-white"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(formatPhone(e.target.value))}
+                maxLength={15} // Max length for formatted phone
+                disabled={loading}
+              />
+              <Input
                 type="email"
                 placeholder="Seu e-mail"
                 className="bg-white/5 border-white/10 placeholder:text-white/50 text-white"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
+                required
               />
               <Button type="submit" variant="secondary" className="bg-white text-slate-900 hover:bg-white/90 rounded-full" disabled={loading}>
                 {loading ? (
