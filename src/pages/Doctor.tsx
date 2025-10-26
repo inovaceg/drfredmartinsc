@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, addDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditPatientDialog } from "@/components/EditPatientDialog";
 import { formatPhone } from "@/lib/format-phone";
@@ -23,7 +23,7 @@ import { DoctorNewsletterSubscriptionsTab } from "@/components/DoctorNewsletterS
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createLocalDateFromISOString, formatDateToDisplay } from "@/lib/utils";
+import { cn, createLocalDateFromISOString, formatDateToDisplay } from "@/lib/utils";
 import {
   Drawer,
   DrawerClose,
@@ -48,6 +48,8 @@ import {
 import { Database } from "@/integrations/supabase/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { DeletePatientAlertDialog } from "@/components/doctor/DeletePatientAlertDialog"; // Importar o novo componente
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 type AvailabilitySlot = Database['public']['Tables']['availability_slots']['Row'];
 type Appointment = Database['public']['Tables']['appointments']['Row'] & {
@@ -71,10 +73,22 @@ const Doctor = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [doctorProfile, setDoctorProfile] = useState<any>(null);
+  
+  // States for 'Gerenciar Agenda' tab
   const [selectedDate, setSelectedDate] = useState<string | undefined>(format(new Date(), "yyyy-MM-dd"));
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
+
+  // States for 'Visão Geral' tab timeframe
+  const [selectedTimeframe, setSelectedTimeframe] = useState<'today' | '7_days' | '14_days' | 'custom'>('today');
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
+  const [overviewAvailableSlots, setOverviewAvailableSlots] = useState(0);
+  const [overviewOccupiedSlots, setOverviewOccupiedSlots] = useState(0);
+  const [overviewTotalSlots, setOverviewTotalSlots] = useState(0);
+  const [isLoadingOverviewSlots, setIsLoadingOverviewSlots] = useState(false);
+
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<PatientProfile[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<PatientProfile | null>(null);
@@ -112,27 +126,47 @@ const Doctor = () => {
     }
   }, [toast, setDoctorProfile]);
 
-  const fetchSlots = useCallback(async (doctorId: string | undefined, date: string | undefined) => {
-    if (!doctorId || !date) {
-      console.log("Doctor.tsx: Skipping fetchSlots, doctorId or date is missing. DoctorId:", doctorId, "Date:", date);
+  // Helper to get date range based on timeframe
+  const getDatesForTimeframe = useCallback((timeframe: typeof selectedTimeframe, customStart?: Date, customEnd?: Date) => {
+    const today = startOfDay(new Date()); // Start of today local time
+
+    let startDate = new Date(today);
+    let endDate = endOfDay(new Date()); // End of today local time
+
+    if (timeframe === '7_days') {
+      endDate = endOfDay(addDays(today, 6)); // Today + 6 more days = 7 days total
+    } else if (timeframe === '14_days') {
+      endDate = endOfDay(addDays(today, 13)); // Today + 13 more days = 14 days total
+    } else if (timeframe === 'custom' && customStart && customEnd) {
+      startDate = startOfDay(customStart);
+      endDate = endOfDay(customEnd);
+    }
+    return { startDate, endDate };
+  }, []);
+
+  // Modified fetchSlots to accept a date range and update specific states
+  const fetchSlots = useCallback(async (doctorId: string | undefined, startDate: Date, endDate: Date, forOverview: boolean = false) => {
+    if (!doctorId) {
+      console.log("Doctor.tsx: Skipping fetchSlots, doctorId is missing.");
+      if (forOverview) {
+        setOverviewAvailableSlots(0);
+        setOverviewOccupiedSlots(0);
+        setOverviewTotalSlots(0);
+        setIsLoadingOverviewSlots(false);
+      } else {
+        setSlots([]);
+        setIsLoadingSlots(false);
+      }
       return;
     }
-    setIsLoadingSlots(true);
-    
-    // Cria objetos Date para o início e fim do dia no fuso horário local do usuário
-    const localSelectedDateObj = createLocalDateFromISOString(date);
-    
-    const startOfDayLocal = new Date(localSelectedDateObj);
-    startOfDayLocal.setHours(0, 0, 0, 0); // Define para meia-noite local
-    
-    const endOfDayLocal = new Date(localSelectedDateObj);
-    endOfDayLocal.setHours(23, 59, 59, 999); // Define para o final do dia local
 
-    // Converte esses objetos Date locais para strings ISO (que serão em UTC)
-    const _start_time_gte = startOfDayLocal.toISOString();
-    const _end_time_lte = endOfDayLocal.toISOString();
+    if (forOverview) setIsLoadingOverviewSlots(true);
+    else setIsLoadingSlots(true);
 
-    console.log("Doctor.tsx: Fetching slots for doctor:", doctorId, "date (startOfDayUTC):", _start_time_gte, "date (endOfDayUTC):", _end_time_lte);
+    const _start_time_gte = startDate.toISOString();
+    const _end_time_lte = endDate.toISOString();
+
+    console.log(`Doctor.tsx: Fetching slots for doctor: ${doctorId} from ${_start_time_gte} to ${_end_time_lte}`);
     const { data, error } = await supabase.rpc("get_truly_available_slots", {
       _doctor_id: doctorId,
       _start_time_gte: _start_time_gte,
@@ -146,13 +180,28 @@ const Doctor = () => {
         description: error.message,
         variant: "destructive",
       });
-      setSlots([]);
+      if (forOverview) {
+        setOverviewAvailableSlots(0);
+        setOverviewOccupiedSlots(0);
+        setOverviewTotalSlots(0);
+      } else {
+        setSlots([]);
+      }
     } else {
       console.log("Doctor.tsx: Slots fetched:", data);
-      setSlots(data || []);
+      if (forOverview) {
+        const available = data.filter(slot => slot.is_available).length;
+        const occupied = data.filter(slot => !slot.is_available).length;
+        setOverviewAvailableSlots(available);
+        setOverviewOccupiedSlots(occupied);
+        setOverviewTotalSlots(data.length);
+      } else {
+        setSlots(data || []);
+      }
     }
-    setIsLoadingSlots(false);
-  }, [toast, setSlots, setIsLoadingSlots]);
+    if (forOverview) setIsLoadingOverviewSlots(false);
+    else setIsLoadingSlots(false);
+  }, [toast]);
 
   const fetchAppointments = useCallback(async () => {
     console.log("Doctor.tsx: Fetching appointments for doctor.");
@@ -240,7 +289,10 @@ const Doctor = () => {
       if (session?.user) {
         console.log("Doctor.tsx: Usuário logado inicialmente, buscando perfil e dados.");
         await fetchDoctorProfile(session.user.id);
-        fetchSlots(session.user.id, selectedDate);
+        // For 'Gerenciar Agenda' tab, fetch slots for today initially
+        const todayStart = startOfDay(new Date());
+        const todayEnd = endOfDay(new Date());
+        fetchSlots(session.user.id, todayStart, todayEnd, false);
         fetchAppointments();
         fetchPatients(session.user.id);
       } else {
@@ -255,7 +307,26 @@ const Doctor = () => {
       console.log("Doctor.tsx: Desinscrevendo do listener de auth state change.");
       subscription.unsubscribe();
     };
-  }, [navigate, selectedDate, fetchDoctorProfile, fetchSlots, fetchAppointments, fetchPatients, handleAuthStateChange, setUser, setLoading]);
+  }, [navigate, fetchDoctorProfile, fetchSlots, fetchAppointments, fetchPatients, handleAuthStateChange, setUser, setLoading]);
+
+  // New useEffect for overview data
+  useEffect(() => {
+    if (user?.id) {
+      const { startDate, endDate } = getDatesForTimeframe(selectedTimeframe, customStartDate, customEndDate);
+      fetchSlots(user.id, startDate, endDate, true);
+    }
+  }, [user, selectedTimeframe, customStartDate, customEndDate, fetchSlots, getDatesForTimeframe]);
+
+  // Update existing useEffect for 'schedule' tab to use the single selectedDate
+  useEffect(() => {
+    if (user?.id && activeTab === 'schedule' && selectedDate) {
+      const dateObj = createLocalDateFromISOString(selectedDate);
+      const startOfDayLocal = startOfDay(dateObj);
+      const endOfDayLocal = endOfDay(dateObj);
+      fetchSlots(user.id, startOfDayLocal, endOfDayLocal, false);
+    }
+  }, [user, activeTab, selectedDate, fetchSlots]);
+
 
   const createDefaultSlots = async () => {
     if (!user || !selectedDate) {
@@ -327,7 +398,10 @@ const Doctor = () => {
         title: "Sucesso",
         description: "Horários criados com sucesso!",
       });
-      fetchSlots(user.id, selectedDate); // Pass user.id and selectedDate explicitly
+      const dateObj = createLocalDateFromISOString(selectedDate);
+      const startOfDayLocal = startOfDay(dateObj);
+      const endOfDayLocal = endOfDay(dateObj);
+      fetchSlots(user.id, startOfDayLocal, endOfDayLocal, false); // Pass user.id and selectedDate explicitly
       queryClient.invalidateQueries({ queryKey: ["availableDates"] });
       queryClient.invalidateQueries({ queryKey: ["availableSlots"] });
     }
@@ -352,7 +426,10 @@ const Doctor = () => {
       });
     } else {
       console.log("Doctor.tsx: Slot availability updated. Data:", data);
-      fetchSlots(user?.id, selectedDate); // Pass user.id and selectedDate explicitly
+      const dateObj = createLocalDateFromISOString(selectedDate!);
+      const startOfDayLocal = startOfDay(dateObj);
+      const endOfDayLocal = endOfDay(dateObj);
+      fetchSlots(user?.id, startOfDayLocal, endOfDayLocal, false); // Pass user.id and selectedDate explicitly
       queryClient.invalidateQueries({ queryKey: ["availableDates"] });
       queryClient.invalidateQueries({ queryKey: ["availableSlots"] });
     }
@@ -396,7 +473,10 @@ const Doctor = () => {
         description: `${selectedSlotIds.length} horários excluídos com sucesso!`,
       });
       setSelectedSlotIds([]);
-      fetchSlots(user?.id, selectedDate); // Pass user.id and selectedDate explicitly
+      const dateObj = createLocalDateFromISOString(selectedDate!);
+      const startOfDayLocal = startOfDay(dateObj);
+      const endOfDayLocal = endOfDay(dateObj);
+      fetchSlots(user?.id, startOfDayLocal, endOfDayLocal, false); // Pass user.id and selectedDate explicitly
       queryClient.invalidateQueries({ queryKey: ["availableDates"] });
       queryClient.invalidateQueries({ queryKey: ["availableSlots"] });
     }
@@ -428,7 +508,10 @@ const Doctor = () => {
         description: `${selectedSlotIds.length} horários marcados como ${makeAvailable ? 'disponíveis' : 'indisponíveis'}!`,
       });
       setSelectedSlotIds([]);
-      fetchSlots(user?.id, selectedDate); // Pass user.id and selectedDate explicitly
+      const dateObj = createLocalDateFromISOString(selectedDate!);
+      const startOfDayLocal = startOfDay(dateObj);
+      const endOfDayLocal = endOfDay(dateObj);
+      fetchSlots(user?.id, startOfDayLocal, endOfDayLocal, false); // Pass user.id and selectedDate explicitly
       queryClient.invalidateQueries({ queryKey: ["availableDates"] });
       queryClient.invalidateQueries({ queryKey: ["availableSlots"] });
     }
@@ -520,7 +603,10 @@ const Doctor = () => {
         });
         setSelectedPatientForBookingId(null);
         setSelectedSlotForBooking(null);
-        fetchSlots(user.id, selectedDate); // Refresh slots to show updated availability
+        const dateObj = createLocalDateFromISOString(selectedDate!);
+        const startOfDayLocal = startOfDay(dateObj);
+        const endOfDayLocal = endOfDay(dateObj);
+        fetchSlots(user.id, startOfDayLocal, endOfDayLocal, false); // Refresh slots to show updated availability
         fetchAppointments(); // Refresh appointments list
       }
     } catch (error: any) {
@@ -546,7 +632,15 @@ const Doctor = () => {
         { event: '*', schema: 'public', table: 'availability_slots', filter: `doctor_id=eq.${user.id}` },
         (payload) => {
           console.log('Doctor.tsx: Real-time change detected in availability_slots for doctor:', payload);
-          fetchSlots(user.id, selectedDate); // Re-fetch slots for the current doctor
+          // Re-fetch for both overview and schedule tabs
+          const { startDate, endDate } = getDatesForTimeframe(selectedTimeframe, customStartDate, customEndDate);
+          fetchSlots(user.id, startDate, endDate, true); // For overview
+          if (activeTab === 'schedule' && selectedDate) {
+            const dateObj = createLocalDateFromISOString(selectedDate);
+            const startOfDayLocal = startOfDay(dateObj);
+            const endOfDayLocal = endOfDay(dateObj);
+            fetchSlots(user.id, startOfDayLocal, endOfDayLocal, false); // For schedule tab
+          }
         }
       )
       .subscribe();
@@ -555,7 +649,7 @@ const Doctor = () => {
       console.log("Doctor.tsx: Unsubscribing from real-time channel for doctor's view.");
       supabase.removeChannel(channel);
     };
-  }, [user, fetchSlots, selectedDate]); // Depend on user, fetchSlots, and selectedDate
+  }, [user, fetchSlots, selectedDate, selectedTimeframe, customStartDate, customEndDate, getDatesForTimeframe, activeTab]); // Depend on user, fetchSlots, and selectedDate
 
   // Define handleDeletePatient here, so it's in scope for the map function
   const handleDeletePatient = useCallback(async () => {
@@ -622,10 +716,19 @@ const Doctor = () => {
     }
   }, [patientToDelete, user, queryClient, toast, setSelectedPatient, setPatients, setPatientToDelete, setIsDeleteDialogOpen, setIsDeleting, fetchPatients]);
 
-  // Calculate available and occupied slots for the overview tab
-  const availableSlotsCount = slots.filter(slot => slot.is_available).length;
-  const occupiedSlotsCount = slots.filter(slot => !slot.is_available).length;
-  const totalSlotsCount = slots.length;
+  // Helper to format date range for display
+  const getDisplayDateRange = useCallback(() => {
+    const { startDate, endDate } = getDatesForTimeframe(selectedTimeframe, customStartDate, customEndDate);
+    if (selectedTimeframe === 'today') {
+      return format(startDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+    } else if (selectedTimeframe === '7_days' || selectedTimeframe === '14_days') {
+      return `${format(startDate, "dd/MM", { locale: ptBR })} - ${format(endDate, "dd/MM/yyyy", { locale: ptBR })}`;
+    } else if (selectedTimeframe === 'custom' && customStartDate && customEndDate) {
+      return `${format(customStartDate, "dd/MM/yyyy", { locale: ptBR })} - ${format(customEndDate, "dd/MM/yyyy", { locale: ptBR })}`;
+    }
+    return "Período Selecionado";
+  }, [selectedTimeframe, customStartDate, customEndDate, getDatesForTimeframe]);
+
 
   console.log("Doctor component is rendering. User:", user?.id, "Loading:", loading);
 
@@ -813,9 +916,92 @@ const Doctor = () => {
                 <div className="border-t pt-4 mt-4">
                   <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                     <CalendarIcon className="h-5 w-5 text-primary" />
-                    Agenda para {selectedDate ? format(createLocalDateFromISOString(selectedDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : "hoje"}
+                    Agenda para {getDisplayDateRange()}
                   </h3>
-                  {isLoadingSlots ? (
+                  <div className="mb-4">
+                    <ToggleGroup type="single" value={selectedTimeframe} onValueChange={(value: typeof selectedTimeframe) => {
+                      setSelectedTimeframe(value);
+                      if (value !== 'custom') {
+                        setCustomStartDate(undefined);
+                        setCustomEndDate(undefined);
+                      }
+                    }} className="bg-muted rounded-md p-1">
+                      <ToggleGroupItem value="today" aria-label="Hoje">
+                        Hoje
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="7_days" aria-label="Próximos 7 dias">
+                        7 Dias
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="14_days" aria-label="Próximos 14 dias">
+                        14 Dias
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="custom" aria-label="Período Personalizado">
+                        Personalizado
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+
+                  {selectedTimeframe === 'custom' && (
+                    <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !customStartDate && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {customStartDate ? (
+                              format(customStartDate, "PPP", { locale: ptBR })
+                            ) : (
+                              <span>Data de Início</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={customStartDate}
+                            onSelect={setCustomStartDate}
+                            initialFocus
+                            locale={ptBR}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !customEndDate && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {customEndDate ? (
+                              format(customEndDate, "PPP", { locale: ptBR })
+                            ) : (
+                              <span>Data Final</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={customEndDate}
+                            onSelect={setCustomEndDate}
+                            initialFocus
+                            locale={ptBR}
+                            disabled={(date) => customStartDate ? date < customStartDate : false}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  )}
+
+                  {isLoadingOverviewSlots ? (
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" /> Carregando horários...
                     </div>
@@ -823,15 +1009,15 @@ const Doctor = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="flex items-center gap-2">
                         <Clock className="h-5 w-5 text-primary" />
-                        <p>Total de Horários: <span className="font-bold">{totalSlotsCount}</span></p>
+                        <p>Total de Horários: <span className="font-bold">{overviewTotalSlots}</span></p>
                       </div>
                       <div className="flex items-center gap-2">
                         <CheckCircle className="h-5 w-5 text-green-500" />
-                        <p>Disponíveis: <span className="font-bold">{availableSlotsCount}</span></p>
+                        <p>Disponíveis: <span className="font-bold">{overviewAvailableSlots}</span></p>
                       </div>
                       <div className="flex items-center gap-2">
                         <XCircle className="h-5 w-5 text-red-500" />
-                        <p>Ocupados: <span className="font-bold">{occupiedSlotsCount}</span></p>
+                        <p>Ocupados: <span className="font-bold">{overviewOccupiedSlots}</span></p>
                       </div>
                     </div>
                   )}
