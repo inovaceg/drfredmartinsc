@@ -23,7 +23,7 @@ import { Database } from "@/integrations/supabase/types";
 import { WhatsappTranscriptionsPage } from "@/pages/WhatsappTranscriptionsPage";
 import { DoctorMedicalRecordsTab } from "@/components/doctor/DoctorMedicalRecordsTab";
 import { DoctorNewsletterSubscriptionsTab } from "@/components/doctor/DoctorNewsletterSubscriptionsTab";
-import { formatDateToDisplay } from "@/lib/utils";
+import { formatDateToDisplay, createLocalDateFromISOString } from "@/lib/utils"; // Import createLocalDateFromISOString
 import {
   Drawer,
   DrawerClose,
@@ -131,12 +131,13 @@ const Doctor = () => {
     setIsLoadingSlots(true);
 
     // Cria objetos Date para o início e fim do dia no fuso horário local do usuário
-    const localSelectedDate = new Date(selectedDate); // Ex: "2024-10-27" -> Date object for 2024-10-27 00:00:00 na timezone local
+    // Usamos createLocalDateFromISOString para garantir que a data seja interpretada localmente
+    const localSelectedDateObj = createLocalDateFromISOString(selectedDate);
     
-    const startOfDayLocal = new Date(localSelectedDate);
+    const startOfDayLocal = new Date(localSelectedDateObj);
     startOfDayLocal.setHours(0, 0, 0, 0); // Define para meia-noite local
     
-    const endOfDayLocal = new Date(localSelectedDate);
+    const endOfDayLocal = new Date(localSelectedDateObj);
     endOfDayLocal.setHours(23, 59, 59, 999); // Define para o final do dia local
 
     // Converte esses objetos Date locais para strings ISO (que serão em UTC)
@@ -200,7 +201,8 @@ const Doctor = () => {
     
     setIsLoadingSlots(true); // Use isLoadingSlots
     const newSlots: Database['public']['Tables']['availability_slots']['Insert'][] = [];
-    const date = new Date(selectedDate); // This will be a Date object from the string
+    // Usamos createLocalDateFromISOString para garantir que a data seja interpretada localmente
+    const date = createLocalDateFromISOString(selectedDate); 
     
     // Inicia às 8:15
     let currentSlotTime = new Date(date);
@@ -728,7 +730,7 @@ const Doctor = () => {
                 <CardContent>
                   <Calendar
                     mode="single"
-                    selected={selectedDate ? new Date(selectedDate) : undefined}
+                    selected={selectedDate ? createLocalDateFromISOString(selectedDate) : undefined} // Usar a nova função
                     onSelect={(date) => {
                       if (date) {
                         // Constrói a string yyyy-MM-dd a partir dos componentes locais da data
@@ -753,7 +755,7 @@ const Doctor = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>
-                    Horários para {selectedDate ? format(new Date(selectedDate), "dd 'de' MMMM", { locale: ptBR }) : ""}
+                    Horários para {selectedDate ? format(createLocalDateFromISOString(selectedDate), "dd 'de' MMMM", { locale: ptBR }) : ""} {/* Usar a nova função */}
                   </CardTitle>
                   <CardDescription>
                     {isLoadingSlots ? "Carregando horários..." : (slots.length > 0 ? "Selecione horários para ações em massa" : "Nenhum horário cadastrado")}

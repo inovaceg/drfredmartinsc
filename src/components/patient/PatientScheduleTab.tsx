@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { createLocalDateFromISOString } from "@/lib/utils"; // Import createLocalDateFromISOString
 
 export const PatientScheduleTab = () => {
   const queryClient = useQueryClient();
@@ -85,12 +86,13 @@ export const PatientScheduleTab = () => {
       }
       
       // Cria objetos Date para o início e fim do dia no fuso horário local do usuário
-      const localSelectedDate = new Date(selectedDate);
+      // Usamos createLocalDateFromISOString para garantir que a data seja interpretada localmente
+      const localSelectedDateObj = createLocalDateFromISOString(selectedDate);
       
-      const startOfDayLocal = new Date(localSelectedDate);
+      const startOfDayLocal = new Date(localSelectedDateObj);
       startOfDayLocal.setHours(0, 0, 0, 0); // Define para meia-noite local
       
-      const endOfDayLocal = new Date(localSelectedDate);
+      const endOfDayLocal = new Date(localSelectedDateObj);
       endOfDayLocal.setHours(23, 59, 59, 999); // Define para o final do dia local
 
       // Converte esses objetos Date locais para strings ISO (que serão em UTC)
@@ -233,7 +235,7 @@ export const PatientScheduleTab = () => {
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {selectedDate ? (
-                  format(new Date(selectedDate), "PPP", { locale: ptBR })
+                  format(createLocalDateFromISOString(selectedDate), "PPP", { locale: ptBR }) // Usar a nova função
                 ) : (
                   <span>Selecione uma data</span>
                 )}
@@ -242,7 +244,7 @@ export const PatientScheduleTab = () => {
             <PopoverContent className="w-auto p-0">
               <Calendar
                 mode="single"
-                selected={selectedDate ? new Date(selectedDate) : undefined}
+                selected={selectedDate ? createLocalDateFromISOString(selectedDate) : undefined} // Usar a nova função
                 onSelect={(date) => {
                   if (date) {
                     // Constrói a string yyyy-MM-dd a partir dos componentes locais da data

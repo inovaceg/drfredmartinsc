@@ -48,3 +48,9 @@ export const parseDateFromInput = (inputString: string): string | null => {
   }
   return null; // Invalid format or invalid date
 };
+
+// Nova função utilitária para criar um objeto Date local a partir de uma string YYYY-MM-DD
+export const createLocalDateFromISOString = (isoDateString: string): Date => {
+  const [year, month, day] = isoDateString.split('-').map(Number);
+  return new Date(year, month - 1, day); // Month is 0-indexed, so subtract 1
+};
