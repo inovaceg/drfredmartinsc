@@ -35,6 +35,7 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { Database } from "@/integrations/supabase/types";
+import { useQueryClient } from "@tanstack/react-query"; // Import useQueryClient
 
 type AvailabilitySlot = Database['public']['Tables']['availability_slots']['Row'];
 type Appointment = Database['public']['Tables']['appointments']['Row'] & {
