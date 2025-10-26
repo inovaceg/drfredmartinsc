@@ -289,10 +289,18 @@ const Doctor = () => {
       if (session?.user) {
         console.log("Doctor.tsx: Usuário logado inicialmente, buscando perfil e dados.");
         await fetchDoctorProfile(session.user.id);
+        
+        // --- CORRECTED CALLS FOR INITIAL LOAD ---
         // For 'Gerenciar Agenda' tab, fetch slots for today initially
         const todayStart = startOfDay(new Date());
         const todayEnd = endOfDay(new Date());
         fetchSlots(session.user.id, todayStart, todayEnd, false);
+        
+        // For 'Visão Geral' tab, fetch slots based on initial timeframe
+        const { startDate: overviewStartDate, endDate: overviewEndDate } = getDatesForTimeframe(selectedTimeframe, customStartDate, customEndDate);
+        fetchSlots(session.user.id, overviewStartDate, overviewEndDate, true);
+        // --- END CORRECTED CALLS ---
+
         fetchAppointments();
         fetchPatients(session.user.id);
       } else {
@@ -307,7 +315,7 @@ const Doctor = () => {
       console.log("Doctor.tsx: Desinscrevendo do listener de auth state change.");
       subscription.unsubscribe();
     };
-  }, [navigate, fetchDoctorProfile, fetchSlots, fetchAppointments, fetchPatients, handleAuthStateChange, setUser, setLoading]);
+  }, [navigate, fetchDoctorProfile, fetchSlots, fetchAppointments, fetchPatients, handleAuthStateChange, setUser, setLoading, selectedTimeframe, customStartDate, customEndDate, getDatesForTimeframe]);
 
   // New useEffect for overview data
   useEffect(() => {
