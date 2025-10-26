@@ -23,7 +23,7 @@ import { Database } from "@/integrations/supabase/types";
 import { WhatsappTranscriptionsPage } from "@/pages/WhatsappTranscriptionsPage";
 import { DoctorMedicalRecordsTab } from "@/components/doctor/DoctorMedicalRecordsTab";
 import { DoctorNewsletterSubscriptionsTab } from "@/components/doctor/DoctorNewsletterSubscriptionsTab";
-import { formatDateToDisplay, createLocalDateFromISOString } from "@/lib/utils"; // Import createLocalDateFromISOString
+import { formatDateToDisplay, createLocalDateFromISOString } from "@/lib/utils";
 import {
   Drawer,
   DrawerClose,
@@ -41,7 +41,7 @@ const Doctor = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("profile"); // Alterado para 'profile' como aba padrão
   // Guardamos a data como string no formato 'yyyy-MM-dd' → evita re‑renders infinitos
   const [selectedDate, setSelectedDate] = useState<string | undefined>(format(new Date(), "yyyy-MM-dd")); // Initialize with current date string
   const [slots, setSlots] = useState<any[]>([]);
@@ -514,25 +514,25 @@ const Doctor = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
           {/* Desktop TabsList */}
           <TabsList className="hidden md:flex w-full bg-muted p-1 rounded-lg border space-x-1">
-            <TabsTrigger value="overview" className="px-3 py-2 text-sm whitespace-nowrap">
+            {/* Removido: <TabsTrigger value="overview" className="px-3 py-2 text-sm whitespace-nowrap">
               <BarChart3 className="h-4 w-4 mr-2" />
               Visão Geral
-            </TabsTrigger>
+            </TabsTrigger> */}
             <TabsTrigger value="profile" className="px-3 py-2 text-sm whitespace-nowrap">
               <UserIcon className="h-4 w-4 mr-2" />
-              Perfil
+              Meu Perfil
             </TabsTrigger>
             <TabsTrigger value="schedule" className="px-3 py-2 text-sm whitespace-nowrap">
               <CalendarIcon className="h-4 w-4 mr-2" />
-              Agenda
+              Gerenciar Agenda
             </TabsTrigger>
             <TabsTrigger value="appointments" className="px-3 py-2 text-sm whitespace-nowrap">
               <Clock className="h-4 w-4 mr-2" />
-              Consultas
+              Consultas Agendadas
             </TabsTrigger>
             <TabsTrigger value="patients" className="px-3 py-2 text-sm whitespace-nowrap">
               <Users className="h-4 w-4 mr-2" />
-              Pacientes
+              Meus Pacientes
             </TabsTrigger>
             <TabsTrigger value="medical-records" className="px-3 py-2 text-sm whitespace-nowrap">
               <BookOpen className="h-4 w-4 mr-2" />
@@ -554,11 +554,10 @@ const Doctor = () => {
               <DrawerTrigger asChild>
                 <Button variant="outline" className="w-full justify-start">
                   <Menu className="h-4 w-4 mr-2" />
-                  {activeTab === "overview" && "Visão Geral"}
-                  {activeTab === "profile" && "Perfil"}
-                  {activeTab === "schedule" && "Agenda"}
-                  {activeTab === "appointments" && "Consultas"}
-                  {activeTab === "patients" && "Pacientes"}
+                  {activeTab === "profile" && "Meu Perfil"}
+                  {activeTab === "schedule" && "Gerenciar Agenda"}
+                  {activeTab === "appointments" && "Consultas Agendadas"}
+                  {activeTab === "patients" && "Meus Pacientes"}
                   {activeTab === "medical-records" && "Prontuários"}
                   {activeTab === "online-consultation" && "Consulta Online"}
                   {activeTab === "newsletter-subscriptions" && "Newsletter"}
@@ -571,25 +570,25 @@ const Doctor = () => {
                 </DrawerHeader>
                 <div className="p-4 flex-1 overflow-y-auto">
                   <TabsList className="flex flex-col w-full bg-muted p-1 rounded-lg border space-y-1">
-                    <TabsTrigger value="overview" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("overview")}>
+                    {/* Removido: <TabsTrigger value="overview" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("overview")}>
                       <BarChart3 className="h-4 w-4 mr-2" />
                       Visão Geral
-                    </TabsTrigger>
+                    </TabsTrigger> */}
                     <TabsTrigger value="profile" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("profile")}>
                       <UserIcon className="h-4 w-4 mr-2" />
-                      Perfil
+                      Meu Perfil
                     </TabsTrigger>
                     <TabsTrigger value="schedule" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("schedule")}>
                       <CalendarIcon className="h-4 w-4 mr-2" />
-                      Agenda
+                      Gerenciar Agenda
                     </TabsTrigger>
                     <TabsTrigger value="appointments" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("appointments")}>
                       <Clock className="h-4 w-4 mr-2" />
-                      Consultas
+                      Consultas Agendadas
                     </TabsTrigger>
                     <TabsTrigger value="patients" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("patients")}>
                       <Users className="h-4 w-4 mr-2" />
-                      Pacientes
+                      Meus Pacientes
                     </TabsTrigger>
                     <TabsTrigger value="medical-records" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("medical-records")}>
                       <BookOpen className="h-4 w-4 mr-2" />
@@ -614,101 +613,9 @@ const Doctor = () => {
             </Drawer>
           </div>
 
-          <TabsContent value="overview" className="space-y-4">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleTabChange("profile")}>
-                <CardHeader>
-                  <UserIcon className="h-8 w-8 mb-2 text-primary" />
-                  <CardTitle>Meu Perfil</CardTitle>
-                  <CardDescription>
-                    Atualize seus dados pessoais e especialidade
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button className="w-full">Editar Perfil</Button>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleTabChange("schedule")}>
-                <CardHeader>
-                  <CalendarIcon className="h-8 w-8 mb-2 text-primary" />
-                  <CardTitle>Gerenciar Agenda</CardTitle>
-                  <CardDescription>
-                    Configure seus horários disponíveis para consultas
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button className="w-full">Configurar Horários</Button>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleTabChange("appointments")}>
-                <CardHeader>
-                  <Clock className="h-8 w-8 mb-2 text-primary" />
-                  <CardTitle>Consultas Agendadas</CardTitle>
-                  <CardDescription>
-                    Veja e gerencie suas consultas
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button className="w-full" variant="outline">Ver Agenda</Button>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleTabChange("patients")}>
-                <CardHeader>
-                  <Users className="h-8 w-8 mb-2 text-primary" />
-                  <CardTitle>Meus Pacientes</CardTitle>
-                  <CardDescription>
-                    Acesse a lista e histórico de seus pacientes
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button className="w-full" variant="outline">Ver Pacientes</Button>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleTabChange("medical-records")}>
-                <CardHeader>
-                  <BookOpen className="h-8 w-8 mb-2 text-primary" />
-                  <CardTitle>Prontuários</CardTitle>
-                  <CardDescription>
-                    Acesse e edite prontuários e sessões dos pacientes
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button className="w-full" variant="outline">Ver Prontuários</Button>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleTabChange("online-consultation")}>
-                <CardHeader>
-                  <Video className="h-8 w-8 mb-2 text-primary" />
-                  <CardTitle>Consulta Online</CardTitle>
-                  <CardDescription>
-                    Inicie consultas por vídeo chamada ou chat
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button className="w-full" variant="outline">Iniciar Consulta</Button>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleTabChange("newsletter-subscriptions")}>
-                <CardHeader>
-                  <Mail className="h-8 w-8 mb-2 text-primary" />
-                  <CardTitle>Newsletter</CardTitle>
-                  <CardDescription>
-                    Visualize as inscrições da newsletter
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button className="w-full" variant="outline">Ver Inscrições</Button>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
+          {/* Conteúdo das abas */}
+          {/* A aba 'overview' foi removida, então o conteúdo abaixo não será mais renderizado para 'overview' */}
+          {/* Se você precisar de um conteúdo padrão para a aba 'profile', ele deve ser adicionado aqui */}
           <TabsContent value="profile">
             <Card>
               <CardContent className="p-6">
@@ -730,7 +637,7 @@ const Doctor = () => {
                 <CardContent>
                   <Calendar
                     mode="single"
-                    selected={selectedDate ? createLocalDateFromISOString(selectedDate) : undefined} // Usar a nova função
+                    selected={selectedDate ? createLocalDateFromISOString(selectedDate) : undefined}
                     onSelect={(date) => {
                       if (date) {
                         // Constrói a string yyyy-MM-dd a partir dos componentes locais da data
@@ -755,7 +662,7 @@ const Doctor = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>
-                    Horários para {selectedDate ? format(createLocalDateFromISOString(selectedDate), "dd 'de' MMMM", { locale: ptBR }) : ""} {/* Usar a nova função */}
+                    Horários para {selectedDate ? format(createLocalDateFromISOString(selectedDate), "dd 'de' MMMM", { locale: ptBR }) : ""}
                   </CardTitle>
                   <CardDescription>
                     {isLoadingSlots ? "Carregando horários..." : (slots.length > 0 ? "Selecione horários para ações em massa" : "Nenhum horário cadastrado")}
