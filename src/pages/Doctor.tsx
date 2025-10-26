@@ -471,11 +471,12 @@ const Doctor = () => {
         variant: "destructive",
       });
     } else {
-      console.log("Doctor.tsx: Deslogado com sucesso.");
+      console.log("Doctor.tsx: Deslogado com sucesso. Redirecionando para /auth.");
       toast({
         title: "Sucesso",
         description: "Você foi desconectado(a).",
       });
+      navigate("/auth"); // Redireciona explicitamente para a página de autenticação
     }
   };
 

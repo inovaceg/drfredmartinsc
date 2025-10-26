@@ -173,12 +173,12 @@ const Navbar = () => {
                     variant: "destructive",
                   });
                 } else {
-                  console.log("Navbar: Deslogado com sucesso.");
+                  console.log("Navbar: Deslogado com sucesso. Redirecionando para /auth.");
                   toast({
                     title: "Sucesso",
                     description: "Você foi desconectado(a).",
                   });
-                  navigate("/"); // Redireciona para a home após o logout
+                  navigate("/auth"); // Redireciona para a página de autenticação após o logout
                 }
               }}
               variant="outline"
@@ -287,12 +287,12 @@ const Navbar = () => {
                           variant: "destructive",
                         });
                       } else {
-                        console.log("Navbar (Drawer): Deslogado com sucesso.");
+                        console.log("Navbar (Drawer): Deslogado com sucesso. Redirecionando para /auth.");
                         toast({
                           title: "Sucesso",
                           description: "Você foi desconectado(a).",
                         });
-                        navigate("/");
+                        navigate("/auth"); // Redireciona para a página de autenticação após o logout
                         setIsDrawerOpen(false);
                       }
                     }}
