@@ -529,7 +529,7 @@ const Doctor = () => {
             </TabsTrigger>
             <TabsTrigger value="appointments" className="px-3 py-2 text-sm whitespace-nowrap">
               <Clock className="h-4 w-4 mr-2" />
-              Consultas Agendadas
+              Agenda Consultas
             </TabsTrigger>
             <TabsTrigger value="patients" className="px-3 py-2 text-sm whitespace-nowrap">
               <Users className="h-4 w-4 mr-2" />
@@ -566,7 +566,7 @@ const Doctor = () => {
                   {activeTab === "overview" && "Visão Geral"}
                   {activeTab === "profile" && "Meu Perfil"}
                   {activeTab === "schedule" && "Gerenciar Agenda"}
-                  {activeTab === "appointments" && "Consultas Agendadas"}
+                  {activeTab === "appointments" && "Agenda Consultas"}
                   {activeTab === "patients" && "Meus Pacientes"}
                   {activeTab === "medical-records" && "Prontuários"}
                   {activeTab === "online-consultation" && "Consulta Online"}
@@ -596,7 +596,7 @@ const Doctor = () => {
                     </TabsTrigger>
                     <TabsTrigger value="appointments" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("appointments")}>
                       <Clock className="h-4 w-4 mr-2" />
-                      Consultas Agendadas
+                      Agenda Consultas
                     </TabsTrigger>
                     <TabsTrigger value="patients" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("patients")}>
                       <Users className="h-4 w-4 mr-2" />
@@ -801,7 +801,7 @@ const Doctor = () => {
           <TabsContent value="appointments">
             <Card>
               <CardHeader>
-                <CardTitle>Consultas Agendadas</CardTitle>
+                <CardTitle>Agenda Consultas</CardTitle>
                 <CardDescription>Gerencie suas consultas</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
