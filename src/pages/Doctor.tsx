@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditPatientDialog } from "@/components/EditPatientDialog";
-import { formatPhone } from "@/lib/format-phone"; // Corrected import
+import { formatPhone } from "@/lib/format-phone";
 import { DoctorProfileForm } from "@/components/DoctorProfileForm";
 import { DoctorMedicalRecordsTab } from "@/components/doctor/DoctorMedicalRecordsTab";
 import { DoctorOnlineConsultationTab } from "@/components/DoctorOnlineConsultationTab";
@@ -546,12 +546,20 @@ const Doctor = () => {
     };
   }, [user, fetchSlots]); // Depend on user and fetchSlots
 
+  console.log("Doctor component is rendering. User:", user?.id, "Loading:", loading);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p>Carregando...</p>
       </div>
     );
+  }
+
+  if (!user) {
+    console.log("Doctor component: No user found after loading, redirecting to /auth.");
+    navigate("/auth");
+    return null; 
   }
 
   return (
@@ -719,11 +727,13 @@ const Doctor = () => {
                   Esta seção pode ser expandida para incluir gráficos, estatísticas de agendamentos, 
                   novas mensagens e outras informações relevantes para o seu dia a dia.
                 </p>
+                <p className="text-green-500">Doctor page is rendering!</p> {/* TEST MESSAGE */}
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="profile">
+          {/* Temporarily commented out other TabsContent for debugging */}
+          {/* <TabsContent value="profile">
             <Card>
               <CardContent className="p-6">
                 {user?.id && <DoctorProfileForm userId={user.id} onProfileUpdated={() => {
@@ -870,7 +880,6 @@ const Doctor = () => {
               </Card>
             </div>
 
-            {/* NEW: Book for Patient Card */}
             <Card className="mt-6">
               <CardHeader>
                 <CardTitle>Agendar Horário para Paciente</CardTitle>
@@ -1110,7 +1119,7 @@ const Doctor = () => {
 
           <TabsContent value="newsletter-subscriptions">
             <DoctorNewsletterSubscriptionsTab />
-          </TabsContent>
+          </TabsContent> */}
         </Tabs>
       </main>
 
