@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Instagram, Phone, Mail, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { formatPhone } from "@/lib/format-phone"; // Importar formatPhone
+import { formatPhone, unformatPhone } from "@/lib/format-phone"; // Importar formatPhone e unformatPhone
 
 const Footer = () => {
   const [email, setEmail] = useState("");
