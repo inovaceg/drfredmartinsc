@@ -21,7 +21,7 @@ interface DeletePatientAlertDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirmDelete: () => void;
-  isDeleting: boolean;
+  isDeleting?: boolean; // Tornando a prop opcional e adicionando valor padrão
 }
 
 export const DeletePatientAlertDialog: React.FC<DeletePatientAlertDialogProps> = ({
@@ -29,7 +29,7 @@ export const DeletePatientAlertDialog: React.FC<DeletePatientAlertDialogProps> =
   open,
   onOpenChange,
   onConfirmDelete,
-  isDeleting,
+  isDeleting = false, // Valor padrão adicionado aqui
 }) => {
   if (!patient) return null;
 
