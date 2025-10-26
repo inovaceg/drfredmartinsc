@@ -563,6 +563,41 @@ const Doctor = () => {
     };
   }, [user, fetchSlots]); // Depend on user and fetchSlots
 
+  // Define handleDeletePatient here, so it's in scope for the map function
+  const handleDeletePatient = async () => {
+    if (!patientToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      // Delete the patient's profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', patientToDelete.id);
+
+      if (profileError) {
+        console.error("Supabase delete profile error:", profileError);
+        throw profileError;
+      }
+
+      // Invalidate queries to refetch patient list and clear selected patient data
+      queryClient.invalidateQueries({ queryKey: ["doctorPatients", user!.id] });
+      queryClient.invalidateQueries({ queryKey: ["patientProfile", patientToDelete.id] });
+      queryClient.invalidateQueries({ queryKey: ["patientSessions", patientToDelete.id] });
+      queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", patientToDelete.id] });
+
+      toast({ title: "Sucesso", description: `Paciente ${patientToDelete.full_name} excluído com sucesso!` });
+      setSelectedPatientId(null); // Clear selected patient
+      setPatientToDelete(null);
+      setIsDeleteDialogOpen(false);
+    } catch (error: any) {
+      console.error("Error deleting patient:", error);
+      toast({ title: "Erro", description: error.message || "Não foi possível excluir o paciente.", variant: "destructive" });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   console.log("Doctor component is rendering. User:", user?.id, "Loading:", loading);
 
   if (loading) {
@@ -1114,18 +1149,17 @@ const Doctor = () => {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <AlertDialogTrigger asChild>
-                              <Button 
-                                variant="destructive" 
-                                size="sm" 
-                                onClick={() => {
-                                  setPatientToDelete(patient);
-                                  setIsDeleteDialogOpen(true);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
+                            {/* Usando o novo componente DeletePatientAlertDialog */}
+                            <Button 
+                              variant="destructive" 
+                              size="sm" 
+                              onClick={() => {
+                                setPatientToDelete(patient);
+                                setIsDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                       </div>
