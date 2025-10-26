@@ -19,7 +19,7 @@ import { DoctorProfileForm } from "@/components/DoctorProfileForm";
 import { DoctorMedicalRecordsTab } from "@/components/doctor/DoctorMedicalRecordsTab";
 import { DoctorOnlineConsultationTab } from "@/components/DoctorOnlineConsultationTab";
 import { DoctorFormResponsesTab } from "@/components/DoctorFormResponsesTab";
-import { DoctorNewsletterSubscriptionsTab } from "@/components/DoctorNewsletterSubscriptionsTab";
+import { DoctorNewsletterSubscriptionsTab } from "@/components/doctor/DoctorNewsletterSubscriptionsTab";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -175,17 +175,47 @@ const Doctor = () => {
     console.log(`Doctor.tsx: fetchSlots - Calling RPC 'get_truly_available_slots' for doctor: ${doctorId}`);
     console.log(`Doctor.tsx: fetchSlots - Parameters: _start_time_gte=${_start_time_gte}, _end_time_lte=${_end_time_lte}`);
 
-    const { data, error } = await supabase.rpc("get_truly_available_slots", {
-      _doctor_id: doctorId,
-      _start_time_gte: _start_time_gte,
-      _end_time_lte: _end_time_lte,
-    });
+    try {
+      const { data, error } = await supabase.rpc("get_truly_available_slots", {
+        _doctor_id: doctorId,
+        _start_time_gte: _start_time_gte,
+        _end_time_lte: _end_time_lte,
+      });
 
-    if (error) {
-      console.error("Doctor.tsx: Error fetching slots from RPC:", error);
+      if (error) {
+        console.error("Doctor.tsx: Error fetching slots from RPC:", error);
+        console.error("Doctor.tsx: Supabase RPC error details:", error.message, error.details, error.hint, error.code); // Added detailed error log
+        toast({
+          title: "Erro",
+          description: error.message,
+          variant: "destructive",
+        });
+        if (forOverview) {
+          setOverviewAvailableSlots(0);
+          setOverviewOccupiedSlots(0);
+          setOverviewTotalSlots(0);
+        } else {
+          setSlots([]);
+        }
+      } else {
+        console.log("Doctor.tsx: Slots fetched successfully from RPC:", data);
+        if (forOverview) {
+          const available = data.filter(slot => slot.is_available).length;
+          const occupied = data.filter(slot => !slot.is_available).length;
+          setOverviewAvailableSlots(available);
+          setOverviewOccupiedSlots(occupied);
+          setOverviewTotalSlots(data.length);
+          console.log(`Doctor.tsx: Overview stats - Available: ${available}, Occupied: ${occupied}, Total: ${data.length}`);
+        } else {
+          setSlots(data || []);
+          console.log(`Doctor.tsx: Schedule slots updated. Count: ${data?.length || 0}`);
+        }
+      }
+    } catch (err: any) { // Catch any unexpected errors during the RPC call
+      console.error("Doctor.tsx: Unexpected error during RPC call 'get_truly_available_slots':", err);
       toast({
-        title: "Erro",
-        description: error.message,
+        title: "Erro Inesperado",
+        description: `Ocorreu um erro ao buscar horários: ${err.message || 'Erro desconhecido'}`,
         variant: "destructive",
       });
       if (forOverview) {
@@ -195,27 +225,15 @@ const Doctor = () => {
       } else {
         setSlots([]);
       }
-    } else {
-      console.log("Doctor.tsx: Slots fetched successfully from RPC:", data);
+    } finally {
       if (forOverview) {
-        const available = data.filter(slot => slot.is_available).length;
-        const occupied = data.filter(slot => !slot.is_available).length;
-        setOverviewAvailableSlots(available);
-        setOverviewOccupiedSlots(occupied);
-        setOverviewTotalSlots(data.length);
-        console.log(`Doctor.tsx: Overview stats - Available: ${available}, Occupied: ${occupied}, Total: ${data.length}`);
-      } else {
-        setSlots(data || []);
-        console.log(`Doctor.tsx: Schedule slots updated. Count: ${data?.length || 0}`);
+        console.log("Doctor.tsx: fetchSlots (Overview) - Setting loading to false.");
+        setIsLoadingOverviewSlots(false);
       }
-    }
-    if (forOverview) {
-      console.log("Doctor.tsx: fetchSlots (Overview) - Setting loading to false.");
-      setIsLoadingOverviewSlots(false);
-    }
-    else {
-      console.log("Doctor.tsx: fetchSlots (Schedule) - Setting loading to false.");
-      setIsLoadingSlots(false);
+      else {
+        console.log("Doctor.tsx: fetchSlots (Schedule) - Setting loading to false.");
+        setIsLoadingSlots(false);
+      }
     }
   }, [toast]);
 
