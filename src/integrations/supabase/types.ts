@@ -722,6 +722,30 @@ export type Database = {
           }
         ];
       };
+      newsletter_subscriptions: {
+        Row: {
+          id: string;
+          email: string;
+          created_at: string | null;
+          name: string | null; // Adicionado
+          whatsapp: string | null; // Adicionado
+        };
+        Insert: {
+          id?: string;
+          email: string;
+          created_at?: string | null;
+          name?: string | null; // Adicionado
+          whatsapp?: string | null; // Adicionado
+        };
+        Update: {
+          id?: string;
+          email?: string;
+          created_at?: string | null;
+          name?: string | null; // Adicionado
+          whatsapp?: string | null; // Adicionado
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
