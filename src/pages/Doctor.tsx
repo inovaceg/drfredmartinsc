@@ -34,8 +34,19 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Database } from "@/integrations/supabase/types";
-import { useQueryClient } from "@tanstack/react-query"; // Import useQueryClient
+import { useQueryClient } from "@tanstack/react-query";
 
 type AvailabilitySlot = Database['public']['Tables']['availability_slots']['Row'];
 type Appointment = Database['public']['Tables']['appointments']['Row'] & {
@@ -1116,9 +1127,8 @@ const Doctor = () => {
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction onClick={handleDeletePatient} disabled={isDeleting}>
-                                    {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => { /* Logic to delete patient */ }}>
                                     Excluir Paciente
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
