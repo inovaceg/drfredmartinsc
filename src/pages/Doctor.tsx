@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Database } from "@/integrations/supabase/types";
 import { useQueryClient } from "@tanstack/react-query";
+import { DeletePatientAlertDialog } from "@/components/doctor/DeletePatientAlertDialog"; // Importar o novo componente
 
 type AvailabilitySlot = Database['public']['Tables']['availability_slots']['Row'];
 type Appointment = Database['public']['Tables']['appointments']['Row'] & {
@@ -82,6 +83,10 @@ const Doctor = () => {
   const [selectedPatientForBookingId, setSelectedPatientForBookingId] = useState<string | null>(null);
   const [selectedSlotForBooking, setSelectedSlotForBooking] = useState<{ id: string; start_time: string; end_time: string } | null>(null);
   const [isBookingForPatient, setIsBookingForPatient] = useState(false);
+
+  const [patientToDelete, setPatientToDelete] = useState<PatientProfile | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1109,32 +1114,18 @@ const Doctor = () => {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button 
-                                  variant="destructive" 
-                                  size="sm" 
-                                  onClick={() => setPatientToDelete(patient)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Tem certeza que deseja excluir este paciente?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Esta ação não pode ser desfeita. Isso excluirá permanentemente o perfil do paciente e todos os dados associados (sessões, prontuários, etc.).
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction onClick={handleDeletePatient} disabled={isDeleting}>
-                                    {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                                    Excluir Paciente
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="destructive" 
+                                size="sm" 
+                                onClick={() => {
+                                  setPatientToDelete(patient);
+                                  setIsDeleteDialogOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
                           </div>
                         </div>
                       </div>
@@ -1173,6 +1164,14 @@ const Doctor = () => {
           }}
         />
       )}
+
+      <DeletePatientAlertDialog
+        patient={patientToDelete}
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirmDelete={handleDeletePatient}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 };
