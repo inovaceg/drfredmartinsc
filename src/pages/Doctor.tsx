@@ -573,6 +573,11 @@ const Doctor = () => {
         throw profileError;
       }
 
+      // Optimistically remove from UI first
+      setPatients(prevPatients => prevPatients.filter(p => p.id !== patientToDelete.id));
+      
+      toast({ title: "Sucesso", description: `Paciente ${patientToDelete.full_name} excluído com sucesso!` });
+      
       // Invalidate queries to refetch patient list and clear selected patient data
       if (user?.id) { // Safely access user.id
         queryClient.invalidateQueries({ queryKey: ["doctorPatients", user.id] });
@@ -582,7 +587,6 @@ const Doctor = () => {
       queryClient.invalidateQueries({ queryKey: ["patientSessions", patientToDelete.id] });
       queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", patientToDelete.id] });
 
-      toast({ title: "Sucesso", description: `Paciente ${patientToDelete.full_name} excluído com sucesso!` });
       setSelectedPatient(null); // Use setSelectedPatient instead of setSelectedPatientId
       setPatientToDelete(null);
       setIsDeleteDialogOpen(false);
@@ -592,7 +596,7 @@ const Doctor = () => {
     } finally {
       setIsDeleting(false);
     }
-  }, [patientToDelete, user, queryClient, toast, setSelectedPatient, setPatientToDelete, setIsDeleteDialogOpen, setIsDeleting, fetchPatients]);
+  }, [patientToDelete, user, queryClient, toast, setSelectedPatient, setPatients, setPatientToDelete, setIsDeleteDialogOpen, setIsDeleting, fetchPatients]);
 
   console.log("Doctor component is rendering. User:", user?.id, "Loading:", loading);
 
