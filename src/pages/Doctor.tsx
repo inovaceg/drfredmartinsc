@@ -5,7 +5,7 @@ import { Session, User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar as CalendarIcon, Clock, FileText, LogOut, Users, Video, BarChart3, Loader2, Edit, User as UserIcon, MessageSquare, Trash2, CheckCircle, XCircle, MessageSquareText, MapPin, Phone, Mail, BookOpen, Menu } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, FileText, LogOut, Users, Video, BarChart3, Loader2, Edit, User as UserIcon, MessageSquare, Trash2, CheckCircle, XCircle, MessageSquareText, MapPin, Phone, Mail, BookOpen, Menu, ClipboardList } from "lucide-react"; // Adicionado ClipboardList para Visão Geral
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/Navbar";
@@ -23,6 +23,7 @@ import { Database } from "@/integrations/supabase/types";
 import { WhatsappTranscriptionsPage } from "@/pages/WhatsappTranscriptionsPage";
 import { DoctorMedicalRecordsTab } from "@/components/doctor/DoctorMedicalRecordsTab";
 import { DoctorNewsletterSubscriptionsTab } from "@/components/doctor/DoctorNewsletterSubscriptionsTab";
+import { DoctorFormResponsesTab } from "@/components/DoctorFormResponsesTab"; // Importar o novo componente
 import { formatDateToDisplay, createLocalDateFromISOString } from "@/lib/utils";
 import {
   Drawer,
@@ -41,7 +42,7 @@ const Doctor = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("profile"); // Alterado para 'profile' como aba padrão
+  const [activeTab, setActiveTab] = useState("overview"); // Alterado para 'overview' como aba padrão
   // Guardamos a data como string no formato 'yyyy-MM-dd' → evita re‑renders infinitos
   const [selectedDate, setSelectedDate] = useState<string | undefined>(format(new Date(), "yyyy-MM-dd")); // Initialize with current date string
   const [slots, setSlots] = useState<any[]>([]);
@@ -514,10 +515,10 @@ const Doctor = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
           {/* Desktop TabsList */}
           <TabsList className="hidden md:flex w-full bg-muted p-1 rounded-lg border space-x-1">
-            {/* Removido: <TabsTrigger value="overview" className="px-3 py-2 text-sm whitespace-nowrap">
+            <TabsTrigger value="overview" className="px-3 py-2 text-sm whitespace-nowrap">
               <BarChart3 className="h-4 w-4 mr-2" />
               Visão Geral
-            </TabsTrigger> */}
+            </TabsTrigger>
             <TabsTrigger value="profile" className="px-3 py-2 text-sm whitespace-nowrap">
               <UserIcon className="h-4 w-4 mr-2" />
               Meu Perfil
@@ -542,6 +543,14 @@ const Doctor = () => {
               <MessageSquare className="h-4 w-4 mr-2" />
               Consulta Online
             </TabsTrigger>
+            <TabsTrigger value="form-responses" className="px-3 py-2 text-sm whitespace-nowrap">
+              <ClipboardList className="h-4 w-4 mr-2" />
+              Respostas do Formulário
+            </TabsTrigger>
+            <TabsTrigger value="whatsapp-transcriptions" className="px-3 py-2 text-sm whitespace-nowrap">
+              <MessageSquareText className="h-4 w-4 mr-2" />
+              Transcrições WhatsApp
+            </TabsTrigger>
             <TabsTrigger value="newsletter-subscriptions" className="px-3 py-2 text-sm whitespace-nowrap">
               <Mail className="h-4 w-4 mr-2" />
               Newsletter
@@ -554,12 +563,15 @@ const Doctor = () => {
               <DrawerTrigger asChild>
                 <Button variant="outline" className="w-full justify-start">
                   <Menu className="h-4 w-4 mr-2" />
+                  {activeTab === "overview" && "Visão Geral"}
                   {activeTab === "profile" && "Meu Perfil"}
                   {activeTab === "schedule" && "Gerenciar Agenda"}
                   {activeTab === "appointments" && "Consultas Agendadas"}
                   {activeTab === "patients" && "Meus Pacientes"}
                   {activeTab === "medical-records" && "Prontuários"}
                   {activeTab === "online-consultation" && "Consulta Online"}
+                  {activeTab === "form-responses" && "Respostas do Formulário"}
+                  {activeTab === "whatsapp-transcriptions" && "Transcrições WhatsApp"}
                   {activeTab === "newsletter-subscriptions" && "Newsletter"}
                 </Button>
               </DrawerTrigger>
@@ -570,10 +582,10 @@ const Doctor = () => {
                 </DrawerHeader>
                 <div className="p-4 flex-1 overflow-y-auto">
                   <TabsList className="flex flex-col w-full bg-muted p-1 rounded-lg border space-y-1">
-                    {/* Removido: <TabsTrigger value="overview" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("overview")}>
+                    <TabsTrigger value="overview" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("overview")}>
                       <BarChart3 className="h-4 w-4 mr-2" />
                       Visão Geral
-                    </TabsTrigger> */}
+                    </TabsTrigger>
                     <TabsTrigger value="profile" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("profile")}>
                       <UserIcon className="h-4 w-4 mr-2" />
                       Meu Perfil
@@ -598,6 +610,14 @@ const Doctor = () => {
                       <MessageSquare className="h-4 w-4 mr-2" />
                       Consulta Online
                     </TabsTrigger>
+                    <TabsTrigger value="form-responses" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("form-responses")}>
+                      <ClipboardList className="h-4 w-4 mr-2" />
+                      Respostas do Formulário
+                    </TabsTrigger>
+                    <TabsTrigger value="whatsapp-transcriptions" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("whatsapp-transcriptions")}>
+                      <MessageSquareText className="h-4 w-4 mr-2" />
+                      Transcrições WhatsApp
+                    </TabsTrigger>
                     <TabsTrigger value="newsletter-subscriptions" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("newsletter-subscriptions")}>
                       <Mail className="h-4 w-4 mr-2" />
                       Newsletter
@@ -614,8 +634,23 @@ const Doctor = () => {
           </div>
 
           {/* Conteúdo das abas */}
-          {/* A aba 'overview' foi removida, então o conteúdo abaixo não será mais renderizado para 'overview' */}
-          {/* Se você precisar de um conteúdo padrão para a aba 'profile', ele deve ser adicionado aqui */}
+          <TabsContent value="overview">
+            <Card>
+              <CardHeader>
+                <CardTitle>Visão Geral do Portal</CardTitle>
+                <CardDescription>Um resumo rápido das suas atividades e informações importantes.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Esta seção pode ser expandida para incluir gráficos, estatísticas de agendamentos, 
+                  novas mensagens e outras informações relevantes para o seu dia a dia.
+                </p>
+                {/* Aqui você pode adicionar componentes de resumo, como: */}
+                {/* <DoctorDashboardSummary currentUserId={user.id} /> */}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="profile">
             <Card>
               <CardContent className="p-6">
@@ -928,6 +963,14 @@ const Doctor = () => {
 
           <TabsContent value="online-consultation">
             {user && <DoctorOnlineConsultationTab currentUserId={user.id} />}
+          </TabsContent>
+
+          <TabsContent value="form-responses">
+            <DoctorFormResponsesTab />
+          </TabsContent>
+
+          <TabsContent value="whatsapp-transcriptions">
+            <WhatsappTranscriptionsPage />
           </TabsContent>
 
           <TabsContent value="newsletter-subscriptions">
