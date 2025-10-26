@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { PhoneCall, PhoneOff, Video, VideoOff, Mic, MicOff, Loader2 } from "lucide-react";
+import { PhoneCall, PhoneOff, Video, VideoOff, Mic, MicOff, Loader2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from 'uuid';
 
@@ -32,6 +32,7 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId || null);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
+  const [mediaAccessError, setMediaAccessError] = useState<string | null>(null); // Novo estado para erro de mídia
   const { toast } = useToast();
 
   const servers = {
@@ -41,10 +42,7 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
     ],
   };
 
-  const setupPeerConnection = useCallback(async () => {
-    console.log("VideoCallWindow: Setting up PeerConnection.");
-    peerConnection.current = new RTCPeerConnection(servers);
-
+  const getMediaDevices = useCallback(async () => {
     try {
       console.log("VideoCallWindow: Requesting media devices (video and audio).");
       localStream.current = await navigator.mediaDevices.getUserMedia({
@@ -55,18 +53,40 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = localStream.current;
       }
+      setMediaAccessError(null); // Clear any previous media access error
+      return true;
+    } catch (err: any) {
+      console.error("VideoCallWindow: Error accessing media devices:", err);
+      const errorMessage = `Não foi possível acessar câmera ou microfone. Verifique as permissões do navegador. Detalhes: ${err.name || err.message}`;
+      setMediaAccessError(errorMessage);
+      toast({
+        title: "Erro de Mídia",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      setCallStatus("idle");
+      return false;
+    }
+  }, [toast]);
+
+  const setupPeerConnection = useCallback(async () => {
+    console.log("VideoCallWindow: Setting up PeerConnection.");
+    peerConnection.current = new RTCPeerConnection(servers);
+
+    if (localStream.current) {
       localStream.current.getTracks().forEach((track) => {
         peerConnection.current?.addTrack(track, localStream.current!);
       });
-    } catch (err: any) {
-      console.error("VideoCallWindow: Error accessing media devices:", err);
-      toast({
-        title: "Erro de Mídia",
-        description: `Não foi possível acessar câmera ou microfone. Verifique as permissões do navegador. Detalhes: ${err.name || err.message}`,
-        variant: "destructive",
+    } else {
+      console.warn("VideoCallWindow: localStream is null during setupPeerConnection. Media access might have failed.");
+      // This case should ideally be caught by getMediaDevices, but as a fallback
+      const mediaSuccess = await getMediaDevices();
+      if (!mediaSuccess) {
+        throw new Error("Failed to get media devices during peer connection setup.");
+      }
+      localStream.current?.getTracks().forEach((track) => {
+        peerConnection.current?.addTrack(track, localStream.current!);
       });
-      setCallStatus("idle"); // Reset status on media error
-      throw err; // Propagate error to prevent further connection issues
     }
 
     peerConnection.current.ontrack = (event) => {
@@ -101,7 +121,7 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
           .eq("id", sessionId);
       }
     };
-  }, [sessionId, toast]);
+  }, [sessionId, getMediaDevices]);
 
   const createOffer = useCallback(async () => {
     if (!peerConnection.current || !sessionId) {
@@ -121,11 +141,15 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
   }, [sessionId]);
 
   const handleAcceptCall = useCallback(async (incomingSessionId: string, offer: RTCSessionDescriptionInit) => {
-    console.log("VideoCallWindow: handleAcceptCall triggered. Session ID:", incomingSessionId, "Offer:", offer);
+    console.log("VideoCallWindow: handleAcceptCall triggered for session:", incomingSessionId, "with offer:", offer);
     setCallStatus("active");
     setSessionId(incomingSessionId);
     
     try {
+      const mediaSuccess = await getMediaDevices();
+      if (!mediaSuccess) {
+        throw new Error("Failed to get media devices to accept call.");
+      }
       await setupPeerConnection();
       
       await new Promise(resolve => setTimeout(resolve, 500)); 
@@ -153,7 +177,7 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
       });
       handleEndCall();
     }
-  }, [setupPeerConnection, toast, handleEndCall]);
+  }, [setupPeerConnection, toast, handleEndCall, getMediaDevices]);
 
   const handleCall = useCallback(async () => {
     setCallStatus("connecting");
@@ -162,6 +186,11 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
     console.log("VideoCallWindow: Initiating new call with session ID:", newSessionId);
 
     try {
+      const mediaSuccess = await getMediaDevices();
+      if (!mediaSuccess) {
+        throw new Error("Failed to get media devices to initiate call.");
+      }
+
       const { error } = await supabase.from("video_sessions").insert({
         id: newSessionId,
         user_id: currentUserId, // Initiator
@@ -193,7 +222,7 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
       setCallStatus("idle"); // Reset status on error
       setSessionId(null);
     }
-  }, [currentUserId, otherUserId, appointmentId, isInitiator, setupPeerConnection, createOffer, toast]);
+  }, [currentUserId, otherUserId, appointmentId, isInitiator, setupPeerConnection, createOffer, toast, getMediaDevices]);
 
   const handleEndCall = useCallback(async () => {
     console.log("VideoCallWindow: Ending call for session:", sessionId);
@@ -272,10 +301,10 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
       };
       fetchSession();
     } else if (isInitiator && !initialSessionId) {
-      console.log("VideoCallWindow useEffect: Initiator mode, waiting for handleCall button click.");
-      // Call is initiated via button click, not on mount
+      console.log("VideoCallWindow useEffect: Initiator mode, pre-fetching media devices.");
+      getMediaDevices(); // Attempt to get media devices early for initiator
     }
-  }, [initialSessionId, isInitiator, incomingOffer, handleAcceptCall, onEndCall, toast]);
+  }, [initialSessionId, isInitiator, incomingOffer, handleAcceptCall, onEndCall, toast, getMediaDevices]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -325,6 +354,22 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
     };
   }, [sessionId, callStatus, handleEndCall, toast]);
 
+  if (mediaAccessError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full bg-red-100 text-red-800 border border-red-300 rounded-lg p-4 text-center">
+        <AlertCircle className="h-12 w-12 mb-4 text-red-500" />
+        <h3 className="text-xl font-semibold mb-2">Erro de Acesso à Mídia</h3>
+        <p className="mb-4">{mediaAccessError}</p>
+        <p className="text-sm">
+          Por favor, verifique as permissões da sua câmera e microfone nas configurações do navegador e tente novamente.
+        </p>
+        <Button onClick={onEndCall} className="mt-4" variant="destructive">
+          Voltar
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full bg-background border rounded-lg p-4">
       <div className="flex-1 relative bg-black rounded-md overflow-hidden">
@@ -356,6 +401,11 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
         {callStatus === "idle" && !isInitiator && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/70 text-white text-lg">
             Aguardando chamada...
+          </div>
+        )}
+        {callStatus === "idle" && isInitiator && !mediaAccessError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/70 text-white text-lg">
+            Pronto para iniciar a chamada.
           </div>
         )}
       </div>
