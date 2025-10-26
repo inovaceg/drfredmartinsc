@@ -616,11 +616,16 @@ const Doctor = () => {
       setIsDeleteDialogOpen(false);
     } catch (error: any) {
       console.error("Error deleting patient:", error);
-      toast({ title: "Erro", description: error.message || "Não foi possível excluir o paciente.", variant: "destructive" });
+      toast({ title: "Erro", description: error.message || "Não foi possível excluir o paciente.", variant: "destructive",});
     } finally {
       setIsDeleting(false);
     }
   }, [patientToDelete, user, queryClient, toast, setSelectedPatient, setPatients, setPatientToDelete, setIsDeleteDialogOpen, setIsDeleting, fetchPatients]);
+
+  // Calculate available and occupied slots for the overview tab
+  const availableSlotsCount = slots.filter(slot => slot.is_available).length;
+  const occupiedSlotsCount = slots.filter(slot => !slot.is_available).length;
+  const totalSlotsCount = slots.length;
 
   console.log("Doctor component is rendering. User:", user?.id, "Loading:", loading);
 
@@ -798,11 +803,39 @@ const Doctor = () => {
                 <CardTitle>Visão Geral do Portal</CardTitle>
                 <CardDescription>Um resumo rápido das suas atividades e informações importantes.</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <p className="text-muted-foreground">
                   Esta seção pode ser expandida para incluir gráficos, estatísticas de agendamentos, 
                   novas mensagens e outras informações relevantes para o seu dia a dia.
                 </p>
+
+                {/* Resumo de Horários */}
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <CalendarIcon className="h-5 w-5 text-primary" />
+                    Agenda para {selectedDate ? format(createLocalDateFromISOString(selectedDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : "hoje"}
+                  </h3>
+                  {isLoadingSlots ? (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Carregando horários...
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-primary" />
+                        <p>Total de Horários: <span className="font-bold">{totalSlotsCount}</span></p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                        <p>Disponíveis: <span className="font-bold">{availableSlotsCount}</span></p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <XCircle className="h-5 w-5 text-red-500" />
+                        <p>Ocupados: <span className="font-bold">{occupiedSlotsCount}</span></p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
