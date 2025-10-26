@@ -207,8 +207,9 @@ const Doctor = () => {
         variant: "destructive",
       });
     } else {
-      console.log('Doctor.tsx: Patients fetched:', patientsData);
+      console.log('Doctor.tsx: Patients data received from RPC:', patientsData); // Log the raw data
       setPatients(patientsData || []);
+      console.log('Doctor.tsx: Patients state updated with:', patientsData || []);
     }
   }, [toast, setPatients]);
 
@@ -561,6 +562,7 @@ const Doctor = () => {
     if (!patientToDelete) return;
 
     setIsDeleting(true);
+    console.log("Doctor.tsx: Attempting to delete patient:", patientToDelete.id);
     try {
       // Delete the patient's profile
       const { error: profileError } = await supabase
@@ -574,20 +576,26 @@ const Doctor = () => {
       }
 
       // Optimistically remove from UI first
-      setPatients(prevPatients => prevPatients.filter(p => p.id !== patientToDelete.id));
+      setPatients(prevPatients => {
+        const updatedPatients = prevPatients.filter(p => p.id !== patientToDelete.id);
+        console.log("Doctor.tsx: Optimistically updated patients list:", updatedPatients);
+        return updatedPatients;
+      });
       
       toast({ title: "Sucesso", description: `Paciente ${patientToDelete.full_name} excluído com sucesso!` });
       
       // Invalidate queries to refetch patient list and clear selected patient data
       if (user?.id) { // Safely access user.id
         queryClient.invalidateQueries({ queryKey: ["doctorPatients", user.id] });
-        await fetchPatients(user.id); // <--- Adicionado para atualizar o estado 'patients'
+        // Adiciona um pequeno atraso para permitir que a invalidação se propague antes de re-buscar
+        await new Promise(resolve => setTimeout(resolve, 100)); 
+        await fetchPatients(user.id); // Re-fetch para garantir a sincronização completa
       }
       queryClient.invalidateQueries({ queryKey: ["patientProfile", patientToDelete.id] });
       queryClient.invalidateQueries({ queryKey: ["patientSessions", patientToDelete.id] });
       queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", patientToDelete.id] });
 
-      setSelectedPatient(null); // Use setSelectedPatient instead of setSelectedPatientId
+      setSelectedPatient(null); // Clear selected patient
       setPatientToDelete(null);
       setIsDeleteDialogOpen(false);
     } catch (error: any) {
