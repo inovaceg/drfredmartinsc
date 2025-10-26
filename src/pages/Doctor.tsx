@@ -207,9 +207,8 @@ const Doctor = () => {
         variant: "destructive",
       });
     } else {
-      console.log('Doctor.tsx: Patients data received from RPC:', patientsData); // Log the raw data
+      console.log('Doctor.tsx: Patients fetched:', patientsData);
       setPatients(patientsData || []);
-      console.log('Doctor.tsx: Patients state updated with:', patientsData || []);
     }
   }, [toast, setPatients]);
 
@@ -565,14 +564,29 @@ const Doctor = () => {
     console.log("Doctor.tsx: Attempting to delete patient:", patientToDelete.id);
     try {
       // Delete the patient's profile
-      const { error: profileError } = await supabase
+      const { data: deleteData, error: profileError } = await supabase
         .from('profiles')
         .delete()
-        .eq('id', patientToDelete.id);
+        .eq('id', patientToDelete.id)
+        .select(); // Adicionado .select() para obter o count de linhas afetadas
 
       if (profileError) {
         console.error("Supabase delete profile error:", profileError);
         throw profileError;
+      }
+
+      // Verifica se alguma linha foi realmente excluída
+      if (!deleteData || deleteData.length === 0) {
+        console.warn("Doctor.tsx: Delete operation returned success but no rows were affected. Likely RLS issue.");
+        toast({
+          title: "Aviso",
+          description: "O paciente não pôde ser excluído. Verifique as permissões de segurança (RLS) no Supabase.",
+          variant: "destructive",
+        });
+        // Não prossegue com a atualização otimista ou re-busca se a exclusão falhou silenciosamente
+        setIsDeleting(false);
+        setIsDeleteDialogOpen(false);
+        return;
       }
 
       // Optimistically remove from UI first
@@ -587,9 +601,10 @@ const Doctor = () => {
       // Invalidate queries to refetch patient list and clear selected patient data
       if (user?.id) { // Safely access user.id
         queryClient.invalidateQueries({ queryKey: ["doctorPatients", user.id] });
-        // Adiciona um pequeno atraso para permitir que a invalidação se propague antes de re-buscar
-        await new Promise(resolve => setTimeout(resolve, 100)); 
-        await fetchPatients(user.id); // Re-fetch para garantir a sincronização completa
+        // Não é necessário um atraso aqui, pois a atualização otimista já ocorreu.
+        // A fetchPatients irá eventualmente ressincronizar, mas a UI já está atualizada.
+        // Se a exclusão realmente falhou, a re-busca trará o paciente de volta, o que é o comportamento correto.
+        await fetchPatients(user.id); 
       }
       queryClient.invalidateQueries({ queryKey: ["patientProfile", patientToDelete.id] });
       queryClient.invalidateQueries({ queryKey: ["patientSessions", patientToDelete.id] });
