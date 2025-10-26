@@ -84,20 +84,24 @@ export const PatientScheduleTab = () => {
         return [];
       }
       
-      const startOfDay = new Date(selectedDate);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(selectedDate);
-      endOfDay.setHours(23, 59, 59, 999);
+      // Cria objetos Date para o início e fim do dia no fuso horário local do usuário
+      const localSelectedDate = new Date(selectedDate);
+      
+      const startOfDayLocal = new Date(localSelectedDate);
+      startOfDayLocal.setHours(0, 0, 0, 0); // Define para meia-noite local
+      
+      const endOfDayLocal = new Date(localSelectedDate);
+      endOfDayLocal.setHours(23, 59, 59, 999); // Define para o final do dia local
 
-      // Ajustar para o fuso horário do servidor Supabase (UTC)
-      const startOfDayUTC = new Date(Date.UTC(startOfDay.getFullYear(), startOfDay.getMonth(), startOfDay.getDate(), startOfDay.getHours(), startOfDay.getMinutes(), startOfDay.getSeconds(), startOfDay.getMilliseconds()));
-      const endOfDayUTC = new Date(Date.UTC(endOfDay.getFullYear(), endOfDay.getMonth(), endOfDay.getDate(), endOfDay.getHours(), endOfDay.getMinutes(), endOfDay.getSeconds(), endOfDay.getMilliseconds()));
+      // Converte esses objetos Date locais para strings ISO (que serão em UTC)
+      const _start_time_gte = startOfDayLocal.toISOString();
+      const _end_time_lte = endOfDayLocal.toISOString();
 
-      console.log("PatientScheduleTab: Fetching available slots for doctor:", selectedDoctorId, "date (startOfDayUTC):", startOfDayUTC.toISOString(), "date (endOfDayUTC):", endOfDayUTC.toISOString());
+      console.log("PatientScheduleTab: Fetching available slots for doctor:", selectedDoctorId, "date (startOfDayUTC):", _start_time_gte, "date (endOfDayUTC):", _end_time_lte);
       const { data, error } = await supabase.rpc("get_truly_available_slots", {
         _doctor_id: selectedDoctorId,
-        _start_time_gte: startOfDayUTC.toISOString(),
-        _end_time_lte: endOfDayUTC.toISOString(),
+        _start_time_gte: _start_time_gte,
+        _end_time_lte: _end_time_lte,
       });
       if (error) {
         console.error("PatientScheduleTab: Error fetching available slots:", error);

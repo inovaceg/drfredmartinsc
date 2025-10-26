@@ -129,22 +129,32 @@ const Doctor = () => {
       return;
     }
     setIsLoadingSlots(true);
-    // início do dia em UTC e fim do dia em UTC
-    const start = new Date(`${selectedDate}T00:00:00.000Z`);
-    const end = new Date(`${selectedDate}T23:59:59.999Z`);
+
+    // Cria objetos Date para o início e fim do dia no fuso horário local do usuário
+    const localSelectedDate = new Date(selectedDate); // Ex: "2024-10-27" -> Date object for 2024-10-27 00:00:00 na timezone local
+    
+    const startOfDayLocal = new Date(localSelectedDate);
+    startOfDayLocal.setHours(0, 0, 0, 0); // Define para meia-noite local
+    
+    const endOfDayLocal = new Date(localSelectedDate);
+    endOfDayLocal.setHours(23, 59, 59, 999); // Define para o final do dia local
+
+    // Converte esses objetos Date locais para strings ISO (que serão em UTC)
+    const start = startOfDayLocal.toISOString();
+    const end = endOfDayLocal.toISOString();
 
     console.log("Doctor.tsx: fetching slots for", {
       doctorId: user.id,
-      start: start.toISOString(),
-      end: end.toISOString(),
+      start: start,
+      end: end,
     });
 
     const { data, error } = await supabase
       .from("availability_slots")
       .select("*")
       .eq("doctor_id", user.id)
-      .gte("start_time", start.toISOString())
-      .lte("end_time", end.toISOString())
+      .gte("start_time", start)
+      .lte("end_time", end)
       .order("start_time", { ascending: true });
 
     if (error) {
