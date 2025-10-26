@@ -543,14 +543,8 @@ const Doctor = () => {
               <MessageSquare className="h-4 w-4 mr-2" />
               Consulta Online
             </TabsTrigger>
-            <TabsTrigger value="form-responses" className="px-3 py-2 text-sm whitespace-nowrap">
-              <ClipboardList className="h-4 w-4 mr-2" />
-              Respostas do Formulário
-            </TabsTrigger>
-            <TabsTrigger value="whatsapp-transcriptions" className="px-3 py-2 text-sm whitespace-nowrap">
-              <MessageSquareText className="h-4 w-4 mr-2" />
-              Transcrições WhatsApp
-            </TabsTrigger>
+            {/* Removido: Respostas do Formulário */}
+            {/* Removido: Transcrições WhatsApp */}
             <TabsTrigger value="newsletter-subscriptions" className="px-3 py-2 text-sm whitespace-nowrap">
               <Mail className="h-4 w-4 mr-2" />
               Newsletter
@@ -570,8 +564,6 @@ const Doctor = () => {
                   {activeTab === "patients" && "Meus Pacientes"}
                   {activeTab === "medical-records" && "Prontuários"}
                   {activeTab === "online-consultation" && "Consulta Online"}
-                  {activeTab === "form-responses" && "Respostas do Formulário"}
-                  {activeTab === "whatsapp-transcriptions" && "Transcrições WhatsApp"}
                   {activeTab === "newsletter-subscriptions" && "Newsletter"}
                 </Button>
               </DrawerTrigger>
@@ -638,22 +630,8 @@ const Doctor = () => {
                       <MessageSquare className="h-4 w-4 mr-2" />
                       Consulta Online
                     </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
-                      onClick={() => handleTabChange("form-responses")}
-                    >
-                      <ClipboardList className="h-4 w-4 mr-2" />
-                      Respostas do Formulário
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
-                      onClick={() => handleTabChange("whatsapp-transcriptions")}
-                    >
-                      <MessageSquareText className="h-4 w-4 mr-2" />
-                      Transcrições WhatsApp
-                    </Button>
+                    {/* Removido: Respostas do Formulário */}
+                    {/* Removido: Transcrições WhatsApp */}
                     <Button
                       variant="ghost"
                       className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
@@ -1005,13 +983,8 @@ const Doctor = () => {
             {user && <DoctorOnlineConsultationTab currentUserId={user.id} />}
           </TabsContent>
 
-          <TabsContent value="form-responses">
-            <DoctorFormResponsesTab />
-          </TabsContent>
-
-          <TabsContent value="whatsapp-transcriptions">
-            <WhatsappTranscriptionsPage />
-          </TabsContent>
+          {/* Removido: TabsContent para Respostas do Formulário */}
+          {/* Removido: TabsContent para Transcrições WhatsApp */}
 
           <TabsContent value="newsletter-subscriptions">
             <DoctorNewsletterSubscriptionsTab />
