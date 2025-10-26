@@ -160,13 +160,21 @@ const Doctor = () => {
       return;
     }
 
-    if (forOverview) setIsLoadingOverviewSlots(true);
-    else setIsLoadingSlots(true);
+    if (forOverview) {
+      console.log("Doctor.tsx: fetchSlots (Overview) - Setting loading to true.");
+      setIsLoadingOverviewSlots(true);
+    }
+    else {
+      console.log("Doctor.tsx: fetchSlots (Schedule) - Setting loading to true.");
+      setIsLoadingSlots(true);
+    }
 
     const _start_time_gte = startDate.toISOString();
     const _end_time_lte = endDate.toISOString();
 
-    console.log(`Doctor.tsx: Fetching slots for doctor: ${doctorId} from ${_start_time_gte} to ${_end_time_lte}`);
+    console.log(`Doctor.tsx: fetchSlots - Calling RPC 'get_truly_available_slots' for doctor: ${doctorId}`);
+    console.log(`Doctor.tsx: fetchSlots - Parameters: _start_time_gte=${_start_time_gte}, _end_time_lte=${_end_time_lte}`);
+
     const { data, error } = await supabase.rpc("get_truly_available_slots", {
       _doctor_id: doctorId,
       _start_time_gte: _start_time_gte,
@@ -174,7 +182,7 @@ const Doctor = () => {
     });
 
     if (error) {
-      console.error("Doctor.tsx: Error fetching slots:", error);
+      console.error("Doctor.tsx: Error fetching slots from RPC:", error);
       toast({
         title: "Erro",
         description: error.message,
@@ -188,19 +196,27 @@ const Doctor = () => {
         setSlots([]);
       }
     } else {
-      console.log("Doctor.tsx: Slots fetched:", data);
+      console.log("Doctor.tsx: Slots fetched successfully from RPC:", data);
       if (forOverview) {
         const available = data.filter(slot => slot.is_available).length;
         const occupied = data.filter(slot => !slot.is_available).length;
         setOverviewAvailableSlots(available);
         setOverviewOccupiedSlots(occupied);
         setOverviewTotalSlots(data.length);
+        console.log(`Doctor.tsx: Overview stats - Available: ${available}, Occupied: ${occupied}, Total: ${data.length}`);
       } else {
         setSlots(data || []);
+        console.log(`Doctor.tsx: Schedule slots updated. Count: ${data?.length || 0}`);
       }
     }
-    if (forOverview) setIsLoadingOverviewSlots(false);
-    else setIsLoadingSlots(false);
+    if (forOverview) {
+      console.log("Doctor.tsx: fetchSlots (Overview) - Setting loading to false.");
+      setIsLoadingOverviewSlots(false);
+    }
+    else {
+      console.log("Doctor.tsx: fetchSlots (Schedule) - Setting loading to false.");
+      setIsLoadingSlots(false);
+    }
   }, [toast]);
 
   const fetchAppointments = useCallback(async () => {
@@ -319,9 +335,14 @@ const Doctor = () => {
 
   // New useEffect for overview data
   useEffect(() => {
+    console.log("Doctor.tsx: Overview useEffect triggered.");
     if (user?.id) {
+      console.log("Doctor.tsx: Overview useEffect - User ID present, calculating date range.");
       const { startDate, endDate } = getDatesForTimeframe(selectedTimeframe, customStartDate, customEndDate);
+      console.log(`Doctor.tsx: Overview useEffect - Calculated range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
       fetchSlots(user.id, startDate, endDate, true);
+    } else {
+      console.log("Doctor.tsx: Overview useEffect - No user ID, skipping fetchSlots.");
     }
   }, [user, selectedTimeframe, customStartDate, customEndDate, fetchSlots, getDatesForTimeframe]);
 
