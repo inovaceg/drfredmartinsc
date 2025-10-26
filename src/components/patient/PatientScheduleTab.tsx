@@ -176,9 +176,10 @@ export const PatientScheduleTab = () => {
       setSelectedSlotId(null);
       setSelectedSlotStartTime(null);
       setSelectedSlotEndTime(null);
-      // Invalida queries para atualizar a disponibilidade imediatamente
-      queryClient.invalidateQueries({ queryKey: ["availableDates", selectedDoctorId] });
-      queryClient.invalidateQueries({ queryKey: ["availableSlots", selectedDoctorId, selectedDate] });
+      // Força o re-fetch das queries para atualizar a disponibilidade imediatamente
+      console.log("PatientScheduleTab: Forcing re-fetch of available dates and slots after successful booking.");
+      await queryClient.refetchQueries({ queryKey: ["availableDates", selectedDoctorId] });
+      await queryClient.refetchQueries({ queryKey: ["availableSlots", selectedDoctorId, selectedDate] });
     } catch (error) {
       console.error("Erro ao agendar consulta:", error);
       // toast.error("Erro ao agendar consulta. Tente novamente.");

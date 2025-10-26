@@ -14,201 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditPatientDialog } from "@/components/EditPatientDialog";
-import { formatPhone } from "@/lib/format-phone";
-import { DoctorProfileForm } from "@/components/DoctorProfileForm";
-import { DoctorOnlineConsultationTab } from "@/components/DoctorOnlineConsultationTab";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Database } from "@/integrations/supabase/types";
-import { WhatsappTranscriptionsPage } from "@/pages/WhatsappTranscriptionsPage";
-import { DoctorMedicalRecordsTab } from "@/components/doctor/DoctorMedicalRecordsTab";
-import { DoctorNewsletterSubscriptionsTab } from "@/components/doctor/DoctorNewsletterSubscriptionsTab";
-import { DoctorFormResponsesTab } from "@/components/DoctorFormResponsesTab";
-import { formatDateToDisplay, createLocalDateFromISOString } from "@/lib/utils";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
-import { useQueryClient } from "@tanstack/react-query";
-
-const Doctor = () => {
-  const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
-  const [selectedDate, setSelectedDate] = useState<string | undefined>(format(new Date(), "yyyy-MM-dd"));
-  const [slots, setSlots] = useState<any[]>([]);
-  const [appointments, setAppointments] = useState<any[]>([]);
-  const [patients, setPatients] = useState<any[]>([]); // Lista de pacientes para o dropdown
-  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState<any>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [doctorProfile, setDoctorProfile] = useState<any>(null);
-  const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  // Novos estados para agendamento para paciente
-  const [selectedPatientForBookingId, setSelectedPatientForBookingId] = useState<string | null>(null);
-  const [selectedSlotForBooking, setSelectedSlotForBooking] = useState<{ id: string; start_time: string; end_time: string } | null>(null);
-  const [isBookingForPatient, setIsBookingForPatient] = useState(false);
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log("Doctor.tsx: Auth state change event:", event, "session:", session);
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-        if (session?.user) {
-          fetchDoctorProfile(session.user.id);
-          fetchPatients(session.user.id); // Buscar pacientes ao logar
-        } else if (event === 'SIGNED_OUT') {
-          console.log("Doctor.tsx: Evento SIGNED_OUT detectado. Redirecionando para /auth.");
-          navigate("/auth");
-        }
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log("Doctor.tsx: Initial getSession result:", session);
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      if (session?.user) {
-        fetchDoctorProfile(session.user.id);
-        fetchPatients(session.user.id); // Buscar pacientes ao logar
-      } else {
-        console.log("Doctor.tsx: Nenhum usuário logado inicialmente, redirecionando para /auth.");
-        navigate("/auth");
-      }
-    });
-
-    return () => {
-      console.log("Doctor.tsx: Desinscrevendo do listener de auth state change.");
-      subscription.unsubscribe();
-    };
-  }, [navigate, toast]);
-
-  const fetchDoctorProfile = async (userId: string) => {
-    console.log("Doctor.tsx: Fetching doctor profile for userId:", userId);
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    if (error) {
-      console.error("Doctor.tsx: Error fetching doctor profile:", error);
-      toast({
-        title: "Erro ao carregar perfil do doutor",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else if (data) {
-      console.log("Doctor.tsx: Doctor profile fetched:", data);
-      setDoctorProfile(data);
-    }
-  };
-
-  useEffect(() => {
-    if (!loading && !user) {
-      console.log("Doctor.tsx: User not authenticated, navigating to /auth");
-      navigate("/auth");
-    }
-  }, [user, loading, navigate]);
-
-  const fetchSlots = useCallback(async () => {
-    if (!user || !selectedDate) {
-      console.log("Doctor.tsx: Skipping fetchSlots, user or selectedDate is missing. User:", user, "SelectedDate:", selectedDate);
-      setIsLoadingSlots(false);
-      return;
-    }
-    setIsLoadingSlots(true);
-
-    const localSelectedDateObj = createLocalDateFromISOString(selectedDate);
-    const startOfDayLocal = new Date(localSelectedDateObj);
-    startOfDayLocal.setHours(0, 0, 0, 0);
-    const endOfDayLocal = new Date(localSelectedDateObj);
-    endOfDayLocal.setHours(23, 59, 59, 999);
-
-    const start = startOfDayLocal.toISOString();
-    const end = endOfDayLocal.toISOString();
-
-    console.log("Doctor.tsx: fetching slots for", {
-      doctorId: user.id,
-      start: start,
-      end: end,
-    });
-
-    const { data, error } = await supabase
-      .from("availability_slots")
-      .select("*")
-      .eq("doctor_id", user.id)
-      .gte("start_time", start)
-      .lte("end_time", end)
-      .order("start_time", { ascending: true });
-
-    if (error) {
-      console.error("Doctor.tsx: error fetching slots →", error);
-      toast({
-        title: "Erro ao carregar horários",
-        description: error.message,
-        variant: "destructive",
-      });
-      setSlots([]);
-    } else {
-      console.log("Doctor.tsx: Slots fetched successfully. Data:", data);
-      setSlots(data ?? []);
-    }
-    setIsLoadingSlots(false);
-  }, [selectedDate, user, toast]);
-
-  useEffect(() => {
-    fetchSlots();
-    setSelectedSlotIds([]);
-  }, [fetchSlots]);
-
-  useEffect(() => {
-    if (user && activeTab === "appointments") {
-      console.log("Doctor.tsx: Fetching appointments.");
-      fetchAppointments();
-    }
-  }, [user, activeTab]);
-
-  const fetchPatients = useCallback(async (userId: string) => {
-    console.log('Doctor.tsx: Fetching patients for doctor:', userId);
-    const { data: patientsData, error } = await supabase
-      .rpc('get_patients_for_doctor');
-
-    if (error) {
-      console.error('Doctor.tsx: Error fetching patients:', error);
-      toast({
-        title: "Erro ao carregar pacientes",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      console.log('Doctor.tsx: Patients fetched:', patientsData);
-      setPatients(patientsData || []);
-    }
-  }, [toast]);
-
-  useEffect(() => {
-    if (user && activeTab === "patients") {
-      fetchPatients(user.id);
-    }
-  }, [user, activeTab, fetchPatients]);
-
-  const createDefaultSlots = async () => {
+import { formatPhone } => {
     if (!user || !selectedDate) {
       console.log("Doctor.tsx: Skipping createDefaultSlots, user or selectedDate is missing.");
       return;
@@ -446,6 +252,29 @@ const Doctor = () => {
     }
   };
 
+  const fetchPatients = async () => {
+    if (!user) {
+      console.log("Doctor.tsx: Skipping fetchPatients, user is missing.");
+      return;
+    }
+
+    console.log('Doctor.tsx: Fetching patients for doctor:', user.id);
+    const { data: patientsData, error } = await supabase
+      .rpc('get_patients_for_doctor');
+
+    if (error) {
+      console.error('Doctor.tsx: Error fetching patients:', error);
+      toast({
+        title: "Erro ao carregar pacientes",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      console.log('Doctor.tsx: Patients fetched:', patientsData);
+      setPatients(patientsData || []);
+    }
+  };
+
   const handleSignOut = async () => {
     console.log("Doctor.tsx: Tentando deslogar...");
     const { error } = await supabase.auth.signOut();
@@ -519,6 +348,28 @@ const Doctor = () => {
       setIsBookingForPatient(false);
     }
   };
+
+  // Realtime subscription for availability_slots in Doctor.tsx
+  useEffect(() => {
+    if (!user) return;
+    console.log("Doctor.tsx: Setting up real-time subscription for availability_slots for doctor's view.");
+    const channel = supabase
+      .channel(`doctor_availability_slots_${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'availability_slots', filter: `doctor_id=eq.${user.id}` },
+        (payload) => {
+          console.log('Doctor.tsx: Real-time change detected in availability_slots for doctor:', payload);
+          fetchSlots(); // Re-fetch slots for the current doctor
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log("Doctor.tsx: Unsubscribing from real-time channel for doctor's view.");
+      supabase.removeChannel(channel);
+    };
+  }, [user, fetchSlots]); // Depend on user and fetchSlots
 
   if (loading) {
     return (
