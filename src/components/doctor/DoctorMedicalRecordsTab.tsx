@@ -7,15 +7,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, User, CalendarDays, BookOpen, MessageSquareText, ClipboardList, CheckCircle, XCircle, Stethoscope, FileText, Edit, LayoutGrid } from "lucide-react";
+import { Loader2, User, CalendarDays, BookOpen, MessageSquareText, ClipboardList, CheckCircle, XCircle, Stethoscope, FileText, Edit, LayoutGrid, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { EditMedicalRecordDialog } from "./EditMedicalRecordDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { EditPatientDialog } from "@/components/EditPatientDialog"; // Importar o diálogo de edição de paciente
-import { EditTherapySessionDialog } from "./EditTherapySessionDialog"; // Importar o novo diálogo de edição de sessão
+import { EditPatientDialog } from "@/components/EditPatientDialog";
+import { EditTherapySessionDialog } from "./EditTherapySessionDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type PatientProfile = Database['public']['Tables']['profiles']['Row'];
 type Session = Database['public']['Tables']['sessions']['Row'];
@@ -49,10 +60,14 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
   const [recordToEdit, setRecordToEdit] = useState<MedicalRecord | null>(null);
   const [activeSubTab, setActiveSubTab] = useState("overview");
 
-  const [isEditPatientDialogOpen, setIsEditPatientDialogOpen] = useState(false); // Estado para o diálogo de edição do paciente
+  const [isEditPatientDialogOpen, setIsEditPatientDialogOpen] = useState(false);
   
-  const [isEditSessionDialogOpen, setIsEditSessionDialogOpen] = useState(false); // Novo estado para o diálogo de edição de sessão
-  const [sessionToEdit, setSessionToEdit] = useState<Session | null>(null); // Novo estado para a sessão a ser editada
+  const [isEditSessionDialogOpen, setIsEditSessionDialogOpen] = useState(false);
+  const [sessionToEdit, setSessionToEdit] = useState<Session | null>(null);
+
+  const [patientToDelete, setPatientToDelete] = useState<PatientProfile | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch all patients for the doctor
   const { data: patients, isLoading: isLoadingPatients } = useQuery({
@@ -151,7 +166,7 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
       const { data, error } = await supabase
         .from('sessions')
         .insert(sessionToInsert)
-        .select(); // Adicionado .select() para obter os dados inseridos de volta
+        .select();
 
       if (error) {
         console.error("Supabase insert error:", error);
@@ -167,7 +182,7 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
         notes: "",
         homework: "",
       });
-      queryClient.invalidateQueries({ queryKey: ["patientSessions", selectedPatientId] }); // Refetch sessions
+      queryClient.invalidateQueries({ queryKey: ["patientSessions", selectedPatientId] });
     } catch (error: any) {
       console.error("Error adding session in catch block:", error);
       toast({ title: "Erro", description: error.message || "Não foi possível registrar a sessão.", variant: "destructive" });
@@ -217,7 +232,7 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
         prescription: "",
         notes: "",
       });
-      queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", selectedPatientId] }); // Refetch medical records
+      queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", selectedPatientId] });
     } catch (error: any) {
       console.error("Error adding medical record in catch block:", error);
       toast({ title: "Erro", description: error.message || "Não foi possível registrar o prontuário médico.", variant: "destructive" });
@@ -235,18 +250,52 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
     queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", selectedPatientId] });
   };
 
-  const handleEditSession = (session: Session) => { // Novo handler para edição de sessão
+  const handleEditSession = (session: Session) => {
     setSessionToEdit(session);
     setIsEditSessionDialogOpen(true);
   };
 
-  const handleSessionUpdated = () => { // Novo handler para atualização de sessão
+  const handleSessionUpdated = () => {
     queryClient.invalidateQueries({ queryKey: ["patientSessions", selectedPatientId] });
   };
 
   const handlePatientProfileUpdated = () => {
     queryClient.invalidateQueries({ queryKey: ["patientProfile", selectedPatientId] });
-    queryClient.invalidateQueries({ queryKey: ["doctorPatients", currentUserId] }); // Também invalida a lista de pacientes
+    queryClient.invalidateQueries({ queryKey: ["doctorPatients", currentUserId] });
+  };
+
+  const handleDeletePatient = async () => {
+    if (!patientToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      // Delete the patient's profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', patientToDelete.id);
+
+      if (profileError) {
+        console.error("Supabase delete profile error:", profileError);
+        throw profileError;
+      }
+
+      // Invalidate queries to refetch patient list and clear selected patient data
+      queryClient.invalidateQueries({ queryKey: ["doctorPatients", currentUserId] });
+      queryClient.invalidateQueries({ queryKey: ["patientProfile", patientToDelete.id] });
+      queryClient.invalidateQueries({ queryKey: ["patientSessions", patientToDelete.id] });
+      queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", patientToDelete.id] });
+
+      toast({ title: "Sucesso", description: `Paciente ${patientToDelete.full_name} excluído com sucesso!` });
+      setSelectedPatientId(null); // Clear selected patient
+      setPatientToDelete(null);
+      setIsDeleteDialogOpen(false);
+    } catch (error: any) {
+      console.error("Error deleting patient:", error);
+      toast({ title: "Erro", description: error.message || "Não foi possível excluir o paciente.", variant: "destructive" });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (isLoadingPatients || isLoadingDoctors) {
@@ -311,9 +360,37 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
                     <User className="h-5 w-5 text-primary" />
                     Dados do Paciente
                   </CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => setIsEditPatientDialogOpen(true)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setIsEditPatientDialogOpen(true)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          onClick={() => setPatientToDelete(selectedPatientProfile)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Tem certeza que deseja excluir este paciente?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta ação não pode ser desfeita. Isso excluirá permanentemente o perfil do paciente e todos os dados associados (sessões, prontuários, etc.).
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleDeletePatient} disabled={isDeleting}>
+                            {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                            Excluir Paciente
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </CardHeader>
                 <CardDescription className="px-6">Informações pessoais e terapêuticas do paciente.</CardDescription>
                 <CardContent className="space-y-3 text-sm pt-4">
@@ -364,7 +441,7 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
                               <CalendarDays className="h-5 w-5 text-muted-foreground" />
                               {format(new Date(session.session_date), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
                             </p>
-                            <Button variant="outline" size="sm" onClick={() => handleEditSession(session)}> {/* Botão de edição adicionado */}
+                            <Button variant="outline" size="sm" onClick={() => handleEditSession(session)}>
                               <Edit className="h-4 w-4" />
                             </Button>
                           </div>
@@ -549,7 +626,7 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
         />
       )}
 
-      {sessionToEdit && ( // Renderiza o novo diálogo de edição de sessão
+      {sessionToEdit && (
         <EditTherapySessionDialog
           session={sessionToEdit}
           open={isEditSessionDialogOpen}

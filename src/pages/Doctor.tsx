@@ -727,13 +727,11 @@ const Doctor = () => {
                   Esta seção pode ser expandida para incluir gráficos, estatísticas de agendamentos, 
                   novas mensagens e outras informações relevantes para o seu dia a dia.
                 </p>
-                <p className="text-green-500">Doctor page is rendering!</p> {/* TEST MESSAGE */}
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Temporarily commented out other TabsContent for debugging */}
-          {/* <TabsContent value="profile">
+          <TabsContent value="profile">
             <Card>
               <CardContent className="p-6">
                 {user?.id && <DoctorProfileForm userId={user.id} onProfileUpdated={() => {
@@ -1088,18 +1086,44 @@ const Doctor = () => {
                             </div>
                           </div>
                           
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedPatient(patient);
-                              setEditDialogOpen(true);
-                            }}
-                            className="ml-4 flex-shrink-0"
-                          >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Editar
-                          </Button>
+                          <div className="flex gap-2 ml-4 flex-shrink-0">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedPatient(patient);
+                                setEditDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm" 
+                                  onClick={() => setPatientToDelete(patient)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Tem certeza que deseja excluir este paciente?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Esta ação não pode ser desfeita. Isso excluirá permanentemente o perfil do paciente e todos os dados associados (sessões, prontuários, etc.).
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={handleDeletePatient} disabled={isDeleting}>
+                                    {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                                    Excluir Paciente
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1119,7 +1143,7 @@ const Doctor = () => {
 
           <TabsContent value="newsletter-subscriptions">
             <DoctorNewsletterSubscriptionsTab />
-          </TabsContent> */}
+          </TabsContent>
         </Tabs>
       </main>
 
@@ -1132,7 +1156,7 @@ const Doctor = () => {
           onOpenChange={setEditDialogOpen}
           onPatientUpdated={async () => {
             console.log('onPatientUpdated called');
-            await fetchPatients(user!.id); // Pass user.id to fetchPatients
+            await fetchPatients(user!.id);
             setSelectedPatient(null);
           }}
         />
