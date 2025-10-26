@@ -576,6 +576,7 @@ const Doctor = () => {
       // Invalidate queries to refetch patient list and clear selected patient data
       if (user?.id) { // Safely access user.id
         queryClient.invalidateQueries({ queryKey: ["doctorPatients", user.id] });
+        await fetchPatients(user.id); // <--- Adicionado para atualizar o estado 'patients'
       }
       queryClient.invalidateQueries({ queryKey: ["patientProfile", patientToDelete.id] });
       queryClient.invalidateQueries({ queryKey: ["patientSessions", patientToDelete.id] });
@@ -591,7 +592,7 @@ const Doctor = () => {
     } finally {
       setIsDeleting(false);
     }
-  }, [patientToDelete, user, queryClient, toast, setSelectedPatient, setPatientToDelete, setIsDeleteDialogOpen, setIsDeleting]);
+  }, [patientToDelete, user, queryClient, toast, setSelectedPatient, setPatientToDelete, setIsDeleteDialogOpen, setIsDeleting, fetchPatients]);
 
   console.log("Doctor component is rendering. User:", user?.id, "Loading:", loading);
 
