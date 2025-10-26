@@ -581,48 +581,88 @@ const Doctor = () => {
                   <DrawerDescription>Selecione uma opção abaixo</DrawerDescription>
                 </DrawerHeader>
                 <div className="p-4 flex-1 overflow-y-auto">
-                  <TabsList className="flex flex-col w-full bg-muted p-1 rounded-lg border space-y-1">
-                    <TabsTrigger value="overview" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("overview")}>
+                  <div className="flex flex-col space-y-1"> {/* Usando div para agrupar botões */}
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                      onClick={() => handleTabChange("overview")}
+                    >
                       <BarChart3 className="h-4 w-4 mr-2" />
                       Visão Geral
-                    </TabsTrigger>
-                    <TabsTrigger value="profile" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("profile")}>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                      onClick={() => handleTabChange("profile")}
+                    >
                       <UserIcon className="h-4 w-4 mr-2" />
                       Meu Perfil
-                    </TabsTrigger>
-                    <TabsTrigger value="schedule" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("schedule")}>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                      onClick={() => handleTabChange("schedule")}
+                    >
                       <CalendarIcon className="h-4 w-4 mr-2" />
                       Gerenciar Agenda
-                    </TabsTrigger>
-                    <TabsTrigger value="appointments" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("appointments")}>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                      onClick={() => handleTabChange("appointments")}
+                    >
                       <Clock className="h-4 w-4 mr-2" />
                       Agenda Consultas
-                    </TabsTrigger>
-                    <TabsTrigger value="patients" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("patients")}>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                      onClick={() => handleTabChange("patients")}
+                    >
                       <Users className="h-4 w-4 mr-2" />
                       Meus Pacientes
-                    </TabsTrigger>
-                    <TabsTrigger value="medical-records" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("medical-records")}>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                      onClick={() => handleTabChange("medical-records")}
+                    >
                       <BookOpen className="h-4 w-4 mr-2" />
                       Prontuários
-                    </TabsTrigger>
-                    <TabsTrigger value="online-consultation" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("online-consultation")}>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                      onClick={() => handleTabChange("online-consultation")}
+                    >
                       <MessageSquare className="h-4 w-4 mr-2" />
                       Consulta Online
-                    </TabsTrigger>
-                    <TabsTrigger value="form-responses" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("form-responses")}>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                      onClick={() => handleTabChange("form-responses")}
+                    >
                       <ClipboardList className="h-4 w-4 mr-2" />
                       Respostas do Formulário
-                    </TabsTrigger>
-                    <TabsTrigger value="whatsapp-transcriptions" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("whatsapp-transcriptions")}>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                      onClick={() => handleTabChange("whatsapp-transcriptions")}
+                    >
                       <MessageSquareText className="h-4 w-4 mr-2" />
                       Transcrições WhatsApp
-                    </TabsTrigger>
-                    <TabsTrigger value="newsletter-subscriptions" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("newsletter-subscriptions")}>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                      onClick={() => handleTabChange("newsletter-subscriptions")}
+                    >
                       <Mail className="h-4 w-4 mr-2" />
                       Newsletter
-                    </TabsTrigger>
-                  </TabsList>
+                    </Button>
+                  </div>
                 </div>
                 <DrawerFooter>
                   <DrawerClose asChild>
