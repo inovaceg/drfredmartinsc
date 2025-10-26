@@ -152,6 +152,8 @@ export function DoctorProfileForm({ userId, onProfileUpdated }: DoctorProfileFor
           form.setValue("city", "");
           setCities([]); // Limpa as cidades se o CEP não for encontrado
         } else {
+          form.setValue("street", data.logradouro); // Adicionado para preencher a rua
+          form.setValue("neighborhood", data.bairro); // Adicionado para preencher o bairro
           form.setValue("state", data.uf);
           form.setValue("city", data.localidade);
           fetchCities(data.uf); // Busca as cidades para o estado encontrado para o Select
@@ -395,7 +397,7 @@ export function DoctorProfileForm({ userId, onProfileUpdated }: DoctorProfileFor
               name="street_number"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Número</FormLabel>
+                  <FormLabel>Número</Label>
                   <FormControl>
                     <Input placeholder="123" {...field} disabled={isFetchingCep} />
                   </FormControl>
@@ -408,7 +410,7 @@ export function DoctorProfileForm({ userId, onProfileUpdated }: DoctorProfileFor
               name="neighborhood"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Bairro</FormLabel>
+                  <FormLabel>Bairro</Label>
                   <FormControl>
                     <Input placeholder="Nome do bairro" {...field} disabled={isFetchingCep} />
                   </FormControl>

@@ -32,7 +32,7 @@ import { toast } from "sonner";
 export const PatientScheduleTab = () => {
   const queryClient = useQueryClient();
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [selectedDate, setSelectedDate] = useState<string | undefined>(format(new Date(), "yyyy-MM-dd")); // Initialize with current date string
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [selectedSlotStartTime, setSelectedSlotStartTime] = useState<string | null>(null);
   const [selectedSlotEndTime, setSelectedSlotEndTime] = useState<string | null>(null);
@@ -67,7 +67,11 @@ export const PatientScheduleTab = () => {
         throw error;
       }
       console.log("PatientScheduleTab: Available dates fetched:", data);
-      return data.map((d: string) => new Date(d)); // Convert string dates to Date objects
+      // Convert string dates (YYYY-MM-DD) from Supabase into local Date objects
+      return data.map((dateString: string) => {
+        const [year, month, day] = dateString.split('-').map(Number);
+        return new Date(year, month - 1, day); // Month is 0-indexed
+      });
     },
     enabled: !!selectedDoctorId,
   });
@@ -225,7 +229,7 @@ export const PatientScheduleTab = () => {
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {selectedDate ? (
-                  format(selectedDate, "PPP", { locale: ptBR })
+                  format(new Date(selectedDate), "PPP", { locale: ptBR })
                 ) : (
                   <span>Selecione uma data</span>
                 )}
@@ -234,37 +238,56 @@ export const PatientScheduleTab = () => {
             <PopoverContent className="w-auto p-0">
               <Calendar
                 mode="single"
-                selected={selectedDate}
+                selected={selectedDate ? new Date(selectedDate) : undefined}
                 onSelect={(date) => {
-                  console.log("Patient Calendar: Date selected:", date);
-                  setSelectedDate(date);
-                  setSelectedSlotId(null); // Reset slot when date changes
-                  setSelectedSlotStartTime(null);
-                  setSelectedSlotEndTime(null);
+                  if (date) {
+                    // Constrói a string yyyy-MM-dd a partir dos componentes locais da data
+                    const year = date.getFullYear();
+                    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                    const day = date.getDate().toString().padStart(2, '0');
+                    const iso = `${year}-${month}-${day}`;
+                    console.log("Patient Calendar: Date selected:", iso);
+                    setSelectedDate(iso);
+                    setSelectedSlotId(null); // Reset slot when date changes
+                    setSelectedSlotStartTime(null);
+                    setSelectedSlotEndTime(null);
+                  } else {
+                    setSelectedDate(undefined);
+                    setSelectedSlotId(null);
+                    setSelectedSlotStartTime(null);
+                    setSelectedSlotEndTime(null);
+                  }
                 }}
                 initialFocus
                 locale={ptBR}
                 disabled={(date) => {
                   const today = new Date();
-                  today.setHours(0, 0, 0, 0); // Normaliza para o início do dia
+                  today.setHours(0, 0, 0, 0); // Local start of today
 
-                  // Desabilita datas no passado
+                  // Disable past dates
                   if (date < today) {
-                    console.log(`Patient Calendar: Date ${format(date, 'yyyy-MM-dd')} is in the past, disabling.`);
                     return true;
                   }
 
-                  // Se um profissional foi selecionado e temos datas disponíveis,
-                  // desabilita as datas que não estão na lista de datas disponíveis.
+                  // If a doctor is selected and we have available dates, disable dates not in the list
                   if (selectedDoctorId && availableDates) {
-                    const dateString = format(date, 'yyyy-MM-dd');
-                    const isDateAvailable = availableDates.some(d => format(d, 'yyyy-MM-dd') === dateString);
-                    console.log(`Patient Calendar: Date ${dateString} is available: ${isDateAvailable}`);
+                    // Get the YYYY-MM-DD string for the date being checked by the calendar
+                    const year = date.getFullYear();
+                    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                    const day = date.getDate().toString().padStart(2, '0');
+                    const dateToCheckString = `${year}-${month}-${day}`;
+
+                    // Check if this date string exists in the availableDates (which are Date objects)
+                    const isDateAvailable = availableDates.some(d => {
+                      const availableYear = d.getFullYear();
+                      const availableMonth = (d.getMonth() + 1).toString().padStart(2, '0');
+                      const availableDay = d.getDate().toString().padStart(2, '0');
+                      const availableDateString = `${availableYear}-${availableMonth}-${availableDay}`;
+                      return availableDateString === dateToCheckString;
+                    });
                     return !isDateAvailable;
                   }
 
-                  // Se nenhum profissional foi selecionado, ou as datas disponíveis estão carregando,
-                  // apenas desabilita datas passadas.
                   return false;
                 }}
                 modifiers={{

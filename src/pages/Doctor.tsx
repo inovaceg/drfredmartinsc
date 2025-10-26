@@ -144,7 +144,7 @@ const Doctor = () => {
       .select("*")
       .eq("doctor_id", user.id)
       .gte("start_time", start.toISOString())
-      .lte("end_time", end.toISOString()) // Changed from start_time to end_time as per diff
+      .lte("end_time", end.toISOString())
       .order("start_time", { ascending: true });
 
     if (error) {
@@ -720,11 +720,19 @@ const Doctor = () => {
                     mode="single"
                     selected={selectedDate ? new Date(selectedDate) : undefined}
                     onSelect={(date) => {
-                      // Converte para UTC e guarda apenas a data (sem horário)
-                      const iso = date ? format(date, "yyyy-MM-dd") : undefined;
-                      console.log("Doctor Calendar: Date selected (string):", iso);
-                      setSelectedDate(iso);
-                      setSelectedSlotIds([]); // Clear selected slots when date changes
+                      if (date) {
+                        // Constrói a string yyyy-MM-dd a partir dos componentes locais da data
+                        const year = date.getFullYear();
+                        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                        const day = date.getDate().toString().padStart(2, '0');
+                        const iso = `${year}-${month}-${day}`;
+                        console.log("Doctor Calendar: Date selected (string):", iso);
+                        setSelectedDate(iso);
+                        setSelectedSlotIds([]); // Clear selected slots when date changes
+                      } else {
+                        setSelectedDate(undefined);
+                        setSelectedSlotIds([]);
+                      }
                     }}
                     locale={ptBR}
                     className="rounded-md border"
