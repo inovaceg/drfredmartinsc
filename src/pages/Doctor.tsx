@@ -1127,8 +1127,9 @@ const Doctor = () => {
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => { /* Logic to delete patient */ }}>
+                                  <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={handleDeletePatient} disabled={isDeleting}>
+                                    {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                                     Excluir Paciente
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
