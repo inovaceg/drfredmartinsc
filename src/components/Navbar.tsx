@@ -53,8 +53,8 @@ const Navbar = () => {
       }
     };
 
-    const handleAuthStateChange = async (_event: string, session: any) => { // Use 'any' for session to match Supabase type
-      console.log("Navbar: Estado de autenticação alterado. Evento:", _event, "Sessão:", session);
+    const handleAuthStateChange = async (event: string, session: any) => { // Use 'any' for session to match Supabase type
+      console.log("Navbar: Auth state change event:", event, "Sessão:", session); // ADDED LOG
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) {
@@ -64,7 +64,7 @@ const Navbar = () => {
         console.log("Navbar: Usuário deslogado.");
         setUserRole(null);
         // Redireciona para a página de autenticação se o usuário for deslogado
-        if (_event === 'SIGNED_OUT') {
+        if (event === 'SIGNED_OUT') {
           navigate("/auth");
         }
       }
@@ -99,9 +99,16 @@ const Navbar = () => {
 
     const checkSupabaseConnection = async () => {
       try {
-        // A lightweight query to check if Supabase is reachable
-        const { error } = await supabase.from('profiles').select('id').limit(1);
-        const currentStatus = !error; // If no error, it's connected
+        // Attempt a lightweight query to check database connectivity
+        const { error: dbError } = await supabase.from('profiles').select('id').limit(1);
+        const isDbConnected = !dbError;
+
+        // Attempt to get session to check auth connectivity
+        const { data: { session }, error: authError } = await supabase.auth.getSession();
+        const isAuthConnected = !authError && !!session; // Check if session exists and no error
+
+        const currentStatus = isDbConnected && isAuthConnected; // Both must be connected
+
         setIsSupabaseConnected(currentStatus);
 
         if (currentStatus !== lastSupabaseStatus) {
@@ -120,8 +127,9 @@ const Navbar = () => {
           }
           setLastSupabaseStatus(currentStatus);
         }
+        console.log(`Supabase Status Check: DB Connected: ${isDbConnected}, Auth Connected: ${isAuthConnected}, Overall: ${currentStatus}`);
       } catch (e) {
-        // This catch block handles network errors before Supabase can respond
+        console.error("Error during Supabase connection check:", e);
         const currentStatus = false;
         setIsSupabaseConnected(currentStatus);
         if (currentStatus !== lastSupabaseStatus) {
