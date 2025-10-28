@@ -271,6 +271,7 @@ const Doctor = () => {
     }
   }, [toast, setPatients]);
 
+  // Define handleAuthStateChange using useCallback
   const handleAuthStateChange = useCallback(async (event: string, session: Session | null) => {
     console.log("Doctor.tsx: Auth state change event:", event, "Sessão:", session);
     const currentUser = session?.user ?? null;
@@ -290,51 +291,27 @@ const Doctor = () => {
       const todayEnd = endOfDay(new Date());
       const scheduleSlotsResult = await fetchSlotsData(currentUser.id, todayStart, todayEnd);
       setSlots(scheduleSlotsResult.slots);
-      setIsLoadingScheduleSlots(false); // Use renamed loading state
+      setIsLoadingScheduleSlots(false);
 
       fetchAppointments();
       fetchPatients(currentUser.id);
-      // fetchOverview(currentUser.id, selectedTimeframe, customStartDate, customEndDate); // Fetch overview on login
     } else {
       console.log("Doctor.tsx: Nenhum usuário logado, redirecionando para /auth.");
       navigate("/auth");
     }
-  }, [navigate, fetchDoctorProfile, fetchAppointments, fetchPatients, handleAuthStateChange, selectedTimeframe, customStartDate, customEndDate]);
+  }, [navigate, fetchDoctorProfile, fetchAppointments, fetchPatients, setSlots, setIsLoadingScheduleSlots, selectedDate, toast]); // Corrected dependencies
 
+  // Main useEffect for auth state listener
   useEffect(() => {
-    // Initial session check
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log("Doctor.tsx: Verificação inicial da sessão. Sessão:", session);
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      setLoading(false);
-      if (currentUser) {
-        console.log("Doctor.tsx: Usuário logado inicialmente, buscando perfil e dados.");
-        await fetchDoctorProfile(currentUser.id);
-        
-        // For 'Gerenciar Agenda' tab, fetch slots for today initially
-        const todayStart = startOfDay(new Date());
-        const todayEnd = endOfDay(new Date());
-        const scheduleSlotsResult = await fetchSlotsData(currentUser.id, todayStart, todayEnd);
-        setSlots(scheduleSlotsResult.slots);
-        setIsLoadingScheduleSlots(false); // Use renamed loading state
-
-        fetchAppointments();
-        fetchPatients(currentUser.id);
-        // fetchOverview(currentUser.id, selectedTimeframe, customStartDate, customEndDate); // Fetch overview on initial load
-      } else {
-        console.log("Doctor.tsx: Nenhum usuário logado inicialmente, redirecionando para /auth.");
-        navigate("/auth");
-      }
-    });
-
+    console.log("Doctor.tsx: Setting up auth state change listener.");
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
     return () => {
-      console.log("Doctor.tsx: Desinscrevendo do listener de auth state change.");
+      console.log("Doctor.tsx: Unsubscribing from listener of auth state change.");
       subscription.unsubscribe();
     };
-  }, [navigate, fetchDoctorProfile, fetchAppointments, fetchPatients, handleAuthStateChange, selectedTimeframe, customStartDate, customEndDate]);
+  }, [handleAuthStateChange]); // Only handleAuthStateChange as dependency here, as it's stable
+
 
   // Update existing useEffect for 'schedule' tab to use the single selectedDate
   useEffect(() => {
