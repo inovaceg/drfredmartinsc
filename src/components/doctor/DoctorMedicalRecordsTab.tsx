@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { formatDateToDisplay } from "@/lib/utils"; // Import formatDateToDisplay
 
 type PatientProfile = Database['public']['Tables']['profiles']['Row'];
 type Session = Database['public']['Tables']['sessions']['Row'];
@@ -358,14 +359,11 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
     console.log("Doctor.tsx: Attempting to delete patient:", patientToDelete.id);
     try {
       // Delete the patient's profile
-      const { data: deleteData, error: profileError } = await Promise.race([
-        supabase
-          .from('profiles')
-          .delete()
-          .eq('id', patientToDelete.id)
-          .select(), // Adicionado .select() para obter o count de linhas afetadas
-        timeoutPromise,
-      ]) as { data: PatientProfile[] | null; error: any };
+      const { data: deleteData, error: profileError } = await (supabase as any)
+        .from('profiles')
+        .delete()
+        .eq('id', patientToDelete.id)
+        .select(); // Adicionado .select() para obter o count de linhas afetadas
 
       if (profileError) {
         console.error("Supabase delete profile error:", profileError);
@@ -515,7 +513,7 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
                       <p><span className="font-semibold">Nome:</span> {selectedPatientProfile.full_name}</p>
                       <p><span className="font-semibold">Email:</span> {selectedPatientProfile.email}</p>
                       <p><span className="font-semibold">WhatsApp:</span> {selectedPatientProfile.whatsapp || '-'}</p>
-                      <p><span className="font-semibold">Data Nasc.:</span> {selectedPatientProfile.birth_date ? format(new Date(selectedPatientProfile.birth_date), 'dd/MM/yyyy') : '-'}</p>
+                      <p><span className="font-semibold">Data Nasc.:</span> {selectedPatientProfile.birth_date ? formatDateToDisplay(selectedPatientProfile.birth_date) : '-'}</p>
                       <p><span className="font-semibold">Endereço:</span> {[selectedPatientProfile.street, selectedPatientProfile.street_number, selectedPatientProfile.neighborhood, selectedPatientProfile.city, selectedPatientProfile.state, selectedPatientProfile.zip_code].filter(Boolean).join(', ') || '-'}</p>
                       
                       <h4 className="font-semibold mt-4 border-t pt-3">Histórico Terapêutico</h4>
