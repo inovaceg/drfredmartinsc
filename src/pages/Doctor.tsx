@@ -299,7 +299,7 @@ const Doctor = () => {
       console.log("Doctor.tsx: Nenhum usuário logado, redirecionando para /auth.");
       navigate("/auth");
     }
-  }, [navigate, fetchDoctorProfile, fetchAppointments, fetchPatients, selectedTimeframe, customStartDate, customEndDate]);
+  }, [navigate, fetchDoctorProfile, fetchAppointments, fetchPatients, handleAuthStateChange, selectedTimeframe, customStartDate, customEndDate]);
 
   useEffect(() => {
     // Initial session check
@@ -375,29 +375,17 @@ const Doctor = () => {
     const date = createLocalDateFromISOString(selectedDate); 
     
     let currentSlotTime = new Date(date);
-    currentSlotTime.setHours(8, 15, 0, 0);
+    currentSlotTime.setHours(8, 15, 0, 0); // Começa às 8:15
     
     const endOfDayLimit = new Date(date);
-    endOfDayLimit.setHours(20, 0, 0, 0);
-
-    const breakStart = new Date(date);
-    breakStart.setHours(15, 45, 0, 0);
-    const breakEnd = new Date(date);
-    breakEnd.setHours(16, 15, 0, 0);
+    endOfDayLimit.setHours(20, 0, 0, 0); // Termina às 20:00
 
     console.log("Doctor.tsx: Attempting to create slots for selectedDate (YYYY-MM-DD):", selectedDate); // NEW LOG
     console.log("Doctor.tsx: Doctor ID:", user.id);
 
     while (currentSlotTime.getTime() < endOfDayLimit.getTime()) {
       const startTime = new Date(currentSlotTime);
-      const endTime = new Date(currentSlotTime.getTime() + 45 * 60 * 1000);
-
-      const overlapsBreak = (startTime.getTime() < breakEnd.getTime() && endTime.getTime() > breakStart.getTime());
-
-      if (overlapsBreak) {
-        currentSlotTime = new Date(breakEnd);
-        continue;
-      }
+      const endTime = new Date(currentSlotTime.getTime() + 45 * 60 * 1000); // Sessões de 45 minutos
 
       if (endTime.getTime() > endOfDayLimit.getTime()) {
         break;
@@ -410,7 +398,7 @@ const Doctor = () => {
         is_available: true,
       });
       
-      currentSlotTime = endTime;
+      currentSlotTime = endTime; // Próxima sessão começa imediatamente após a anterior
     }
 
     console.log("Doctor.tsx: Slots to insert:", newSlots);
