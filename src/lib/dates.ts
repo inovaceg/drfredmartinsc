@@ -46,7 +46,8 @@ export function getDatesForTimeframe(
  * @returns Uma string ISO 8601 em UTC.
  */
 export function toUtcIso(d: Date) {
-  // Ajusta a data para UTC subtraindo o offset do fuso horário local
-  // e então converte para ISO string.
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString();
+  // A correção é simplesmente chamar toISOString() no objeto Date.
+  // O objeto Date já contém o instante de tempo correto, e toISOString()
+  // o converte para sua representação UTC.
+  return d.toISOString();
 }
