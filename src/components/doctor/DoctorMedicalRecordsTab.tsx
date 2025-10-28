@@ -96,6 +96,11 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
         throw err; // Re-throw to let react-query handle the error state
       }
     },
+    onSuccess: (data) => { // Add onSuccess callback to automatically select the first patient
+      if (data && data.length > 0 && !selectedPatientId) {
+        setSelectedPatientId(data[0].id); // Automatically select the first patient
+      }
+    }
   });
 
   // Query para buscar a lista de doutores (adicionado para resolver o erro)
@@ -429,7 +434,7 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
         <CardContent>
           <Select onValueChange={setSelectedPatientId} value={selectedPatientId || ""}>
             <SelectTrigger>
-              <SelectValue placeholder="Selecione um paciente" />
+              <SelectValue placeholder={isLoadingPatients ? "Carregando pacientes..." : (patients && patients.length > 0 ? "Selecione um paciente" : "Nenhum paciente encontrado")} />
             </SelectTrigger>
             <SelectContent>
               {patients?.map((patient) => (
