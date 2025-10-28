@@ -357,6 +357,12 @@ const Doctor = () => {
     const endOfDayLimit = new Date(date);
     endOfDayLimit.setHours(20, 0, 0, 0); // Termina às 20:00
 
+    // Definir o início e fim da pausa
+    const breakStartTime = new Date(date);
+    breakStartTime.setHours(14, 15, 0, 0); // 14:15
+    const breakEndTime = new Date(date);
+    breakEndTime.setHours(15, 45, 0, 0); // 15:45
+
     console.log("Doctor.tsx: Attempting to create slots for selectedDate (YYYY-MM-DD):", selectedDate); // NEW LOG
     console.log("Doctor.tsx: Doctor ID:", user.id);
 
@@ -368,12 +374,20 @@ const Doctor = () => {
         break;
       }
       
-      newSlots.push({
-        doctor_id: user.id,
-        start_time: toUtcIso(startTime), // Convert to UTC ISO
-        end_time: toUtcIso(endTime),     // Convert to UTC ISO
-        is_available: true,
-      });
+      // Verificar se o slot se sobrepõe ao horário de pausa
+      const isOverlappingBreak = 
+        (startTime.getTime() < breakEndTime.getTime() && endTime.getTime() > breakStartTime.getTime());
+
+      if (!isOverlappingBreak) {
+        newSlots.push({
+          doctor_id: user.id,
+          start_time: toUtcIso(startTime), // Convert to UTC ISO
+          end_time: toUtcIso(endTime),     // Convert to UTC ISO
+          is_available: true,
+        });
+      } else {
+        console.log(`Doctor.tsx: Skipping slot ${format(startTime, "HH:mm")} - ${format(endTime, "HH:mm")} due to overlap with break.`);
+      }
       
       currentSlotTime = endTime; // Próxima sessão começa imediatamente após a anterior
     }
