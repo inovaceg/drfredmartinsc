@@ -34,9 +34,10 @@ type MedicalRecord = Database['public']['Tables']['medical_records']['Row'];
 
 interface DoctorMedicalRecordsTabProps {
   currentUserId: string;
+  setSelectedPatient: React.Dispatch<React.SetStateAction<PatientProfile | null>>; // Adicionando setSelectedPatient como prop
 }
 
-export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = ({ currentUserId }) => {
+export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = ({ currentUserId, setSelectedPatient }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
@@ -400,7 +401,7 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
       queryClient.invalidateQueries({ queryKey: ["patientSessions", patientToDelete.id] });
       queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", patientToDelete.id] });
 
-      setSelectedPatient(null); // Clear selected patient
+      setSelectedPatient(null); // Clear selected patient using the prop
       setPatientToDelete(null);
       setIsDeleteDialogOpen(false);
     } catch (error: any) {

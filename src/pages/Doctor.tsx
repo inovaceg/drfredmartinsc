@@ -1330,7 +1330,7 @@ const Doctor = () => {
           </TabsContent>
 
           <TabsContent value="medical-records">
-            {user && <DoctorMedicalRecordsTab currentUserId={user.id} />}
+            {user && <DoctorMedicalRecordsTab currentUserId={user.id} setSelectedPatient={setSelectedPatient} />}
           </TabsContent>
 
           <TabsContent value="online-consultation">
@@ -1338,7 +1338,7 @@ const Doctor = () => {
           </TabsContent>
 
           <TabsContent value="newsletter-subscriptions">
-            <DoctorNewsletterSubscriptionsTab />
+            <DoctorFormResponsesTab />
           </TabsContent>
         </Tabs>
       </main>
