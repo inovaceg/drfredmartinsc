@@ -25,6 +25,7 @@ const Navbar = () => {
   const { toast } = useToast();
   const [isOnline, setIsOnline] = useState(navigator.onLine); // Track browser online status
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(true); // Track Supabase connection
+  const [lastSupabaseStatus, setLastSupabaseStatus] = useState(true); // To track changes for toast notifications
 
   useEffect(() => {
     const fetchUserRole = async (userId: string) => {
@@ -62,6 +63,10 @@ const Navbar = () => {
       } else {
         console.log("Navbar: Usuário deslogado.");
         setUserRole(null);
+        // Redireciona para a página de autenticação se o usuário for deslogado
+        if (_event === 'SIGNED_OUT') {
+          navigate("/auth");
+        }
       }
     };
 
@@ -82,9 +87,9 @@ const Navbar = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
     return () => subscription.unsubscribe();
-  }, [toast]); // Added toast to dependency array
+  }, [toast, navigate]); // Added navigate to dependency array
 
-  // New: Effect to monitor network status
+  // New: Effect to monitor network status and Supabase connection
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -92,20 +97,41 @@ const Navbar = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Periodically check Supabase connection
     const checkSupabaseConnection = async () => {
       try {
         // A lightweight query to check if Supabase is reachable
         const { error } = await supabase.from('profiles').select('id').limit(1);
-        if (error) {
-          console.warn("Supabase connection check failed:", error.message);
-          setIsSupabaseConnected(false);
-        } else {
-          setIsSupabaseConnected(true);
+        const currentStatus = !error; // If no error, it's connected
+        setIsSupabaseConnected(currentStatus);
+
+        if (currentStatus !== lastSupabaseStatus) {
+          if (currentStatus) {
+            toast({
+              title: "Conexão Supabase Restabelecida",
+              description: "A conexão com o servidor foi restaurada.",
+              variant: "default",
+            });
+          } else {
+            toast({
+              title: "Conexão Supabase Perdida",
+              description: "Não foi possível conectar ao servidor. Algumas funcionalidades podem estar limitadas.",
+              variant: "destructive",
+            });
+          }
+          setLastSupabaseStatus(currentStatus);
         }
       } catch (e) {
-        console.warn("Supabase connection check failed (network error):", e);
-        setIsSupabaseConnected(false);
+        // This catch block handles network errors before Supabase can respond
+        const currentStatus = false;
+        setIsSupabaseConnected(currentStatus);
+        if (currentStatus !== lastSupabaseStatus) {
+          toast({
+            title: "Conexão Supabase Perdida",
+            description: "Não foi possível conectar ao servidor. Algumas funcionalidades podem estar limitadas.",
+            variant: "destructive",
+          });
+          setLastSupabaseStatus(currentStatus);
+        }
       }
     };
 
@@ -118,7 +144,7 @@ const Navbar = () => {
       window.removeEventListener('offline', handleOffline);
       clearInterval(interval);
     };
-  }, []); // Run once on mount
+  }, [toast, lastSupabaseStatus]); // Added lastSupabaseStatus to dependency array
 
   const scrollToSection = (sectionId: string) => {
     try {
