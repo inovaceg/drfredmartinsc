@@ -5,7 +5,7 @@ import { Session, User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar as CalendarIcon, Clock, FileText, LogOut, Users, Video, BarChart3, Loader2, Edit, User as UserIcon, MessageSquare, Trash2, CheckCircle, XCircle, MessageSquareText, MapPin, Phone, Mail, BookOpen, Menu, ClipboardList } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, FileText, LogOut, Users, Video, BarChart3, Loader2, Edit, User as UserIcon, MessageSquare, Trash2, CheckCircle, XCircle, MessageSquareText, MapPin, Phone, Mail, BookOpen, Menu, ClipboardList, AlertCircle } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/Navbar";
@@ -177,6 +177,8 @@ const Doctor = () => {
   const {
     data: overviewSlotsData,
     isLoading: isLoadingOverviewSlots,
+    isError: isOverviewSlotsError, // Captura o estado de erro
+    error: overviewSlotsError,     // Captura o objeto de erro
     refetch: refetchOverviewSlots,
   } = useQuery({
     queryKey: ["overviewSlots", user?.id, selectedTimeframe, customStartDate?.toISOString(), customEndDate?.toISOString()],
@@ -185,6 +187,15 @@ const Doctor = () => {
     staleTime: 1000 * 60 * 5, // 5 minutes stale time
     refetchOnWindowFocus: true, // Refetch when window regains focus
     refetchInterval: 30000, // Refetch every 30 seconds to keep data fresh
+    retry: false, // Temporariamente desabilita retries para ver erros imediatamente
+    onError: (err) => {
+        console.error("Doctor.tsx: Error fetching overview slots:", err);
+        toast({
+            title: "Erro ao carregar agenda",
+            description: "Não foi possível carregar os horários da agenda. Tente novamente mais tarde.",
+            variant: "destructive",
+        });
+    }
   });
 
   const fetchAppointments = useCallback(async () => {
@@ -1031,6 +1042,10 @@ const Doctor = () => {
                   {isLoadingOverviewSlots ? (
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" /> Carregando horários...
+                    </div>
+                  ) : isOverviewSlotsError ? ( // Renderiza mensagem de erro se houver
+                    <div className="flex items-center gap-2 text-destructive">
+                      <AlertCircle className="h-4 w-4" /> Erro ao carregar horários: {overviewSlotsError?.message || "Erro desconhecido."}
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
