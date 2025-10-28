@@ -161,7 +161,7 @@ const Doctor = () => {
       // 2) consultas do período + nome do paciente
       const { data: appts, error: apptsErr } = await supabase
         .from("appointments")
-        .select("id, slot_id, start_time, end_time, patient_id:profiles(full_name)") // CORRIGIDO: Usando patient_id:profiles(full_name)
+        .select("id, slot_id, start_time, end_time, patient_id:profiles(full_name)")
         .eq("doctor_id", doctorId)
         .gte("start_time", startIso)
         .lte("end_time",   endIso)
@@ -184,7 +184,7 @@ const Doctor = () => {
       // montar lista de pacientes para renderizar abaixo do dashboard
       const mappedAppointments = appts.map(a => ({
         id: a.id,
-        patient_name: (a.patient_id as { full_name: string })?.full_name ?? "Paciente Desconhecido", // CORRIGIDO: Acessando diretamente patient_id
+        patient_name: (a.patient_id as { full_name: string })?.full_name ?? "Paciente Desconhecido",
         start_time: a.start_time,
         end_time: a.end_time
       }));
@@ -966,7 +966,7 @@ const Doctor = () => {
                 <div className="border-t pt-4 mt-4">
                   <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                     <CalendarIcon className="h-5 w-5 text-primary" />
-                    Agenda para {getDisplayDateRange()}
+                    Consultas para {getDisplayDateRange()}
                   </h3>
                   <div className="mb-4">
                     <ToggleGroup type="single" value={selectedTimeframe} onValueChange={(value: Timeframe) => {
@@ -1051,37 +1051,18 @@ const Doctor = () => {
                     </div>
                   )}
 
-                  {isLoadingOverview ? ( // Use new loading state
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Carregando horários...
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-5 w-5 text-primary" />
-                        <p>Total de Horários: <span className="font-bold">{overview.total || 0}</span></p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                        <p>Disponíveis: <span className="font-bold">{overview.available || 0}</span></p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <XCircle className="h-5 w-5 text-red-500" />
-                        <p>Ocupados: <span className="font-bold">{overview.occupied || 0}</span></p>
-                      </div>
-                    </div>
-                  )}
+                  {/* Removido o bloco de exibição de Total, Disponíveis e Ocupados */}
                 </div>
 
                 {/* Lista de pacientes que agendaram no período */}
                 <div className="mt-6 border-t pt-4">
-                  <h4 className="font-semibold mb-3">Consultas no período</h4>
+                  <h4 className="font-semibold mb-3">Pacientes com Consultas Agendadas</h4>
                   {isLoadingOverview ? ( // Use new loading state
                     <div className="flex justify-center p-8">
                       <Loader2 className="h-8 w-8 animate-spin" />
                     </div>
                   ) : overviewAppointments.length === 0 ? (
-                    <p className="text-muted-foreground">Nenhuma consulta agendada.</p>
+                    <p className="text-muted-foreground">Nenhuma consulta agendada para este período.</p>
                   ) : (
                     <ul className="space-y-3">
                       {overviewAppointments.map(a => (
