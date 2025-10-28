@@ -103,9 +103,17 @@ const Navbar = () => {
       let dbErrorMessage = '';
       let authErrorMessage = '';
 
+      const connectionTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Tempo limite de conexão excedido.")), 15000) // 15 seconds timeout
+      );
+
       try {
         // Attempt a lightweight query to check database connectivity
-        const { error: dbError } = await supabase.from('profiles').select('id').limit(1);
+        const { error: dbError } = await Promise.race([
+          supabase.from('profiles').select('id').limit(1),
+          connectionTimeout,
+        ]) as { data: any | null; error: any }; // Cast to handle Promise.race return type
+
         isDbConnected = !dbError;
         if (dbError) {
           dbErrorMessage = dbError.message;
@@ -115,7 +123,11 @@ const Navbar = () => {
         }
 
         // Attempt to get session to check auth connectivity
-        const { data: { session }, error: authError } = await supabase.auth.getSession();
+        const { data: { session }, error: authError } = await Promise.race([
+          supabase.auth.getSession(),
+          connectionTimeout,
+        ]) as { data: { session: any | null }; error: any }; // Cast to handle Promise.race return type
+
         isAuthConnected = !authError && !!session; // Check if session exists and no error
         if (authError) {
           authErrorMessage = authError.message;
@@ -144,7 +156,7 @@ const Navbar = () => {
           setLastSupabaseStatus(currentStatus);
         }
         console.log(`Supabase Status Check: DB Connected: ${isDbConnected} (${dbErrorMessage}), Auth Connected: ${isAuthConnected} (${authErrorMessage}), Overall: ${currentStatus}`);
-      } catch (e: any) { // Captura qualquer erro inesperado aqui
+      } catch (e: any) { // Captura qualquer erro inesperado aqui, incluindo timeouts
         console.error("Navbar: Unexpected error during Supabase connection check:", e);
         const currentStatus = false;
         setIsSupabaseConnected(currentStatus);
