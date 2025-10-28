@@ -161,7 +161,7 @@ const Doctor = () => {
       // 2) consultas do período + nome do paciente
       const { data: appts, error: apptsErr } = await supabase
         .from("appointments")
-        .select("id, slot_id, start_time, end_time, patient_profile:patient_id(full_name)")
+        .select("id, slot_id, start_time, end_time, patient_id(full_name)") // CORRIGIDO: Removido 'patient_profile:'
         .eq("doctor_id", doctorId)
         .gte("start_time", startIso)
         .lte("end_time",   endIso)
@@ -184,7 +184,7 @@ const Doctor = () => {
       // montar lista de pacientes para renderizar abaixo do dashboard
       const mappedAppointments = appts.map(a => ({
         id: a.id,
-        patient_name: (a.patient_profile as { full_name: string })?.full_name ?? "Paciente Desconhecido",
+        patient_name: (a.patient_id as { full_name: string })?.full_name ?? "Paciente Desconhecido", // CORRIGIDO: Acessando diretamente patient_id
         start_time: a.start_time,
         end_time: a.end_time
       }));
@@ -331,6 +331,7 @@ const Doctor = () => {
 
     return () => {
       console.log("Doctor.tsx: Desinscrevendo do listener de auth state change.");
+      supabase.removeChannel(subscription.channel); // Use subscription.channel to remove
       subscription.unsubscribe();
     };
   }, [navigate, fetchDoctorProfile, fetchAppointments, fetchPatients, handleAuthStateChange, fetchOverview, selectedTimeframe, customStartDate, customEndDate]);
