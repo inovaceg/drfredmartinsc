@@ -73,7 +73,7 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
 
   // Timeout promise helper
   const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("Tempo limite excedido ao carregar dados.")), 10000) // 10 segundos
+    setTimeout(() => reject(new Error("Tempo limite excedido ao carregar dados.")), 30000) // 30 segundos
   );
 
   // Fetch all patients for the doctor
@@ -359,11 +359,14 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
     console.log("Doctor.tsx: Attempting to delete patient:", patientToDelete.id);
     try {
       // Delete the patient's profile
-      const { data: deleteData, error: profileError } = await (supabase as any)
-        .from('profiles')
-        .delete()
-        .eq('id', patientToDelete.id)
-        .select(); // Adicionado .select() para obter o count de linhas afetadas
+      const { data: deleteData, error: profileError } = await Promise.race([
+        (supabase as any)
+          .from('profiles')
+          .delete()
+          .eq('id', patientToDelete.id)
+          .select(), // Adicionado .select() para obter o count de linhas afetadas
+        timeoutPromise,
+      ]) as { data: any[] | null; error: any };
 
       if (profileError) {
         console.error("Supabase delete profile error:", profileError);
