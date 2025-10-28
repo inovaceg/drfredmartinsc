@@ -76,7 +76,7 @@ const Doctor = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("profile"); // Alterado o valor padrão para 'profile'
   const [doctorProfile, setDoctorProfile] = useState<any>(null);
   
   // States for 'Gerenciar Agenda' tab
@@ -293,12 +293,12 @@ const Doctor = () => {
 
       fetchAppointments();
       fetchPatients(session.user.id);
-      fetchOverview(session.user.id, selectedTimeframe, customStartDate, customEndDate); // Fetch overview on login
+      // fetchOverview(session.user.id, selectedTimeframe, customStartDate, customEndDate); // Fetch overview on login
     } else {
       console.log("Doctor.tsx: Nenhum usuário logado, redirecionando para /auth.");
       navigate("/auth");
     }
-  }, [navigate, fetchDoctorProfile, fetchAppointments, fetchPatients, fetchOverview, selectedTimeframe, customStartDate, customEndDate]);
+  }, [navigate, fetchDoctorProfile, fetchAppointments, fetchPatients, selectedTimeframe, customStartDate, customEndDate]);
 
   useEffect(() => {
     // Initial session check
@@ -320,7 +320,7 @@ const Doctor = () => {
 
         fetchAppointments();
         fetchPatients(currentUser.id);
-        fetchOverview(currentUser.id, selectedTimeframe, customStartDate, customEndDate); // Fetch overview on initial load
+        // fetchOverview(currentUser.id, selectedTimeframe, customStartDate, customEndDate); // Fetch overview on initial load
       } else {
         console.log("Doctor.tsx: Nenhum usuário logado inicialmente, redirecionando para /auth.");
         navigate("/auth");
@@ -333,7 +333,7 @@ const Doctor = () => {
       console.log("Doctor.tsx: Desinscrevendo do listener de auth state change.");
       subscription.unsubscribe();
     };
-  }, [navigate, fetchDoctorProfile, fetchAppointments, fetchPatients, handleAuthStateChange, fetchOverview, selectedTimeframe, customStartDate, customEndDate]);
+  }, [navigate, fetchDoctorProfile, fetchAppointments, fetchPatients, handleAuthStateChange, selectedTimeframe, customStartDate, customEndDate]);
 
   // Update existing useEffect for 'schedule' tab to use the single selectedDate
   useEffect(() => {
@@ -439,7 +439,7 @@ const Doctor = () => {
       const scheduleSlots = await fetchSlotsData(user.id, startOfDayLocal, endOfDayLocal);
       setSlots(scheduleSlots.slots);
       queryClient.invalidateQueries({ queryKey: ["availableDates", user.id] });
-      fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
+      // fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
     setIsLoadingScheduleSlots(false); // Use renamed loading state
   };
@@ -468,7 +468,7 @@ const Doctor = () => {
       const scheduleSlots = await fetchSlotsData(user!.id, startOfDayLocal, endOfDayLocal);
       setSlots(scheduleSlots.slots);
       queryClient.invalidateQueries({ queryKey: ["availableDates", user!.id] });
-      fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
+      // fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
   };
 
@@ -516,7 +516,7 @@ const Doctor = () => {
       const scheduleSlots = await fetchSlotsData(user!.id, startOfDayLocal, endOfDayLocal);
       setSlots(scheduleSlots.slots);
       queryClient.invalidateQueries({ queryKey: ["availableDates", user!.id] });
-      fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
+      // fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
     setIsLoadingScheduleSlots(false); // Use renamed loading state
   };
@@ -552,7 +552,7 @@ const Doctor = () => {
       const scheduleSlots = await fetchSlotsData(user!.id, startOfDayLocal, endOfDayLocal);
       setSlots(scheduleSlots.slots);
       queryClient.invalidateQueries({ queryKey: ["availableDates", user!.id] });
-      fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
+      // fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
     setIsLoadingScheduleSlots(false); // Use renamed loading state
   };
@@ -579,7 +579,7 @@ const Doctor = () => {
         description: "Status atualizado!",
       });
       fetchAppointments();
-      fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
+      // fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
   };
 
@@ -654,7 +654,7 @@ const Doctor = () => {
       });
 
       // 4) refresh confiável
-      await fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate);
+      // await fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate);
       
       setSelectedPatientForBookingId(null);
       setSelectedSlotForBooking(null);
@@ -817,10 +817,7 @@ const Doctor = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
           {/* Desktop TabsList */}
           <TabsList className="hidden md:flex w-full bg-muted p-1 rounded-lg border space-x-1">
-            <TabsTrigger value="overview" className="px-3 py-2 text-sm whitespace-nowrap">
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Visão Geral
-            </TabsTrigger>
+            {/* Removido a aba "Visão Geral" */}
             <TabsTrigger value="profile" className="px-3 py-2 text-sm whitespace-nowrap">
               <UserIcon className="h-4 w-4 mr-2" />
               Meu Perfil
@@ -857,7 +854,7 @@ const Doctor = () => {
               <DrawerTrigger asChild>
                 <Button variant="outline" className="w-full justify-start">
                   <Menu className="h-4 w-4 mr-2" />
-                  {activeTab === "overview" && "Visão Geral"}
+                  {/* Atualizado para refletir a aba ativa sem "Visão Geral" */}
                   {activeTab === "profile" && "Meu Perfil"}
                   {activeTab === "schedule" && "Gerenciar Agenda"}
                   {activeTab === "appointments" && "Agenda Consultas"}
@@ -874,14 +871,7 @@ const Doctor = () => {
                 </DrawerHeader>
                 <div className="p-4 flex-1 overflow-y-auto">
                   <div className="flex flex-col space-y-1">
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
-                      onClick={() => handleTabChange("overview")}
-                    >
-                      <BarChart3 className="h-4 w-4 mr-2" />
-                      Visão Geral
-                    </Button>
+                    {/* Removido o botão "Visão Geral" */}
                     <Button
                       variant="ghost"
                       className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
@@ -950,138 +940,7 @@ const Doctor = () => {
           </div>
 
           {/* Conteúdo das abas */}
-          <TabsContent value="overview">
-            <Card>
-              <CardHeader>
-                <CardTitle>Visão Geral do Portal</CardTitle>
-                <CardDescription>Um resumo rápido das suas atividades e informações importantes.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-muted-foreground">
-                  Esta seção pode ser expandida para incluir gráficos, estatísticas de 
-                  agendamentos, novas mensagens e outras informações relevantes para o seu dia a dia.
-                </p>
-
-                {/* Resumo de Horários */}
-                <div className="border-t pt-4 mt-4">
-                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                    <CalendarIcon className="h-5 w-5 text-primary" />
-                    Consultas para {getDisplayDateRange()}
-                  </h3>
-                  <div className="mb-4">
-                    <ToggleGroup type="single" value={selectedTimeframe} onValueChange={(value: Timeframe) => {
-                      setSelectedTimeframe(value);
-                      if (value !== 'custom') {
-                        setCustomStartDate(undefined);
-                        setCustomEndDate(undefined);
-                      }
-                    }} className="bg-muted rounded-md p-1">
-                      <ToggleGroupItem value="today" aria-label="Hoje">
-                        Hoje
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="7_days" aria-label="Próximos 7 dias">
-                        7 Dias
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="14_days" aria-label="Próximos 14 dias">
-                        14 Dias
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="custom" aria-label="Período Personalizado">
-                        Personalizado
-                      </ToggleGroupItem>
-                    </ToggleGroup>
-                  </div>
-
-                  {selectedTimeframe === 'custom' && (
-                    <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !customStartDate && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {customStartDate ? (
-                              format(customStartDate, "PPP", { locale: ptBR })
-                            ) : (
-                              <span>Data de Início</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={customStartDate}
-                            onSelect={setCustomStartDate}
-                            initialFocus
-                            locale={ptBR}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !customEndDate && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {customEndDate ? (
-                              format(customEndDate, "PPP", { locale: ptBR })
-                            ) : (
-                              <span>Data Final</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={customEndDate}
-                            onSelect={setCustomEndDate}
-                            initialFocus
-                            locale={ptBR}
-                            disabled={(date) => customStartDate ? date < customStartDate : false}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  )}
-
-                  {/* Removido o bloco de exibição de Total, Disponíveis e Ocupados */}
-                </div>
-
-                {/* Lista de pacientes que agendaram no período */}
-                <div className="mt-6 border-t pt-4">
-                  <h4 className="font-semibold mb-3">Pacientes com Consultas Agendadas</h4>
-                  {isLoadingOverview ? ( // Use new loading state
-                    <div className="flex justify-center p-8">
-                      <Loader2 className="h-8 w-8 animate-spin" />
-                    </div>
-                  ) : overviewAppointments.length === 0 ? (
-                    <p className="text-muted-foreground">Nenhuma consulta agendada para este período.</p>
-                  ) : (
-                    <ul className="space-y-3">
-                      {overviewAppointments.map(a => (
-                        <li key={a.id} className="flex items-center justify-between rounded-lg border p-3">
-                          <div>
-                            <p className="font-medium">{a.patient_name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {format(new Date(a.start_time), "dd/MM/yyyy HH:mm", { locale: ptBR })} – {format(new Date(a.end_time), "HH:mm", { locale: ptBR })}
-                            </p>
-                          </div>
-                          <span className="text-xs px-2 py-1 rounded bg-muted">Agendado</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* Removido o TabsContent para "overview" */}
 
           <TabsContent value="profile">
             <Card>
