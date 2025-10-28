@@ -289,22 +289,23 @@ const Doctor = () => {
     // Initial session check
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       console.log("Doctor.tsx: Verificação inicial da sessão. Sessão:", session);
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
       setLoading(false);
-      if (session?.user) {
+      if (currentUser) {
         console.log("Doctor.tsx: Usuário logado inicialmente, buscando perfil e dados.");
-        await fetchDoctorProfile(session.user.id);
+        await fetchDoctorProfile(currentUser.id);
         
         // For 'Gerenciar Agenda' tab, fetch slots for today initially
         const todayStart = startOfDay(new Date());
         const todayEnd = endOfDay(new Date());
-        const scheduleSlotsResult = await fetchSlotsData(session.user.id, todayStart, todayEnd);
+        const scheduleSlotsResult = await fetchSlotsData(currentUser.id, todayStart, todayEnd);
         setSlots(scheduleSlotsResult.slots);
         setIsLoadingSlots(false);
 
         fetchAppointments();
-        fetchPatients(session.user.id);
-        fetchOverview(session.user.id, selectedTimeframe, customStartDate, customEndDate); // Fetch overview on initial load
+        fetchPatients(currentUser.id);
+        fetchOverview(currentUser.id, selectedTimeframe, customStartDate, customEndDate); // Fetch overview on initial load
       } else {
         console.log("Doctor.tsx: Nenhum usuário logado inicialmente, redirecionando para /auth.");
         navigate("/auth");

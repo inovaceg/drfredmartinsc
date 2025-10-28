@@ -35,6 +35,7 @@ export const fetchSlotsData = async (doctorId: string, startDate: Date, endDate:
       throw error;
     }
 
+    // Retorna todos os slots, a lógica de contagem será feita na Visão Geral
     const availableSlots = data.filter(slot => slot.is_available);
     const occupiedSlots = data.filter(slot => !slot.is_available);
 
