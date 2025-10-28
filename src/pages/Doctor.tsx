@@ -184,6 +184,7 @@ const Doctor = () => {
     enabled: !!user?.id,
     staleTime: 1000 * 60 * 5, // 5 minutes stale time
     refetchOnWindowFocus: true, // Refetch when window regains focus
+    refetchInterval: 30000, // Refetch every 30 seconds to keep data fresh
   });
 
   const fetchAppointments = useCallback(async () => {
@@ -585,6 +586,10 @@ const Doctor = () => {
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     setIsDrawerOpen(false);
+    // Invalidate overviewSlots query when navigating to the overview tab
+    if (value === 'overview' && user?.id) {
+      queryClient.invalidateQueries({ queryKey: ["overviewSlots", user.id] });
+    }
   };
 
   const handleBookSlotForPatient = async () => {
@@ -930,8 +935,8 @@ const Doctor = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-muted-foreground">
-                  Esta seção pode ser expandida para incluir gráficos, estatísticas de agendamentos, 
-                  novas mensagens e outras informações relevantes para o seu dia a dia.
+                  Esta seção pode ser expandida para incluir gráficos, estatísticas de 
+                  agendamentos, novas mensagens e outras informações relevantes para o seu dia a dia.
                 </p>
 
                 {/* Resumo de Horários */}
