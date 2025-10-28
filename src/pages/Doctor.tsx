@@ -307,12 +307,25 @@ const Doctor = () => {
     } else if (session?.user) {
       console.log("Doctor.tsx: Usuário logado, buscando perfil e dados.");
       await fetchDoctorProfile(session.user.id);
-      // These calls will be handled by the useEffect below, which depends on user and selectedDate
+      
+      // --- CORRECTED CALLS FOR INITIAL LOAD ---
+      // For 'Gerenciar Agenda' tab, fetch slots for today initially
+      const todayStart = startOfDay(new Date());
+      const todayEnd = endOfDay(new Date());
+      fetchSlots(session.user.id, todayStart, todayEnd, false);
+      
+      // For 'Visão Geral' tab, fetch slots based on initial timeframe
+      const { startDate: overviewStartDate, endDate: overviewEndDate } = getDatesForTimeframe(selectedTimeframe, customStartDate, customEndDate);
+      fetchSlots(session.user.id, overviewStartDate, overviewEndDate, true);
+      // --- END CORRECTED CALLS ---
+
+      fetchAppointments();
+      fetchPatients(session.user.id);
     } else {
       console.log("Doctor.tsx: Nenhum usuário logado, redirecionando para /auth.");
       navigate("/auth");
     }
-  }, [navigate, fetchDoctorProfile, setDoctorProfile, setUser, setLoading]);
+  }, [navigate, fetchDoctorProfile, fetchSlots, fetchAppointments, fetchPatients, handleAuthStateChange, setUser, setLoading, selectedTimeframe, customStartDate, customEndDate, getDatesForTimeframe]);
 
   useEffect(() => {
     // Initial session check
@@ -396,7 +409,7 @@ const Doctor = () => {
     const breakEnd = new Date(date);
     breakEnd.setHours(16, 15, 0, 0);
 
-    console.log("Doctor.tsx: Attempting to create slots for:", selectedDate);
+    console.log("Doctor.tsx: Attempting to create slots for selectedDate (YYYY-MM-DD):", selectedDate); // NEW LOG
     console.log("Doctor.tsx: Doctor ID:", user.id);
 
     while (currentSlotTime.getTime() < endOfDayLimit.getTime()) {
@@ -445,7 +458,7 @@ const Doctor = () => {
         title: "Sucesso",
         description: "Horários criados com sucesso!",
       });
-      const dateObj = createLocalDateFromISOString(selectedDate);
+      const dateObj = createLocalDateFromISOString(selectedDate!);
       const startOfDayLocal = startOfDay(dateObj);
       const endOfDayLocal = endOfDay(dateObj);
       fetchSlots(user.id, startOfDayLocal, endOfDayLocal, false); // Pass user.id and selectedDate explicitly
