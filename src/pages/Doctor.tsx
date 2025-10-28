@@ -325,7 +325,7 @@ const Doctor = () => {
       console.log("Doctor.tsx: Nenhum usuário logado, redirecionando para /auth.");
       navigate("/auth");
     }
-  }, [navigate, fetchDoctorProfile, fetchSlots, fetchAppointments, fetchPatients, handleAuthStateChange, setUser, setLoading, selectedTimeframe, customStartDate, customEndDate, getDatesForTimeframe]);
+  }, [navigate, fetchDoctorProfile, fetchSlots, fetchAppointments, fetchPatients, selectedTimeframe, customStartDate, customEndDate, getDatesForTimeframe]); // Removed handleAuthStateChange, setUser, setLoading
 
   useEffect(() => {
     // Initial session check
@@ -362,7 +362,7 @@ const Doctor = () => {
       console.log("Doctor.tsx: Desinscrevendo do listener de auth state change.");
       subscription.unsubscribe();
     };
-  }, [navigate, fetchDoctorProfile, fetchSlots, fetchAppointments, fetchPatients, handleAuthStateChange, setUser, setLoading, selectedTimeframe, customStartDate, customEndDate, getDatesForTimeframe]);
+  }, [navigate, fetchDoctorProfile, fetchSlots, fetchAppointments, fetchPatients, handleAuthStateChange, selectedTimeframe, customStartDate, customEndDate, getDatesForTimeframe]);
 
   // New useEffect for overview data
   useEffect(() => {
