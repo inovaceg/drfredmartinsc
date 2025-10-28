@@ -82,7 +82,7 @@ const Doctor = () => {
   // States for 'Gerenciar Agenda' tab
   const [selectedDate, setSelectedDate] = useState<string | undefined>(format(new Date(), "yyyy-MM-dd"));
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
-  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [isLoadingScheduleSlots, setIsLoadingScheduleSlots] = useState(false); // Renamed from isLoadingSlots
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
 
   // States for 'Visão Geral' tab timeframe
@@ -95,6 +95,7 @@ const Doctor = () => {
   const [overviewAppointments, setOverviewAppointments] = useState<Array<{
     id:string; patient_name:string; start_time:string; end_time:string;
   }>>([]);
+  const [isLoadingOverview, setIsLoadingOverview] = useState(false); // New loading state for overview
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<PatientProfile[]>([]);
@@ -135,11 +136,13 @@ const Doctor = () => {
 
   // New: fetchOverview function as per user's request
   const fetchOverview = useCallback(async (doctorId: string, tf: Timeframe, customS?:Date, customE?:Date) => {
-    setIsLoadingSlots(true); // Reusing isLoadingSlots for overview
+    setIsLoadingOverview(true); // Use new loading state
+    console.log("fetchOverview: Starting for doctorId:", doctorId, "timeframe:", tf, "customStart:", customS, "customEnd:", customE);
     try {
       const { start, end } = getDatesForTimeframe(tf, customS, customE);
       const startIso = toUtcIso(start);
       const endIso   = toUtcIso(end);
+      console.log("fetchOverview: Calculated date range (UTC ISO):", startIso, "to", endIso);
 
       // 1) slots do período
       const { data: slots, error: slotsErr } = await supabase
@@ -149,7 +152,11 @@ const Doctor = () => {
         .gte("start_time", startIso)
         .lte("end_time",   endIso)
         .order("start_time", { ascending: true });
-      if (slotsErr) throw slotsErr;
+      if (slotsErr) {
+        console.error("fetchOverview: Error fetching slots:", slotsErr);
+        throw slotsErr;
+      }
+      console.log("fetchOverview: Fetched slots:", slots);
 
       // 2) consultas do período + nome do paciente
       const { data: appts, error: apptsErr } = await supabase
@@ -159,7 +166,11 @@ const Doctor = () => {
         .gte("start_time", startIso)
         .lte("end_time",   endIso)
         .order("start_time", { ascending: true });
-      if (apptsErr) throw apptsErr;
+      if (apptsErr) {
+        console.error("fetchOverview: Error fetching appointments:", apptsErr);
+        throw apptsErr;
+      }
+      console.log("fetchOverview: Fetched appointments:", appts);
 
       // índice de slot_id -> existe consulta
       const occupiedSet = new Set(appts.map(a => a.slot_id));
@@ -167,17 +178,20 @@ const Doctor = () => {
       const occupied = slots.filter(s => occupiedSet.has(s.id) || !s.is_available).length;
       const available = Math.max(0, total - occupied);
 
+      console.log("fetchOverview: Calculated overview - Total:", total, "Available:", available, "Occupied:", occupied);
       setOverview({ total, available, occupied });
 
       // montar lista de pacientes para renderizar abaixo do dashboard
-      setOverviewAppointments(appts.map(a => ({
+      const mappedAppointments = appts.map(a => ({
         id: a.id,
         patient_name: (a.patient_profile as { full_name: string })?.full_name ?? "Paciente Desconhecido",
         start_time: a.start_time,
         end_time: a.end_time
-      })));
+      }));
+      console.log("fetchOverview: Mapped overview appointments:", mappedAppointments);
+      setOverviewAppointments(mappedAppointments);
     } catch (e: any) {
-      console.error("Overview fetch failed", e);
+      console.error("fetchOverview: Overview fetch failed in catch block", e);
       toast({
         title: "Erro ao carregar visão geral",
         description: e.message || "Não foi possível carregar os dados da visão geral.",
@@ -186,7 +200,8 @@ const Doctor = () => {
       setOverview({ total: 0, available: 0, occupied: 0 });
       setOverviewAppointments([]);
     } finally {
-      setIsLoadingSlots(false); // Reusing isLoadingSlots for overview
+      setIsLoadingOverview(false); // Use new loading state
+      console.log("fetchOverview: Finished.");
     }
   }, [toast]);
 
@@ -274,7 +289,7 @@ const Doctor = () => {
       const todayEnd = endOfDay(new Date());
       const scheduleSlotsResult = await fetchSlotsData(session.user.id, todayStart, todayEnd);
       setSlots(scheduleSlotsResult.slots);
-      setIsLoadingSlots(false);
+      setIsLoadingScheduleSlots(false); // Use renamed loading state
 
       fetchAppointments();
       fetchPatients(session.user.id);
@@ -301,7 +316,7 @@ const Doctor = () => {
         const todayEnd = endOfDay(new Date());
         const scheduleSlotsResult = await fetchSlotsData(currentUser.id, todayStart, todayEnd);
         setSlots(scheduleSlotsResult.slots);
-        setIsLoadingSlots(false);
+        setIsLoadingScheduleSlots(false); // Use renamed loading state
 
         fetchAppointments();
         fetchPatients(currentUser.id);
@@ -324,7 +339,7 @@ const Doctor = () => {
   useEffect(() => {
     const loadScheduleSlots = async () => {
       if (user?.id && activeTab === 'schedule' && selectedDate) {
-        setIsLoadingSlots(true);
+        setIsLoadingScheduleSlots(true); // Use renamed loading state
         const dateObj = createLocalDateFromISOString(selectedDate);
         const startOfDayLocal = startOfDay(dateObj);
         const endOfDayLocal = endOfDay(dateObj);
@@ -340,7 +355,7 @@ const Doctor = () => {
           });
           setSlots([]);
         } finally {
-          setIsLoadingSlots(false);
+          setIsLoadingScheduleSlots(false); // Use renamed loading state
         }
       }
     };
@@ -354,7 +369,7 @@ const Doctor = () => {
       return;
     }
     
-    setIsLoadingSlots(true);
+    setIsLoadingScheduleSlots(true); // Use renamed loading state
     const newSlots: Database['public']['Tables']['availability_slots']['Insert'][] = [];
     const date = createLocalDateFromISOString(selectedDate); 
     
@@ -426,7 +441,7 @@ const Doctor = () => {
       queryClient.invalidateQueries({ queryKey: ["availableDates", user.id] });
       fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
-    setIsLoadingSlots(false);
+    setIsLoadingScheduleSlots(false); // Use renamed loading state
   };
 
   const toggleSlotAvailability = async (slotId: string, currentStatus: boolean) => {
@@ -473,7 +488,7 @@ const Doctor = () => {
 
   const handleBulkDeleteSlots = async () => {
     if (selectedSlotIds.length === 0) return;
-    setIsLoadingSlots(true);
+    setIsLoadingScheduleSlots(true); // Use renamed loading state
     console.log("Doctor.tsx: Attempting to delete slots:", selectedSlotIds);
     const { data, error } = await supabase
       .from('availability_slots')
@@ -503,12 +518,12 @@ const Doctor = () => {
       queryClient.invalidateQueries({ queryKey: ["availableDates", user!.id] });
       fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
-    setIsLoadingSlots(false);
+    setIsLoadingScheduleSlots(false); // Use renamed loading state
   };
 
   const handleBulkToggleAvailability = async (makeAvailable: boolean) => {
     if (selectedSlotIds.length === 0) return;
-    setIsLoadingSlots(true);
+    setIsLoadingScheduleSlots(true); // Use renamed loading state
     console.log(`Doctor.tsx: Attempting to set availability for slots ${selectedSlotIds} to ${makeAvailable}`);
     const { data, error } = await supabase
       .from('availability_slots')
@@ -539,7 +554,7 @@ const Doctor = () => {
       queryClient.invalidateQueries({ queryKey: ["availableDates", user!.id] });
       fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
-    setIsLoadingSlots(false);
+    setIsLoadingScheduleSlots(false); // Use renamed loading state
   };
 
   const updateAppointmentStatus = async (id: string, status: string) => {
@@ -1036,7 +1051,7 @@ const Doctor = () => {
                     </div>
                   )}
 
-                  {isLoadingSlots ? ( // Using isLoadingSlots for overview
+                  {isLoadingOverview ? ( // Use new loading state
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" /> Carregando horários...
                     </div>
@@ -1061,7 +1076,7 @@ const Doctor = () => {
                 {/* Lista de pacientes que agendaram no período */}
                 <div className="mt-6 border-t pt-4">
                   <h4 className="font-semibold mb-3">Consultas no período</h4>
-                  {isLoadingSlots ? (
+                  {isLoadingOverview ? ( // Use new loading state
                     <div className="flex justify-center p-8">
                       <Loader2 className="h-8 w-8 animate-spin" />
                     </div>
@@ -1137,11 +1152,11 @@ const Doctor = () => {
                     Horários para {selectedDate ? format(createLocalDateFromISOString(selectedDate), "dd 'de' MMMM", { locale: ptBR }) : ""}
                   </CardTitle>
                   <CardDescription>
-                    {isLoadingSlots ? "Carregando horários..." : (slots.length > 0 ? "Selecione horários para ações em massa" : "Nenhum horário cadastrado")}
+                    {isLoadingScheduleSlots ? "Carregando horários..." : (slots.length > 0 ? "Selecione horários para ações em massa" : "Nenhum horário cadastrado")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {isLoadingSlots ? (
+                  {isLoadingScheduleSlots ? (
                     <div className="flex justify-center p-8">
                       <Loader2 className="h-8 w-8 animate-spin" />
                     </div>
@@ -1163,7 +1178,7 @@ const Doctor = () => {
                                 variant="destructive"
                                 size="sm"
                                 onClick={handleBulkDeleteSlots}
-                                disabled={isLoadingSlots}
+                                disabled={isLoadingScheduleSlots}
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Excluir ({selectedSlotIds.length})
@@ -1172,7 +1187,7 @@ const Doctor = () => {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleBulkToggleAvailability(true)}
-                                disabled={isLoadingSlots}
+                                disabled={isLoadingScheduleSlots}
                               >
                                 <CheckCircle className="h-4 w-4 mr-2" />
                                 Disponibilizar ({selectedSlotIds.length})
@@ -1181,7 +1196,7 @@ const Doctor = () => {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleBulkToggleAvailability(false)}
-                                disabled={isLoadingSlots}
+                                disabled={isLoadingScheduleSlots}
                               >
                                 <XCircle className="h-4 w-4 mr-2" />
                                 Indisponibilizar ({selectedSlotIds.length})
@@ -1223,7 +1238,7 @@ const Doctor = () => {
                           <p className="text-muted-foreground mb-4">
                             Nenhum horário cadastrado para esta data
                           </p>
-                          <Button onClick={createDefaultSlots} disabled={isLoadingSlots}>
+                          <Button onClick={createDefaultSlots} disabled={isLoadingScheduleSlots}>
                             Gerar Horários Padrão (8:15-20:00, 45min)
                           </Button>
                         </div>
@@ -1268,10 +1283,10 @@ const Doctor = () => {
                       setSelectedSlotForBooking({ id: slotId, start_time: startTime, end_time: endTime });
                     }}
                     value={selectedSlotForBooking ? `${selectedSlotForBooking.id}|${selectedSlotForBooking.start_time}|${selectedSlotForBooking.end_time}` : ""}
-                    disabled={!selectedDate || isLoadingSlots || !slots || slots.filter(s => s.is_available).length === 0}
+                    disabled={!selectedDate || isLoadingScheduleSlots || !slots || slots.filter(s => s.is_available).length === 0}
                   >
                     <SelectTrigger id="slot-for-booking-select">
-                      <SelectValue placeholder={isLoadingSlots ? "Carregando horários..." : (slots.filter(s => s.is_available).length === 0 ? "Nenhum horário disponível" : "Selecione um horário")} />
+                      <SelectValue placeholder={isLoadingScheduleSlots ? "Carregando horários..." : (slots.filter(s => s.is_available).length === 0 ? "Nenhum horário disponível" : "Selecione um horário")} />
                     </SelectTrigger>
                     <SelectContent>
                       {slots.filter(s => s.is_available).map((slot) => (
