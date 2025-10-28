@@ -99,7 +99,7 @@ const Navbar = () => {
 
     const checkSupabaseConnection = async () => {
       let isDbConnected = false;
-      let isAuthConnected = false;
+      let isAuthServiceReachable = false; // Renamed for clarity
       let dbErrorMessage = '';
       let authErrorMessage = '';
 
@@ -122,21 +122,21 @@ const Navbar = () => {
           console.log("Navbar: DB connection check successful.");
         }
 
-        // Attempt to get session to check auth connectivity
-        const { data: { session }, error: authError } = await Promise.race([
+        // Attempt to get session to check auth service connectivity
+        const { error: authError } = await Promise.race([
           supabase.auth.getSession(),
           connectionTimeout,
         ]) as { data: { session: any | null }; error: any }; // Cast to handle Promise.race return type
 
-        isAuthConnected = !authError && !!session; // Check if session exists and no error
+        isAuthServiceReachable = !authError; // Auth service is reachable if no error occurred
         if (authError) {
           authErrorMessage = authError.message;
           console.error("Navbar: Auth connection check failed:", authError.message);
         } else {
-          console.log("Navbar: Auth connection check successful.");
+          console.log("Navbar: Auth service reachable.");
         }
 
-        const currentStatus = isDbConnected && isAuthConnected; // Both must be connected
+        const currentStatus = isDbConnected && isAuthServiceReachable; // Both must be connected
         setIsSupabaseConnected(currentStatus);
 
         if (currentStatus !== lastSupabaseStatus) {
@@ -155,7 +155,7 @@ const Navbar = () => {
           }
           setLastSupabaseStatus(currentStatus);
         }
-        console.log(`Supabase Status Check: DB Connected: ${isDbConnected} (${dbErrorMessage}), Auth Connected: ${isAuthConnected} (${authErrorMessage}), Overall: ${currentStatus}`);
+        console.log(`Supabase Status Check: DB Connected: ${isDbConnected} (${dbErrorMessage}), Auth Service Reachable: ${isAuthServiceReachable} (${authErrorMessage}), Overall: ${currentStatus}`);
       } catch (e: any) { // Captura qualquer erro inesperado aqui, incluindo timeouts
         console.error("Navbar: Unexpected error during Supabase connection check:", e);
         const currentStatus = false;
