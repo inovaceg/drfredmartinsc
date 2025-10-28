@@ -39,30 +39,47 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const fetchMessages = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("patient_doctor_messages")
-      .select(`
-        *,
-        sender:sender_id(full_name)
-      `)
-      .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${currentUserId})`)
-      .order("created_at", { ascending: true });
+    try {
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Tempo limite excedido ao carregar mensagens.")), 10000) // 10 segundos
+      );
 
-    if (error) {
-      console.error("Error fetching messages:", error);
+      const { data, error } = await Promise.race([
+        supabase
+          .from("patient_doctor_messages")
+          .select(`
+            *,
+            sender:sender_id(full_name)
+          `)
+          .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${currentUserId})`)
+          .order("created_at", { ascending: true }),
+        timeoutPromise,
+      ]) as { data: any[] | null; error: any };
+
+      if (error) {
+        console.error("Error fetching messages:", error);
+        toast({
+          title: "Erro",
+          description: error.message || "Não foi possível carregar as mensagens.",
+          variant: "destructive",
+        });
+      } else {
+        const formattedMessages = data.map(msg => ({
+          ...msg,
+          sender_name: (msg.sender as { full_name: string })?.full_name || "Usuário Desconhecido"
+        }));
+        setMessages(formattedMessages as Message[]);
+      }
+    } catch (err: any) {
+      console.error("Error in fetchMessages (catch block):", err);
       toast({
-        title: "Erro",
-        description: "Não foi possível carregar as mensagens.",
+        title: "Erro de Conexão",
+        description: err.message || "Não foi possível carregar as mensagens devido a um erro de rede ou tempo limite.",
         variant: "destructive",
       });
-    } else {
-      const formattedMessages = data.map(msg => ({
-        ...msg,
-        sender_name: (msg.sender as { full_name: string })?.full_name || "Usuário Desconhecido"
-      }));
-      setMessages(formattedMessages as Message[]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -109,33 +126,50 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     if (newMessage.trim() === "") return;
 
     setSending(true);
-    const { data, error } = await supabase
-      .from("patient_doctor_messages")
-      .insert({
-        sender_id: currentUserId,
-        receiver_id: otherUserId,
-        appointment_id: appointmentId,
-        content: newMessage.trim(),
-        is_read: false,
-      })
-      .select(`
-        *,
-        sender:sender_id(full_name)
-      `);
+    try {
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Tempo limite excedido ao enviar mensagem.")), 10000) // 10 segundos
+      );
 
-    if (error) {
-      console.error("Error sending message:", error);
+      const { data, error } = await Promise.race([
+        supabase
+          .from("patient_doctor_messages")
+          .insert({
+            sender_id: currentUserId,
+            receiver_id: otherUserId,
+            appointment_id: appointmentId,
+            content: newMessage.trim(),
+            is_read: false,
+          })
+          .select(`
+            *,
+            sender:sender_id(full_name)
+          `),
+        timeoutPromise,
+      ]) as { data: any[] | null; error: any };
+
+      if (error) {
+        console.error("Error sending message:", error);
+        toast({
+          title: "Erro",
+          description: error.message || "Não foi possível enviar a mensagem.",
+          variant: "destructive",
+        });
+      } else if (data) {
+        const sentMessage = data[0];
+        setMessages((prev) => [...prev, { ...sentMessage, sender_name: (sentMessage.sender as { full_name: string })?.full_name || "Você" }]);
+        setNewMessage("");
+      }
+    } catch (err: any) {
+      console.error("Error in handleSendMessage (catch block):", err);
       toast({
-        title: "Erro",
-        description: "Não foi possível enviar a mensagem.",
+        title: "Erro de Conexão",
+        description: err.message || "Não foi possível enviar a mensagem devido a um erro de rede ou tempo limite.",
         variant: "destructive",
       });
-    } else if (data) {
-      const sentMessage = data[0];
-      setMessages((prev) => [...prev, { ...sentMessage, sender_name: (sentMessage.sender as { full_name: string })?.full_name || "Você" }]);
-      setNewMessage("");
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   };
 
   if (loading) {

@@ -28,20 +28,36 @@ export const OnlineConsultationTab: React.FC<OnlineConsultationTabProps> = ({ cu
   useEffect(() => {
     const fetchDoctors = async () => {
       setLoadingDoctors(true);
-      const { data, error } = await (supabase as any)
-        .rpc('get_doctors_public');
+      try {
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Tempo limite excedido ao carregar médicos.")), 10000) // 10 segundos
+        );
 
-      if (error) {
-        console.error("Error fetching doctors:", error);
+        const { data, error } = await Promise.race([
+          supabase.rpc('get_doctors_public'),
+          timeoutPromise,
+        ]) as { data: DoctorProfile[] | null; error: any }; // Cast the result of Promise.race
+
+        if (error) {
+          console.error("Error fetching doctors:", error);
+          toast({
+            title: "Erro",
+            description: error.message || "Não foi possível carregar a lista de médicos.",
+            variant: "destructive",
+          });
+        } else {
+          setDoctors(data || []);
+        }
+      } catch (err: any) {
+        console.error("Error in fetchDoctors (catch block):", err);
         toast({
-          title: "Erro",
-          description: "Não foi possível carregar a lista de médicos.",
+          title: "Erro de Conexão",
+          description: err.message || "Não foi possível carregar a lista de médicos devido a um erro de rede ou tempo limite.",
           variant: "destructive",
         });
-      } else {
-        setDoctors(data || []);
+      } finally {
+        setLoadingDoctors(false);
       }
-      setLoadingDoctors(false);
     };
 
     fetchDoctors();

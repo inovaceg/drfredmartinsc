@@ -45,10 +45,15 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
   const getMediaDevices = useCallback(async () => {
     try {
       console.log("VideoCallWindow: Requesting media devices (video and audio).");
-      localStream.current = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
+      const timeoutPromise = new Promise<MediaStream>((_, reject) =>
+        setTimeout(() => reject(new Error("Tempo limite excedido ao acessar câmera/microfone.")), 10000) // 10 segundos
+      );
+      
+      localStream.current = await Promise.race([
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true }),
+        timeoutPromise,
+      ]);
+      
       console.log("VideoCallWindow: Media devices obtained successfully.");
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = localStream.current;
@@ -99,11 +104,18 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
     peerConnection.current.onicecandidate = async (event) => {
       if (event.candidate && sessionId) {
         console.log("VideoCallWindow: ICE candidate generated:", event.candidate);
-        const { data: currentSession, error: fetchError } = await supabase
-          .from("video_sessions")
-          .select("ice_candidates")
-          .eq("id", sessionId)
-          .single();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Tempo limite excedido ao buscar/atualizar ICE candidates.")), 10000)
+        );
+
+        const { data: currentSession, error: fetchError } = await Promise.race([
+          supabase
+            .from("video_sessions")
+            .select("ice_candidates")
+            .eq("id", sessionId)
+            .single(),
+          timeoutPromise,
+        ]) as { data: any | null; error: any };
 
         if (fetchError) {
           console.error("VideoCallWindow: Error fetching current ICE candidates:", fetchError);
@@ -113,12 +125,15 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
         const existingCandidates = (currentSession?.ice_candidates || []) as any[];
         const updatedCandidates = [...existingCandidates, event.candidate.toJSON()];
 
-        await supabase
-          .from("video_sessions")
-          .update({
-            ice_candidates: updatedCandidates,
-          })
-          .eq("id", sessionId);
+        await Promise.race([
+          supabase
+            .from("video_sessions")
+            .update({
+              ice_candidates: updatedCandidates,
+            })
+            .eq("id", sessionId),
+          timeoutPromise,
+        ]);
       }
     };
   }, [sessionId, getMediaDevices]);
@@ -133,10 +148,17 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
     const offer = await peerConnection.current.createOffer();
     await peerConnection.current.setLocalDescription(offer);
 
-    await supabase
-      .from("video_sessions")
-      .update({ offer: peerConnection.current.localDescription })
-      .eq("id", sessionId);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Tempo limite excedido ao salvar oferta.")), 10000)
+    );
+
+    await Promise.race([
+      supabase
+        .from("video_sessions")
+        .update({ offer: peerConnection.current.localDescription })
+        .eq("id", sessionId),
+      timeoutPromise,
+    ]);
     console.log("VideoCallWindow: Offer created and saved to Supabase.");
   }, [sessionId]);
 
@@ -161,10 +183,17 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
       await peerConnection.current?.setLocalDescription(answer);
       console.log("VideoCallWindow: Local answer created and set.");
 
-      await supabase
-        .from("video_sessions")
-        .update({ answer: peerConnection.current?.localDescription, status: "active", started_at: new Date().toISOString() })
-        .eq("id", incomingSessionId);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Tempo limite excedido ao salvar resposta da chamada.")), 10000)
+      );
+
+      await Promise.race([
+        supabase
+          .from("video_sessions")
+          .update({ answer: peerConnection.current?.localDescription, status: "active", started_at: new Date().toISOString() })
+          .eq("id", incomingSessionId),
+        timeoutPromise,
+      ]);
       console.log("VideoCallWindow: Answer saved to Supabase, session status updated to active.");
 
       toast({ title: "Chamada aceita", description: "Conectando..." });
@@ -191,16 +220,23 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
         throw new Error("Failed to get media devices to initiate call.");
       }
 
-      const { error } = await supabase.from("video_sessions").insert({
-        id: newSessionId,
-        user_id: currentUserId, // Initiator
-        patient_id: isInitiator ? currentUserId : otherUserId,
-        doctor_id: isInitiator ? otherUserId : currentUserId,
-        room_id: newSessionId,
-        status: "ringing",
-        appointment_id: appointmentId,
-        ice_candidates: [], // Initialize with empty array
-      });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Tempo limite excedido ao criar sessão de vídeo.")), 10000)
+      );
+
+      const { error } = await Promise.race([
+        supabase.from("video_sessions").insert({
+          id: newSessionId,
+          user_id: currentUserId, // Initiator
+          patient_id: isInitiator ? currentUserId : otherUserId,
+          doctor_id: isInitiator ? otherUserId : currentUserId,
+          room_id: newSessionId,
+          status: "ringing",
+          appointment_id: appointmentId,
+          ice_candidates: [], // Initialize with empty array
+        }),
+        timeoutPromise,
+      ]) as { data: any; error: any };
 
       if (error) {
         console.error("VideoCallWindow: Error creating video session in Supabase:", error);
@@ -236,10 +272,16 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
     }
 
     if (sessionId) {
-      await supabase
-        .from("video_sessions")
-        .update({ status: "ended", ended_at: new Date().toISOString() })
-        .eq("id", sessionId);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Tempo limite excedido ao finalizar sessão.")), 10000)
+      );
+      await Promise.race([
+        supabase
+          .from("video_sessions")
+          .update({ status: "ended", ended_at: new Date().toISOString() })
+          .eq("id", sessionId),
+        timeoutPromise,
+      ]);
       console.log("VideoCallWindow: Session status updated to ended in Supabase.");
     }
     setCallStatus("ended");
@@ -272,11 +314,17 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
     } else if (initialSessionId && !isInitiator && !incomingOffer) {
       console.warn("VideoCallWindow useEffect: Doctor joining without incomingOffer. Fetching session data as fallback.");
       const fetchSession = async () => {
-        const { data, error } = await supabase
-          .from("video_sessions")
-          .select("*")
-          .eq("id", initialSessionId)
-          .single();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Tempo limite excedido ao buscar sessão de chamada.")), 10000)
+        );
+        const { data, error } = await Promise.race([
+          supabase
+            .from("video_sessions")
+            .select("*")
+            .eq("id", initialSessionId)
+            .single(),
+          timeoutPromise,
+        ]) as { data: any | null; error: any };
 
         if (error) {
           console.error("VideoCallWindow useEffect: Fallback fetch failed with Supabase error:", error);
