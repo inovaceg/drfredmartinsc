@@ -46,8 +46,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Database } from "@/integrations/supabase/types";
-import { useQueryClient } from "@tanstack/react-query";
-import { DeletePatientAlertDialog } from "@/components/doctor/DeletePatientAlertDialog"; // Importar o novo componente
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { DeletePatientAlertDialog } from "@/components/doctor/DeletePatientAlertDialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -67,6 +67,37 @@ type Appointment = Database['public']['Tables']['appointments']['Row'] & {
 };
 type PatientProfile = Database['public']['Tables']['profiles']['Row'];
 
+// Função auxiliar para buscar dados dos slots, reutilizável pelo useQuery
+const fetchSlotsData = async (doctorId: string, startDate: Date, endDate: Date) => {
+  if (!doctorId) {
+    return { available: 0, occupied: 0, total: 0, slots: [] };
+  }
+
+  const _start_time_gte = startDate.toISOString();
+  const _end_time_lte = endDate.toISOString();
+
+  try {
+    const { data, error } = await supabase.rpc("get_truly_available_slots", {
+      _doctor_id: doctorId,
+      _start_time_gte: _start_time_gte,
+      _end_time_lte: _end_time_lte,
+    });
+
+    if (error) {
+      console.error("Error fetching slots from RPC:", error);
+      throw error; // Deixa o react-query lidar com o erro
+    }
+
+    const available = data.filter(slot => slot.is_available).length;
+    const occupied = data.filter(slot => !slot.is_available).length;
+    const total = data.length;
+    return { available, occupied, total, slots: data };
+  } catch (err) {
+    console.error("Unexpected error during RPC call 'get_truly_available_slots':", err);
+    throw err; // Deixa o react-query lidar com o erro
+  }
+};
+
 const Doctor = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
@@ -84,10 +115,6 @@ const Doctor = () => {
   const [selectedTimeframe, setSelectedTimeframe] = useState<'today' | '7_days' | '14_days' | 'custom'>('today');
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
-  const [overviewAvailableSlots, setOverviewAvailableSlots] = useState(0);
-  const [overviewOccupiedSlots, setOverviewOccupiedSlots] = useState(0);
-  const [overviewTotalSlots, setOverviewTotalSlots] = useState(0);
-  const [isLoadingOverviewSlots, setIsLoadingOverviewSlots] = useState(false);
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<PatientProfile[]>([]);
@@ -144,98 +171,20 @@ const Doctor = () => {
     return { startDate, endDate };
   }, []);
 
-  // Modified fetchSlots to accept a date range and update specific states
-  const fetchSlots = useCallback(async (doctorId: string | undefined, startDate: Date, endDate: Date, forOverview: boolean = false) => {
-    if (!doctorId) {
-      console.log("Doctor.tsx: Skipping fetchSlots, doctorId is missing.");
-      if (forOverview) {
-        setOverviewAvailableSlots(0);
-        setOverviewOccupiedSlots(0);
-        setOverviewTotalSlots(0);
-        setIsLoadingOverviewSlots(false);
-      } else {
-        setSlots([]);
-        setIsLoadingSlots(false);
-      }
-      return;
-    }
+  // UseQuery for Overview Slots
+  const { startDate: overviewStartDate, endDate: overviewEndDate } = getDatesForTimeframe(selectedTimeframe, customStartDate, customEndDate);
 
-    if (forOverview) {
-      console.log("Doctor.tsx: fetchSlots (Overview) - Setting loading to true.");
-      setIsLoadingOverviewSlots(true);
-    }
-    else {
-      console.log("Doctor.tsx: fetchSlots (Schedule) - Setting loading to true.");
-      setIsLoadingSlots(true);
-    }
-
-    const _start_time_gte = startDate.toISOString();
-    const _end_time_lte = endDate.toISOString();
-
-    console.log(`Doctor.tsx: fetchSlots - Calling RPC 'get_truly_available_slots' for doctor: ${doctorId}`);
-    console.log(`Doctor.tsx: fetchSlots - Parameters: _start_time_gte=${_start_time_gte}, _end_time_lte=${_end_time_lte}`);
-
-    try {
-      const { data, error } = await supabase.rpc("get_truly_available_slots", {
-        _doctor_id: doctorId,
-        _start_time_gte: _start_time_gte,
-        _end_time_lte: _end_time_lte,
-      });
-
-      if (error) {
-        console.error("Doctor.tsx: Error fetching slots from RPC:", error);
-        console.error("Doctor.tsx: Supabase RPC error details:", error.message, error.details, error.hint, error.code); // Added detailed error log
-        toast({
-          title: "Erro",
-          description: error.message,
-          variant: "destructive",
-        });
-        if (forOverview) {
-          setOverviewAvailableSlots(0);
-          setOverviewOccupiedSlots(0);
-          setOverviewTotalSlots(0);
-        } else {
-          setSlots([]);
-        }
-      } else {
-        console.log("Doctor.tsx: Slots fetched successfully from RPC:", data);
-        if (forOverview) {
-          const available = data.filter(slot => slot.is_available).length;
-          const occupied = data.filter(slot => !slot.is_available).length;
-          setOverviewAvailableSlots(available);
-          setOverviewOccupiedSlots(occupied);
-          setOverviewTotalSlots(data.length);
-          console.log(`Doctor.tsx: Overview stats - Available: ${available}, Occupied: ${occupied}, Total: ${data.length}`);
-        } else {
-          setSlots(data || []);
-          console.log(`Doctor.tsx: Schedule slots updated. Count: ${data?.length || 0}`);
-        }
-      }
-    } catch (err: any) { // Catch any unexpected errors during the RPC call
-      console.error("Doctor.tsx: Unexpected error during RPC call 'get_truly_available_slots':", err);
-      toast({
-        title: "Erro Inesperado",
-        description: `Ocorreu um erro ao buscar horários: ${err.message || 'Erro desconhecido'}`,
-        variant: "destructive",
-      });
-      if (forOverview) {
-        setOverviewAvailableSlots(0);
-        setOverviewOccupiedSlots(0);
-        setOverviewTotalSlots(0);
-      } else {
-        setSlots([]);
-      }
-    } finally {
-      if (forOverview) {
-        console.log("Doctor.tsx: fetchSlots (Overview) - Setting loading to false.");
-        setIsLoadingOverviewSlots(false);
-      }
-      else {
-        console.log("Doctor.tsx: fetchSlots (Schedule) - Setting loading to false.");
-        setIsLoadingSlots(false);
-      }
-    }
-  }, [toast]);
+  const {
+    data: overviewSlotsData,
+    isLoading: isLoadingOverviewSlots,
+    refetch: refetchOverviewSlots,
+  } = useQuery({
+    queryKey: ["overviewSlots", user?.id, selectedTimeframe, customStartDate?.toISOString(), customEndDate?.toISOString()],
+    queryFn: () => fetchSlotsData(user!.id, overviewStartDate, overviewEndDate),
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5, // 5 minutes stale time
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+  });
 
   const fetchAppointments = useCallback(async () => {
     console.log("Doctor.tsx: Fetching appointments for doctor.");
@@ -245,7 +194,7 @@ const Doctor = () => {
     if (error) {
       console.error("Doctor.tsx: Error fetching appointments:", error);
       toast({
-        title: "Erro ao carregar consultas",
+        title: "Erro",
         description: error.message,
         variant: "destructive",
       });
@@ -308,16 +257,17 @@ const Doctor = () => {
       console.log("Doctor.tsx: Usuário logado, buscando perfil e dados.");
       await fetchDoctorProfile(session.user.id);
       
-      // --- CORRECTED CALLS FOR INITIAL LOAD ---
+      // Invalidate overview query to ensure it refetches
+      queryClient.invalidateQueries({ queryKey: ["overviewSlots", session.user.id] });
+      queryClient.invalidateQueries({ queryKey: ["availableDates", session.user.id] });
+      
       // For 'Gerenciar Agenda' tab, fetch slots for today initially
       const todayStart = startOfDay(new Date());
       const todayEnd = endOfDay(new Date());
-      fetchSlots(session.user.id, todayStart, todayEnd, false);
-      
-      // For 'Visão Geral' tab, fetch slots based on initial timeframe
-      const { startDate: overviewStartDate, endDate: overviewEndDate } = getDatesForTimeframe(selectedTimeframe, customStartDate, customEndDate);
-      fetchSlots(session.user.id, overviewStartDate, overviewEndDate, true);
-      // --- END CORRECTED CALLS ---
+      // Directly call fetchSlotsData for the schedule tab's state
+      const scheduleSlots = await fetchSlotsData(session.user.id, todayStart, todayEnd);
+      setSlots(scheduleSlots.slots);
+      setIsLoadingSlots(false);
 
       fetchAppointments();
       fetchPatients(session.user.id);
@@ -325,7 +275,7 @@ const Doctor = () => {
       console.log("Doctor.tsx: Nenhum usuário logado, redirecionando para /auth.");
       navigate("/auth");
     }
-  }, [navigate, fetchDoctorProfile, fetchSlots, fetchAppointments, fetchPatients, selectedTimeframe, customStartDate, customEndDate, getDatesForTimeframe]); // Removed handleAuthStateChange, setUser, setLoading
+  }, [navigate, fetchDoctorProfile, fetchAppointments, fetchPatients, queryClient]);
 
   useEffect(() => {
     // Initial session check
@@ -337,16 +287,17 @@ const Doctor = () => {
         console.log("Doctor.tsx: Usuário logado inicialmente, buscando perfil e dados.");
         await fetchDoctorProfile(session.user.id);
         
-        // --- CORRECTED CALLS FOR INITIAL LOAD ---
+        // Invalidate overview query to ensure it refetches
+        queryClient.invalidateQueries({ queryKey: ["overviewSlots", session.user.id] });
+        queryClient.invalidateQueries({ queryKey: ["availableDates", session.user.id] });
+
         // For 'Gerenciar Agenda' tab, fetch slots for today initially
         const todayStart = startOfDay(new Date());
         const todayEnd = endOfDay(new Date());
-        fetchSlots(session.user.id, todayStart, todayEnd, false);
-        
-        // For 'Visão Geral' tab, fetch slots based on initial timeframe
-        const { startDate: overviewStartDate, endDate: overviewEndDate } = getDatesForTimeframe(selectedTimeframe, customStartDate, customEndDate);
-        fetchSlots(session.user.id, overviewStartDate, overviewEndDate, true);
-        // --- END CORRECTED CALLS ---
+        // Directly call fetchSlotsData for the schedule tab's state
+        const scheduleSlots = await fetchSlotsData(session.user.id, todayStart, todayEnd);
+        setSlots(scheduleSlots.slots);
+        setIsLoadingSlots(false);
 
         fetchAppointments();
         fetchPatients(session.user.id);
@@ -362,30 +313,34 @@ const Doctor = () => {
       console.log("Doctor.tsx: Desinscrevendo do listener de auth state change.");
       subscription.unsubscribe();
     };
-  }, [navigate, fetchDoctorProfile, fetchSlots, fetchAppointments, fetchPatients, handleAuthStateChange, selectedTimeframe, customStartDate, customEndDate, getDatesForTimeframe]);
-
-  // New useEffect for overview data
-  useEffect(() => {
-    console.log("Doctor.tsx: Overview useEffect triggered.");
-    if (user?.id) {
-      console.log("Doctor.tsx: Overview useEffect - User ID present, calculating date range.");
-      const { startDate, endDate } = getDatesForTimeframe(selectedTimeframe, customStartDate, customEndDate);
-      console.log(`Doctor.tsx: Overview useEffect - Calculated range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
-      fetchSlots(user.id, startDate, endDate, true);
-    } else {
-      console.log("Doctor.tsx: Overview useEffect - No user ID, skipping fetchSlots.");
-    }
-  }, [user, selectedTimeframe, customStartDate, customEndDate, fetchSlots, getDatesForTimeframe]);
+  }, [navigate, fetchDoctorProfile, fetchAppointments, fetchPatients, handleAuthStateChange, queryClient]);
 
   // Update existing useEffect for 'schedule' tab to use the single selectedDate
   useEffect(() => {
-    if (user?.id && activeTab === 'schedule' && selectedDate) {
-      const dateObj = createLocalDateFromISOString(selectedDate);
-      const startOfDayLocal = startOfDay(dateObj);
-      const endOfDayLocal = endOfDay(dateObj);
-      fetchSlots(user.id, startOfDayLocal, endOfDayLocal, false);
-    }
-  }, [user, activeTab, selectedDate, fetchSlots]);
+    const loadScheduleSlots = async () => {
+      if (user?.id && activeTab === 'schedule' && selectedDate) {
+        setIsLoadingSlots(true);
+        const dateObj = createLocalDateFromISOString(selectedDate);
+        const startOfDayLocal = startOfDay(dateObj);
+        const endOfDayLocal = endOfDay(dateObj);
+        try {
+          const result = await fetchSlotsData(user.id, startOfDayLocal, endOfDayLocal);
+          setSlots(result.slots);
+        } catch (error) {
+          console.error("Error loading schedule slots:", error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar os horários da agenda.",
+            variant: "destructive",
+          });
+          setSlots([]);
+        } finally {
+          setIsLoadingSlots(false);
+        }
+      }
+    };
+    loadScheduleSlots();
+  }, [user, activeTab, selectedDate, toast]);
 
 
   const createDefaultSlots = async () => {
@@ -461,9 +416,10 @@ const Doctor = () => {
       const dateObj = createLocalDateFromISOString(selectedDate!);
       const startOfDayLocal = startOfDay(dateObj);
       const endOfDayLocal = endOfDay(dateObj);
-      fetchSlots(user.id, startOfDayLocal, endOfDayLocal, false); // Pass user.id and selectedDate explicitly
-      queryClient.invalidateQueries({ queryKey: ["availableDates"] });
-      queryClient.invalidateQueries({ queryKey: ["availableSlots"] });
+      const scheduleSlots = await fetchSlotsData(user.id, startOfDayLocal, endOfDayLocal);
+      setSlots(scheduleSlots.slots);
+      queryClient.invalidateQueries({ queryKey: ["availableDates", user.id] });
+      queryClient.invalidateQueries({ queryKey: ["overviewSlots", user.id] }); // Invalidate overview query
     }
     setIsLoadingSlots(false);
   };
@@ -489,9 +445,10 @@ const Doctor = () => {
       const dateObj = createLocalDateFromISOString(selectedDate!);
       const startOfDayLocal = startOfDay(dateObj);
       const endOfDayLocal = endOfDay(dateObj);
-      fetchSlots(user?.id, startOfDayLocal, endOfDayLocal, false); // Pass user.id and selectedDate explicitly
-      queryClient.invalidateQueries({ queryKey: ["availableDates"] });
-      queryClient.invalidateQueries({ queryKey: ["availableSlots"] });
+      const scheduleSlots = await fetchSlotsData(user!.id, startOfDayLocal, endOfDayLocal);
+      setSlots(scheduleSlots.slots);
+      queryClient.invalidateQueries({ queryKey: ["availableDates", user!.id] });
+      queryClient.invalidateQueries({ queryKey: ["overviewSlots", user!.id] }); // Invalidate overview query
     }
   };
 
@@ -536,9 +493,10 @@ const Doctor = () => {
       const dateObj = createLocalDateFromISOString(selectedDate!);
       const startOfDayLocal = startOfDay(dateObj);
       const endOfDayLocal = endOfDay(dateObj);
-      fetchSlots(user?.id, startOfDayLocal, endOfDayLocal, false); // Pass user.id and selectedDate explicitly
-      queryClient.invalidateQueries({ queryKey: ["availableDates"] });
-      queryClient.invalidateQueries({ queryKey: ["availableSlots"] });
+      const scheduleSlots = await fetchSlotsData(user!.id, startOfDayLocal, endOfDayLocal);
+      setSlots(scheduleSlots.slots);
+      queryClient.invalidateQueries({ queryKey: ["availableDates", user!.id] });
+      queryClient.invalidateQueries({ queryKey: ["overviewSlots", user!.id] }); // Invalidate overview query
     }
     setIsLoadingSlots(false);
   };
@@ -571,9 +529,10 @@ const Doctor = () => {
       const dateObj = createLocalDateFromISOString(selectedDate!);
       const startOfDayLocal = startOfDay(dateObj);
       const endOfDayLocal = endOfDay(dateObj);
-      fetchSlots(user?.id, startOfDayLocal, endOfDayLocal, false); // Pass user.id and selectedDate explicitly
-      queryClient.invalidateQueries({ queryKey: ["availableDates"] });
-      queryClient.invalidateQueries({ queryKey: ["availableSlots"] });
+      const scheduleSlots = await fetchSlotsData(user!.id, startOfDayLocal, endOfDayLocal);
+      setSlots(scheduleSlots.slots);
+      queryClient.invalidateQueries({ queryKey: ["availableDates", user!.id] });
+      queryClient.invalidateQueries({ queryKey: ["overviewSlots", user!.id] }); // Invalidate overview query
     }
     setIsLoadingSlots(false);
   };
@@ -666,8 +625,10 @@ const Doctor = () => {
         const dateObj = createLocalDateFromISOString(selectedDate!);
         const startOfDayLocal = startOfDay(dateObj);
         const endOfDayLocal = endOfDay(dateObj);
-        fetchSlots(user.id, startOfDayLocal, endOfDayLocal, false); // Refresh slots to show updated availability
+        const scheduleSlots = await fetchSlotsData(user.id, startOfDayLocal, endOfDayLocal);
+        setSlots(scheduleSlots.slots); // Refresh slots to show updated availability
         fetchAppointments(); // Refresh appointments list
+        queryClient.invalidateQueries({ queryKey: ["overviewSlots", user.id] }); // Invalidate overview query
       }
     } catch (error: any) {
       console.error("Doctor.tsx: Error in handleBookSlotForPatient catch block:", error);
@@ -692,14 +653,15 @@ const Doctor = () => {
         { event: '*', schema: 'public', table: 'availability_slots', filter: `doctor_id=eq.${user.id}` },
         (payload) => {
           console.log('Doctor.tsx: Real-time change detected in availability_slots for doctor:', payload);
-          // Re-fetch for both overview and schedule tabs
-          const { startDate, endDate } = getDatesForTimeframe(selectedTimeframe, customStartDate, customEndDate);
-          fetchSlots(user.id, startDate, endDate, true); // For overview
+          // Invalidate queries for both overview and schedule tabs
+          queryClient.invalidateQueries({ queryKey: ["overviewSlots", user.id] }); // Invalidate overview query
+          queryClient.invalidateQueries({ queryKey: ["availableDates", user.id] }); // Invalidate available dates for calendar
           if (activeTab === 'schedule' && selectedDate) {
+            // For schedule tab, directly refetch its state
             const dateObj = createLocalDateFromISOString(selectedDate);
             const startOfDayLocal = startOfDay(dateObj);
             const endOfDayLocal = endOfDay(dateObj);
-            fetchSlots(user.id, startOfDayLocal, endOfDayLocal, false); // For schedule tab
+            fetchSlotsData(user.id, startOfDayLocal, endOfDayLocal).then(result => setSlots(result.slots));
           }
         }
       )
@@ -709,7 +671,7 @@ const Doctor = () => {
       console.log("Doctor.tsx: Unsubscribing from real-time channel for doctor's view.");
       supabase.removeChannel(channel);
     };
-  }, [user, fetchSlots, selectedDate, selectedTimeframe, customStartDate, customEndDate, getDatesForTimeframe, activeTab]); // Depend on user, fetchSlots, and selectedDate
+  }, [user, selectedDate, activeTab, queryClient]); // Depend on user, selectedDate, activeTab
 
   // Define handleDeletePatient here, so it's in scope for the map function
   const handleDeletePatient = useCallback(async () => {
@@ -1069,15 +1031,15 @@ const Doctor = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="flex items-center gap-2">
                         <Clock className="h-5 w-5 text-primary" />
-                        <p>Total de Horários: <span className="font-bold">{overviewTotalSlots}</span></p>
+                        <p>Total de Horários: <span className="font-bold">{overviewSlotsData?.total || 0}</span></p>
                       </div>
                       <div className="flex items-center gap-2">
                         <CheckCircle className="h-5 w-5 text-green-500" />
-                        <p>Disponíveis: <span className="font-bold">{overviewAvailableSlots}</span></p>
+                        <p>Disponíveis: <span className="font-bold">{overviewSlotsData?.available || 0}</span></p>
                       </div>
                       <div className="flex items-center gap-2">
                         <XCircle className="h-5 w-5 text-red-500" />
-                        <p>Ocupados: <span className="font-bold">{overviewOccupiedSlots}</span></p>
+                        <p>Ocupados: <span className="font-bold">{overviewSlotsData?.occupied || 0}</span></p>
                       </div>
                     </div>
                   )}

@@ -29,6 +29,34 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { createLocalDateFromISOString } from "@/lib/utils"; // Import createLocalDateFromISOString
+import { startOfDay, endOfDay } from "date-fns"; // Import startOfDay and endOfDay
+
+// Função auxiliar para buscar dados dos slots, reutilizável pelo useQuery
+const fetchSlotsData = async (doctorId: string, startDate: Date, endDate: Date) => {
+  if (!doctorId) {
+    return [];
+  }
+
+  const _start_time_gte = startDate.toISOString();
+  const _end_time_lte = endDate.toISOString();
+
+  try {
+    const { data, error } = await supabase.rpc("get_truly_available_slots", {
+      _doctor_id: doctorId,
+      _start_time_gte: _start_time_gte,
+      _end_time_lte: _end_time_lte,
+    });
+
+    if (error) {
+      console.error("Error fetching slots from RPC:", error);
+      throw error; // Deixa o react-query lidar com o erro
+    }
+    return data;
+  } catch (err) {
+    console.error("Unexpected error during RPC call 'get_truly_available_slots':", err);
+    throw err; // Deixa o react-query lidar com o erro
+  }
+};
 
 export const PatientScheduleTab = () => {
   const queryClient = useQueryClient();
@@ -85,34 +113,13 @@ export const PatientScheduleTab = () => {
         return [];
       }
       
-      // Cria objetos Date para o início e fim do dia no fuso horário local do usuário
-      // Usamos createLocalDateFromISOString para garantir que a data seja interpretada localmente
       const localSelectedDateObj = createLocalDateFromISOString(selectedDate);
       
-      const startOfDayLocal = new Date(localSelectedDateObj);
-      startOfDayLocal.setHours(0, 0, 0, 0); // Define para meia-noite local
-      
-      const endOfDayLocal = new Date(localSelectedDateObj);
-      endOfDayLocal.setHours(23, 59, 59, 999); // Define para o final do dia local
+      const startOfDayLocal = startOfDay(localSelectedDateObj);
+      const endOfDayLocal = endOfDay(localSelectedDateObj);
 
-      // Converte esses objetos Date locais para strings ISO (que serão em UTC)
-      const _start_time_gte = startOfDayLocal.toISOString();
-      const _end_time_lte = endOfDayLocal.toISOString();
-
-      console.log("PatientScheduleTab: Fetching available slots for doctor:", selectedDoctorId, "date (startOfDayUTC):", _start_time_gte, "date (endOfDayUTC):", _end_time_lte);
-      const { data, error } = await supabase.rpc("get_truly_available_slots", {
-        _doctor_id: selectedDoctorId,
-        _start_time_gte: _start_time_gte,
-        _end_time_lte: _end_time_lte,
-      });
-      if (error) {
-        console.error("PatientScheduleTab: Error fetching available slots:", error);
-        throw error;
-      }
-      console.log("PatientScheduleTab: Raw available slots fetched from RPC:", data);
-      
-      // No longer need client-side filtering as RPC handles it
-      return data;
+      console.log("PatientScheduleTab: Fetching available slots for doctor:", selectedDoctorId, "date (startOfDayLocal):", startOfDayLocal.toISOString(), "date (endOfDayLocal):", endOfDayLocal.toISOString());
+      return fetchSlotsData(selectedDoctorId, startOfDayLocal, endOfDayLocal);
     },
     enabled: !!selectedDoctorId && !!selectedDate,
   });

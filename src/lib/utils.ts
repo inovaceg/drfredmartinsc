@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { format } from "date-fns";
+import { startOfDay, endOfDay } from "date-fns"; // Adicionado
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
