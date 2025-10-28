@@ -128,14 +128,14 @@ const Navbar = () => {
           setLastSupabaseStatus(currentStatus);
         }
         console.log(`Supabase Status Check: DB Connected: ${isDbConnected}, Auth Connected: ${isAuthConnected}, Overall: ${currentStatus}`);
-      } catch (e) {
+      } catch (e: any) { // Captura qualquer erro inesperado aqui
         console.error("Error during Supabase connection check:", e);
         const currentStatus = false;
         setIsSupabaseConnected(currentStatus);
         if (currentStatus !== lastSupabaseStatus) {
           toast({
             title: "Conexão Supabase Perdida",
-            description: "Não foi possível conectar ao servidor. Algumas funcionalidades podem estar limitadas.",
+            description: `Não foi possível conectar ao servidor. Detalhes: ${e.message || 'Erro desconhecido'}. Algumas funcionalidades podem estar limitadas.`,
             variant: "destructive",
           });
           setLastSupabaseStatus(currentStatus);

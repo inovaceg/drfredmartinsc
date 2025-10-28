@@ -23,6 +23,11 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
   db: {
     schema: 'public', // Força o cliente a usar o esquema 'public' e a recarregar seu cache.
+  },
+  global: {
+    // Adiciona um timeout global para todas as requisições, se não for especificado individualmente
+    // Isso pode ajudar a evitar que requisições fiquem 'penduradas' indefinidamente
+    timeout: 30000, // 30 segundos
   }
 });
 
