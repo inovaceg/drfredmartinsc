@@ -60,16 +60,17 @@ const Patient = () => {
   useEffect(() => {
     const handleAuthStateChange = async (event: string, session: Session | null) => {
       console.log("Patient.tsx: Auth state change event:", event, "Sessão:", session);
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
       setLoading(false);
 
       if (event === 'SIGNED_OUT') {
         console.log("Patient.tsx: Evento SIGNED_OUT detectado. Redirecionando para /auth.");
         setPatientProfile(null);
         navigate("/auth");
-      } else if (session?.user) {
+      } else if (currentUser) {
         console.log("Patient.tsx: Usuário logado, buscando perfil.");
-        await fetchPatientProfile(session.user.id);
+        await fetchPatientProfile(currentUser.id);
       } else {
         console.log("Patient.tsx: Nenhum usuário logado, redirecionando para /auth.");
         navigate("/auth");

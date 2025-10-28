@@ -46,7 +46,7 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
     try {
       console.log("VideoCallWindow: Requesting media devices (video and audio).");
       const timeoutPromise = new Promise<MediaStream>((_, reject) =>
-        setTimeout(() => reject(new Error("Tempo limite excedido ao acessar câmera/microfone.")), 10000) // 10 segundos
+        setTimeout(() => reject(new Error("Tempo limite excedido ao acessar câmera/microfone.")), 30000) // Aumentado para 30 segundos
       );
       
       localStream.current = await Promise.race([
@@ -105,7 +105,7 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
       if (event.candidate && sessionId) {
         console.log("VideoCallWindow: ICE candidate generated:", event.candidate);
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Tempo limite excedido ao buscar/atualizar ICE candidates.")), 10000)
+          setTimeout(() => reject(new Error("Tempo limite excedido ao buscar/atualizar ICE candidates.")), 30000) // Aumentado para 30 segundos
         );
 
         const { data: currentSession, error: fetchError } = await Promise.race([
@@ -149,7 +149,7 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
     await peerConnection.current.setLocalDescription(offer);
 
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Tempo limite excedido ao salvar oferta.")), 10000)
+      setTimeout(() => reject(new Error("Tempo limite excedido ao salvar oferta.")), 30000) // Aumentado para 30 segundos
     );
 
     await Promise.race([
@@ -184,7 +184,7 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
       console.log("VideoCallWindow: Local answer created and set.");
 
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Tempo limite excedido ao salvar resposta da chamada.")), 10000)
+        setTimeout(() => reject(new Error("Tempo limite excedido ao salvar resposta da chamada.")), 30000) // Aumentado para 30 segundos
       );
 
       await Promise.race([
@@ -221,7 +221,7 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
       }
 
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Tempo limite excedido ao criar sessão de vídeo.")), 10000)
+        setTimeout(() => reject(new Error("Tempo limite excedido ao criar sessão de vídeo.")), 30000) // Aumentado para 30 segundos
       );
 
       const { error } = await Promise.race([
@@ -273,7 +273,7 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
 
     if (sessionId) {
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Tempo limite excedido ao finalizar sessão.")), 10000)
+        setTimeout(() => reject(new Error("Tempo limite excedido ao finalizar sessão.")), 30000) // Aumentado para 30 segundos
       );
       await Promise.race([
         supabase
@@ -315,7 +315,7 @@ export const VideoCallWindow: React.FC<VideoCallWindowProps> = ({
       console.warn("VideoCallWindow useEffect: Doctor joining without incomingOffer. Fetching session data as fallback.");
       const fetchSession = async () => {
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Tempo limite excedido ao buscar sessão de chamada.")), 10000)
+          setTimeout(() => reject(new Error("Tempo limite excedido ao buscar sessão de chamada.")), 30000) // Aumentado para 30 segundos
         );
         const { data, error } = await Promise.race([
           supabase

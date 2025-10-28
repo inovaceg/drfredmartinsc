@@ -30,7 +30,7 @@ export const OnlineConsultationTab: React.FC<OnlineConsultationTabProps> = ({ cu
       setLoadingDoctors(true);
       try {
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Tempo limite excedido ao carregar médicos.")), 10000) // 10 segundos
+          setTimeout(() => reject(new Error("Tempo limite excedido ao carregar médicos.")), 30000) // Aumentado para 30 segundos
         );
 
         const { data, error } = await Promise.race([

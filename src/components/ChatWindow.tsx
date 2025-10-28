@@ -41,7 +41,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     setLoading(true);
     try {
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Tempo limite excedido ao carregar mensagens.")), 10000) // 10 segundos
+        setTimeout(() => reject(new Error("Tempo limite excedido ao carregar mensagens.")), 30000) // Aumentado para 30 segundos
       );
 
       const { data, error } = await Promise.race([
@@ -128,7 +128,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     setSending(true);
     try {
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Tempo limite excedido ao enviar mensagem.")), 10000) // 10 segundos
+        setTimeout(() => reject(new Error("Tempo limite excedido ao enviar mensagem.")), 30000) // Aumentado para 30 segundos
       );
 
       const { data, error } = await Promise.race([

@@ -273,27 +273,28 @@ const Doctor = () => {
 
   const handleAuthStateChange = useCallback(async (event: string, session: Session | null) => {
     console.log("Doctor.tsx: Auth state change event:", event, "Sessão:", session);
-    setUser(session?.user ?? null);
+    const currentUser = session?.user ?? null;
+    setUser(currentUser);
     setLoading(false);
 
     if (event === 'SIGNED_OUT') {
       console.log("Doctor.tsx: Evento SIGNED_OUT detectado. Redirecionando para /auth.");
       setDoctorProfile(null);
       navigate("/auth");
-    } else if (session?.user) {
+    } else if (currentUser) {
       console.log("Doctor.tsx: Usuário logado, buscando perfil e dados.");
-      await fetchDoctorProfile(session.user.id);
+      await fetchDoctorProfile(currentUser.id);
       
       // For 'Gerenciar Agenda' tab, fetch slots for today initially
       const todayStart = startOfDay(new Date());
       const todayEnd = endOfDay(new Date());
-      const scheduleSlotsResult = await fetchSlotsData(session.user.id, todayStart, todayEnd);
+      const scheduleSlotsResult = await fetchSlotsData(currentUser.id, todayStart, todayEnd);
       setSlots(scheduleSlotsResult.slots);
       setIsLoadingScheduleSlots(false); // Use renamed loading state
 
       fetchAppointments();
-      fetchPatients(session.user.id);
-      // fetchOverview(session.user.id, selectedTimeframe, customStartDate, customEndDate); // Fetch overview on login
+      fetchPatients(currentUser.id);
+      // fetchOverview(currentUser.id, selectedTimeframe, customStartDate, customEndDate); // Fetch overview on login
     } else {
       console.log("Doctor.tsx: Nenhum usuário logado, redirecionando para /auth.");
       navigate("/auth");
