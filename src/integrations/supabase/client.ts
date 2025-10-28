@@ -2,18 +2,14 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Certifique-se de que estas variáveis estão sendo lidas corretamente
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-// Adicionado para depuração: verificar se as variáveis de ambiente estão sendo carregadas
-console.log("Supabase Client Init: URL:", SUPABASE_URL ? "Loaded" : "NOT LOADED", "Key:", SUPABASE_PUBLISHABLE_KEY ? "Loaded" : "NOT LOADED");
+// Adicionado para depuração: verificar se as variáveis de ambiente estão sendo carregadas e seu comprimento
+console.log("Supabase Client Init: URL Length:", SUPABASE_URL?.length || 0, "Key Length:", SUPABASE_PUBLISHABLE_KEY?.length || 0);
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   console.error("Supabase environment variables are missing! Please check your .env file.");
 }
-
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
@@ -25,10 +21,21 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     schema: 'public', // Força o cliente a usar o esquema 'public' e a recarregar seu cache.
   },
   global: {
-    // Adiciona um timeout global para todas as requisições, se não for especificado individualmente
-    // Isso pode ajudar a evitar que requisições fiquem 'penduradas' indefinidamente
     timeout: 30000, // 30 segundos
   }
 });
 
-// Adicionado para forçar a atualização do cache do esquema do cliente Supabase.
+// Teste de conectividade inicial
+(async () => {
+  try {
+    // Tentativa de obter o usuário para verificar a conectividade com o serviço de autenticação
+    const { data, error } = await supabase.auth.getUser();
+    if (error) {
+      console.error("Supabase Client Init: Initial auth connection test failed:", error.message);
+    } else {
+      console.log("Supabase Client Init: Initial auth connection test successful.");
+    }
+  } catch (e: any) {
+    console.error("Supabase Client Init: Unexpected error during initial auth connection test:", e.message);
+  }
+})();

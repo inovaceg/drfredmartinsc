@@ -98,17 +98,33 @@ const Navbar = () => {
     window.addEventListener('offline', handleOffline);
 
     const checkSupabaseConnection = async () => {
+      let isDbConnected = false;
+      let isAuthConnected = false;
+      let dbErrorMessage = '';
+      let authErrorMessage = '';
+
       try {
         // Attempt a lightweight query to check database connectivity
         const { error: dbError } = await supabase.from('profiles').select('id').limit(1);
-        const isDbConnected = !dbError;
+        isDbConnected = !dbError;
+        if (dbError) {
+          dbErrorMessage = dbError.message;
+          console.error("Navbar: DB connection check failed:", dbError.message);
+        } else {
+          console.log("Navbar: DB connection check successful.");
+        }
 
         // Attempt to get session to check auth connectivity
         const { data: { session }, error: authError } = await supabase.auth.getSession();
-        const isAuthConnected = !authError && !!session; // Check if session exists and no error
+        isAuthConnected = !authError && !!session; // Check if session exists and no error
+        if (authError) {
+          authErrorMessage = authError.message;
+          console.error("Navbar: Auth connection check failed:", authError.message);
+        } else {
+          console.log("Navbar: Auth connection check successful.");
+        }
 
         const currentStatus = isDbConnected && isAuthConnected; // Both must be connected
-
         setIsSupabaseConnected(currentStatus);
 
         if (currentStatus !== lastSupabaseStatus) {
@@ -121,15 +137,15 @@ const Navbar = () => {
           } else {
             toast({
               title: "Conexão Supabase Perdida",
-              description: "Não foi possível conectar ao servidor. Algumas funcionalidades podem estar limitadas.",
+              description: `Não foi possível conectar ao servidor. Detalhes: ${dbErrorMessage || authErrorMessage || 'Erro desconhecido'}. Algumas funcionalidades podem estar limitadas.`,
               variant: "destructive",
             });
           }
           setLastSupabaseStatus(currentStatus);
         }
-        console.log(`Supabase Status Check: DB Connected: ${isDbConnected}, Auth Connected: ${isAuthConnected}, Overall: ${currentStatus}`);
+        console.log(`Supabase Status Check: DB Connected: ${isDbConnected} (${dbErrorMessage}), Auth Connected: ${isAuthConnected} (${authErrorMessage}), Overall: ${currentStatus}`);
       } catch (e: any) { // Captura qualquer erro inesperado aqui
-        console.error("Error during Supabase connection check:", e);
+        console.error("Navbar: Unexpected error during Supabase connection check:", e);
         const currentStatus = false;
         setIsSupabaseConnected(currentStatus);
         if (currentStatus !== lastSupabaseStatus) {
