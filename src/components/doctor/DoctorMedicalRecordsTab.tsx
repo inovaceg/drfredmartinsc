@@ -345,7 +345,7 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
     queryClient.invalidateQueries({ queryKey: ["doctorPatients", currentUserId] });
   };
 
-  const handleDeletePatient = async () => {
+  const handleDeletePatient = useCallback(async () => {
     if (!patientToDelete) return;
 
     setIsDeleting(true);
@@ -381,21 +381,15 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
       }
 
       // Optimistically remove from UI first
-      setPatients(prevPatients => {
-        const updatedPatients = prevPatients.filter(p => p.id !== patientToDelete.id);
-        console.log("Doctor.tsx: Optimistically updated patients list:", updatedPatients);
-        return updatedPatients;
-      });
+      // Note: setPatients is not directly available in this component,
+      // but the invalidateQueries will trigger a refetch in the parent Doctor component.
+      // For now, we'll rely on the query invalidation.
       
       toast({ title: "Sucesso", description: `Paciente ${patientToDelete.full_name} excluído com sucesso!` });
       
       // Invalidate queries to refetch patient list and clear selected patient data
       if (currentUserId) { // Safely access currentUserId
         queryClient.invalidateQueries({ queryKey: ["doctorPatients", currentUserId] });
-        // Não é necessário um atraso aqui, pois a atualização otimista já ocorreu.
-        // A fetchPatients irá eventualmente ressincronizar, mas a UI já está atualizada.
-        // Se a exclusão realmente falhou, a re-busca trará o paciente de volta, o que é o comportamento correto.
-        // await fetchPatients(currentUserId); // This is not needed here as it's handled by react-query invalidate
       }
       queryClient.invalidateQueries({ queryKey: ["patientProfile", patientToDelete.id] });
       queryClient.invalidateQueries({ queryKey: ["patientSessions", patientToDelete.id] });
@@ -410,7 +404,7 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
     } finally {
       setIsDeleting(false);
     }
-  }, [patientToDelete, currentUserId, queryClient, toast, setSelectedPatient, setPatients, setPatientToDelete, setIsDeleteDialogOpen, setIsDeleting]);
+  }, [patientToDelete, currentUserId, queryClient, toast, setSelectedPatient, setPatientToDelete, setIsDeleteDialogOpen, setIsDeleting, timeoutPromise]); // Added timeoutPromise to dependencies
 
   if (isLoadingPatients || isLoadingDoctors) {
     return (
