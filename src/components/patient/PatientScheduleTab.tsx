@@ -31,32 +31,9 @@ import { toast } from "sonner";
 import { createLocalDateFromISOString } from "@/lib/utils"; // Import createLocalDateFromISOString
 import { startOfDay, endOfDay } from "date-fns"; // Import startOfDay and endOfDay
 
-// Função auxiliar para buscar dados dos slots, reutilizável pelo useQuery
-const fetchSlotsData = async (doctorId: string, startDate: Date, endDate: Date) => {
-  if (!doctorId) {
-    return [];
-  }
-
-  const _start_time_gte = startDate.toISOString();
-  const _end_time_lte = endDate.toISOString();
-
-  try {
-    const { data, error } = await supabase.rpc("get_truly_available_slots", {
-      _doctor_id: doctorId,
-      _start_time_gte: _start_time_gte,
-      _end_time_lte: _end_time_lte,
-    });
-
-    if (error) {
-      console.error("Error fetching slots from RPC:", error);
-      throw error; // Deixa o react-query lidar com o erro
-    }
-    return data;
-  } catch (err) {
-    console.error("Unexpected error during RPC call 'get_truly_available_slots':", err);
-    throw err; // Deixa o react-query lidar com o erro
-  }
-};
+// Importar as novas funções de data e queries
+import { getDatesForTimeframe, toUtcIso } from "@/lib/dates";
+import { fetchSlotsData } from "@/lib/supabase-queries";
 
 export const PatientScheduleTab = () => {
   const queryClient = useQueryClient();
@@ -119,7 +96,8 @@ export const PatientScheduleTab = () => {
       const endOfDayLocal = endOfDay(localSelectedDateObj);
 
       console.log("PatientScheduleTab: Fetching available slots for doctor:", selectedDoctorId, "date (startOfDayLocal):", startOfDayLocal.toISOString(), "date (endOfDayLocal):", endOfDayLocal.toISOString());
-      return fetchSlotsData(selectedDoctorId, startOfDayLocal, endOfDayLocal);
+      const result = await fetchSlotsData(selectedDoctorId, startOfDayLocal, endOfDayLocal);
+      return result.slots.filter(slot => slot.is_available); // Only return truly available slots
     },
     enabled: !!selectedDoctorId && !!selectedDate,
   });
@@ -163,8 +141,8 @@ export const PatientScheduleTab = () => {
 
     try {
       // Ajustar start_time e end_time para UTC antes de enviar ao Supabase
-      const startTimeUTC = new Date(selectedSlotStartTime).toISOString();
-      const endTimeUTC = new Date(selectedSlotEndTime).toISOString();
+      const startTimeUTC = toUtcIso(new Date(selectedSlotStartTime));
+      const endTimeUTC = toUtcIso(new Date(selectedSlotEndTime));
 
       const { data, error } = await supabase.rpc("book_slot_and_create_appointment", {
         _slot_id: selectedSlotId,

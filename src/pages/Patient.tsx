@@ -28,7 +28,7 @@ import {
 
 const Patient = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(null); // Explicitly type user state
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [patientProfile, setPatientProfile] = useState<any>(null);
@@ -79,11 +79,12 @@ const Patient = () => {
     // Initial session check
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       console.log("Patient.tsx: Verificação inicial da sessão. Sessão:", session);
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
       setLoading(false);
-      if (session?.user) {
+      if (currentUser) {
         console.log("Patient.tsx: Usuário logado inicialmente, buscando perfil.");
-        await fetchPatientProfile(session.user.id);
+        await fetchPatientProfile(currentUser.id);
       } else {
         console.log("Patient.tsx: Nenhum usuário logado inicialmente, redirecionando para /auth.");
         navigate("/auth");

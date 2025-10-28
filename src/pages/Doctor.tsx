@@ -51,6 +51,10 @@ import { DeletePatientAlertDialog } from "@/components/doctor/DeletePatientAlert
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
+// Importar as novas funções de data e queries
+import { getDatesForTimeframe, toUtcIso } from "@/lib/dates";
+import { fetchSlotsData } from "@/lib/supabase-queries";
+
 type AvailabilitySlot = Database['public']['Tables']['availability_slots']['Row'];
 type Appointment = Database['public']['Tables']['appointments']['Row'] & {
   patient_profile?: {
@@ -66,37 +70,7 @@ type Appointment = Database['public']['Tables']['appointments']['Row'] & {
   };
 };
 type PatientProfile = Database['public']['Tables']['profiles']['Row'];
-
-// Função auxiliar para buscar dados dos slots, reutilizável pelo useQuery
-const fetchSlotsData = async (doctorId: string, startDate: Date, endDate: Date) => {
-  if (!doctorId) {
-    return { available: 0, occupied: 0, total: 0, slots: [] };
-  }
-
-  const _start_time_gte = startDate.toISOString();
-  const _end_time_lte = endDate.toISOString();
-
-  try {
-    const { data, error } = await supabase.rpc("get_truly_available_slots", {
-      _doctor_id: doctorId,
-      _start_time_gte: _start_time_gte,
-      _end_time_lte: _end_time_lte,
-    });
-
-    if (error) {
-      console.error("Error fetching slots from RPC:", error);
-      throw error; // Deixa o react-query lidar com o erro
-    }
-
-    const available = data.filter(slot => slot.is_available).length;
-    const occupied = data.filter(slot => !slot.is_available).length;
-    const total = data.length;
-    return { available, occupied, total, slots: data };
-  } catch (err) {
-    console.error("Unexpected error during RPC call 'get_truly_available_slots':", err);
-    throw err; // Deixa o react-query lidar com o erro
-  }
-};
+type Timeframe = "today" | "7_days" | "14_days" | "custom";
 
 const Doctor = () => {
   const navigate = useNavigate();
@@ -112,9 +86,15 @@ const Doctor = () => {
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
 
   // States for 'Visão Geral' tab timeframe
-  const [selectedTimeframe, setSelectedTimeframe] = useState<'today' | '7_days' | '14_days' | 'custom'>('today');
+  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>('today');
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
+
+  // New states for overview data
+  const [overview, setOverview] = useState<{total:number; available:number; occupied:number}>({total:0, available:0, occupied:0});
+  const [overviewAppointments, setOverviewAppointments] = useState<Array<{
+    id:string; patient_name:string; start_time:string; end_time:string;
+  }>>([]);
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<PatientProfile[]>([]);
@@ -153,50 +133,70 @@ const Doctor = () => {
     }
   }, [toast, setDoctorProfile]);
 
-  // Helper to get date range based on timeframe
-  const getDatesForTimeframe = useCallback((timeframe: typeof selectedTimeframe, customStart?: Date, customEnd?: Date) => {
-    const today = startOfDay(new Date()); // Start of today local time
+  // New: fetchOverview function as per user's request
+  const fetchOverview = useCallback(async (doctorId: string, tf: Timeframe, customS?:Date, customE?:Date) => {
+    setIsLoadingSlots(true); // Reusing isLoadingSlots for overview
+    try {
+      const { start, end } = getDatesForTimeframe(tf, customS, customE);
+      const startIso = toUtcIso(start);
+      const endIso   = toUtcIso(end);
 
-    let startDate = new Date(today);
-    let endDate = endOfDay(new Date()); // End of today local time
+      // 1) slots do período
+      const { data: slots, error: slotsErr } = await supabase
+        .from("availability_slots")
+        .select("id, start_time, end_time, is_available")
+        .eq("doctor_id", doctorId)
+        .gte("start_time", startIso)
+        .lte("end_time",   endIso)
+        .order("start_time", { ascending: true });
+      if (slotsErr) throw slotsErr;
 
-    if (timeframe === '7_days') {
-      endDate = endOfDay(addDays(today, 6)); // Today + 6 more days = 7 days total
-    } else if (timeframe === '14_days') {
-      endDate = endOfDay(addDays(today, 13)); // Today + 13 more days = 14 days total
-    } else if (timeframe === 'custom' && customStart && customEnd) {
-      startDate = startOfDay(customStart);
-      endDate = endOfDay(customEnd);
+      // 2) consultas do período + nome do paciente
+      const { data: appts, error: apptsErr } = await supabase
+        .from("appointments")
+        .select("id, slot_id, start_time, end_time, patient_profile:patient_id(full_name)")
+        .eq("doctor_id", doctorId)
+        .gte("start_time", startIso)
+        .lte("end_time",   endIso)
+        .order("start_time", { ascending: true });
+      if (apptsErr) throw apptsErr;
+
+      // índice de slot_id -> existe consulta
+      const occupiedSet = new Set(appts.map(a => a.slot_id));
+      const total = slots.length;
+      const occupied = slots.filter(s => occupiedSet.has(s.id) || !s.is_available).length;
+      const available = Math.max(0, total - occupied);
+
+      setOverview({ total, available, occupied });
+
+      // montar lista de pacientes para renderizar abaixo do dashboard
+      setOverviewAppointments(appts.map(a => ({
+        id: a.id,
+        patient_name: (a.patient_profile as { full_name: string })?.full_name ?? "Paciente Desconhecido",
+        start_time: a.start_time,
+        end_time: a.end_time
+      })));
+    } catch (e: any) {
+      console.error("Overview fetch failed", e);
+      toast({
+        title: "Erro ao carregar visão geral",
+        description: e.message || "Não foi possível carregar os dados da visão geral.",
+        variant: "destructive",
+      });
+      setOverview({ total: 0, available: 0, occupied: 0 });
+      setOverviewAppointments([]);
+    } finally {
+      setIsLoadingSlots(false); // Reusing isLoadingSlots for overview
     }
-    return { startDate, endDate };
-  }, []);
+  }, [toast]);
 
-  // UseQuery for Overview Slots
-  const { startDate: overviewStartDate, endDate: overviewEndDate } = getDatesForTimeframe(selectedTimeframe, customStartDate, customEndDate);
-
-  const {
-    data: overviewSlotsData,
-    isLoading: isLoadingOverviewSlots,
-    isError: isOverviewSlotsError, // Captura o estado de erro
-    error: overviewSlotsError,     // Captura o objeto de erro
-    refetch: refetchOverviewSlots,
-  } = useQuery({
-    queryKey: ["overviewSlots", user?.id, selectedTimeframe, customStartDate?.toISOString(), customEndDate?.toISOString()],
-    queryFn: () => fetchSlotsData(user!.id, overviewStartDate, overviewEndDate),
-    enabled: !!user?.id,
-    staleTime: 1000 * 60 * 5, // 5 minutes stale time
-    refetchOnWindowFocus: true, // Refetch when window regains focus
-    refetchInterval: 30000, // Refetch every 30 seconds to keep data fresh
-    retry: false, // Temporariamente desabilita retries para ver erros imediatamente
-    onError: (err) => {
-        console.error("Doctor.tsx: Error fetching overview slots:", err);
-        toast({
-            title: "Erro ao carregar agenda",
-            description: "Não foi possível carregar os horários da agenda. Tente novamente mais tarde.",
-            variant: "destructive",
-        });
+  // UseEffect to call fetchOverview when dependencies change
+  useEffect(() => {
+    if (user?.id && activeTab === 'overview') {
+      fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate);
     }
-  });
+  }, [user, activeTab, selectedTimeframe, customStartDate, customEndDate, fetchOverview]);
+
 
   const fetchAppointments = useCallback(async () => {
     console.log("Doctor.tsx: Fetching appointments for doctor.");
@@ -269,25 +269,21 @@ const Doctor = () => {
       console.log("Doctor.tsx: Usuário logado, buscando perfil e dados.");
       await fetchDoctorProfile(session.user.id);
       
-      // Invalidate overview query to ensure it refetches
-      queryClient.invalidateQueries({ queryKey: ["overviewSlots", session.user.id] });
-      queryClient.invalidateQueries({ queryKey: ["availableDates", session.user.id] });
-      
       // For 'Gerenciar Agenda' tab, fetch slots for today initially
       const todayStart = startOfDay(new Date());
       const todayEnd = endOfDay(new Date());
-      // Directly call fetchSlotsData for the schedule tab's state
-      const scheduleSlots = await fetchSlotsData(session.user.id, todayStart, todayEnd);
-      setSlots(scheduleSlots.slots);
+      const scheduleSlotsResult = await fetchSlotsData(session.user.id, todayStart, todayEnd);
+      setSlots(scheduleSlotsResult.slots);
       setIsLoadingSlots(false);
 
       fetchAppointments();
       fetchPatients(session.user.id);
+      fetchOverview(session.user.id, selectedTimeframe, customStartDate, customEndDate); // Fetch overview on login
     } else {
       console.log("Doctor.tsx: Nenhum usuário logado, redirecionando para /auth.");
       navigate("/auth");
     }
-  }, [navigate, fetchDoctorProfile, fetchAppointments, fetchPatients, queryClient]);
+  }, [navigate, fetchDoctorProfile, fetchAppointments, fetchPatients, fetchOverview, selectedTimeframe, customStartDate, customEndDate]);
 
   useEffect(() => {
     // Initial session check
@@ -299,20 +295,16 @@ const Doctor = () => {
         console.log("Doctor.tsx: Usuário logado inicialmente, buscando perfil e dados.");
         await fetchDoctorProfile(session.user.id);
         
-        // Invalidate overview query to ensure it refetches
-        queryClient.invalidateQueries({ queryKey: ["overviewSlots", session.user.id] });
-        queryClient.invalidateQueries({ queryKey: ["availableDates", session.user.id] });
-
         // For 'Gerenciar Agenda' tab, fetch slots for today initially
         const todayStart = startOfDay(new Date());
         const todayEnd = endOfDay(new Date());
-        // Directly call fetchSlotsData for the schedule tab's state
-        const scheduleSlots = await fetchSlotsData(session.user.id, todayStart, todayEnd);
-        setSlots(scheduleSlots.slots);
+        const scheduleSlotsResult = await fetchSlotsData(session.user.id, todayStart, todayEnd);
+        setSlots(scheduleSlotsResult.slots);
         setIsLoadingSlots(false);
 
         fetchAppointments();
         fetchPatients(session.user.id);
+        fetchOverview(session.user.id, selectedTimeframe, customStartDate, customEndDate); // Fetch overview on initial load
       } else {
         console.log("Doctor.tsx: Nenhum usuário logado inicialmente, redirecionando para /auth.");
         navigate("/auth");
@@ -325,7 +317,7 @@ const Doctor = () => {
       console.log("Doctor.tsx: Desinscrevendo do listener de auth state change.");
       subscription.unsubscribe();
     };
-  }, [navigate, fetchDoctorProfile, fetchAppointments, fetchPatients, handleAuthStateChange, queryClient]);
+  }, [navigate, fetchDoctorProfile, fetchAppointments, fetchPatients, handleAuthStateChange, fetchOverview, selectedTimeframe, customStartDate, customEndDate]);
 
   // Update existing useEffect for 'schedule' tab to use the single selectedDate
   useEffect(() => {
@@ -396,8 +388,8 @@ const Doctor = () => {
       
       newSlots.push({
         doctor_id: user.id,
-        start_time: startTime.toISOString(),
-        end_time: endTime.toISOString(),
+        start_time: toUtcIso(startTime), // Convert to UTC ISO
+        end_time: toUtcIso(endTime),     // Convert to UTC ISO
         is_available: true,
       });
       
@@ -431,7 +423,7 @@ const Doctor = () => {
       const scheduleSlots = await fetchSlotsData(user.id, startOfDayLocal, endOfDayLocal);
       setSlots(scheduleSlots.slots);
       queryClient.invalidateQueries({ queryKey: ["availableDates", user.id] });
-      queryClient.invalidateQueries({ queryKey: ["overviewSlots", user.id] }); // Invalidate overview query
+      fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
     setIsLoadingSlots(false);
   };
@@ -460,7 +452,7 @@ const Doctor = () => {
       const scheduleSlots = await fetchSlotsData(user!.id, startOfDayLocal, endOfDayLocal);
       setSlots(scheduleSlots.slots);
       queryClient.invalidateQueries({ queryKey: ["availableDates", user!.id] });
-      queryClient.invalidateQueries({ queryKey: ["overviewSlots", user!.id] }); // Invalidate overview query
+      fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
   };
 
@@ -508,7 +500,7 @@ const Doctor = () => {
       const scheduleSlots = await fetchSlotsData(user!.id, startOfDayLocal, endOfDayLocal);
       setSlots(scheduleSlots.slots);
       queryClient.invalidateQueries({ queryKey: ["availableDates", user!.id] });
-      queryClient.invalidateQueries({ queryKey: ["overviewSlots", user!.id] }); // Invalidate overview query
+      fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
     setIsLoadingSlots(false);
   };
@@ -544,7 +536,7 @@ const Doctor = () => {
       const scheduleSlots = await fetchSlotsData(user!.id, startOfDayLocal, endOfDayLocal);
       setSlots(scheduleSlots.slots);
       queryClient.invalidateQueries({ queryKey: ["availableDates", user!.id] });
-      queryClient.invalidateQueries({ queryKey: ["overviewSlots", user!.id] }); // Invalidate overview query
+      fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
     setIsLoadingSlots(false);
   };
@@ -571,6 +563,7 @@ const Doctor = () => {
         description: "Status atualizado!",
       });
       fetchAppointments();
+      fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
   };
 
@@ -599,87 +592,89 @@ const Doctor = () => {
     setIsDrawerOpen(false);
     // Invalidate overviewSlots query when navigating to the overview tab
     if (value === 'overview' && user?.id) {
-      queryClient.invalidateQueries({ queryKey: ["overviewSlots", user.id] });
+      fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate);
     }
   };
 
-  const handleBookSlotForPatient = async () => {
-    if (!user || !selectedPatientForBookingId || !selectedSlotForBooking) {
-      toast({
-        title: "Erro",
-        description: "Por favor, selecione um paciente e um horário disponível.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  // New: handleBookSlotForPatient function as per user's request
+  async function handleBookSlotForPatient() {
+    if (!user?.id || !selectedSlotForBooking || !selectedPatientForBookingId) return;
     setIsBookingForPatient(true);
     try {
-      const { data, error } = await supabase.rpc("book_slot_and_create_appointment", {
-        _slot_id: selectedSlotForBooking.id,
-        _patient_id: selectedPatientForBookingId,
-        _doctor_id: user.id,
-        _start_time: selectedSlotForBooking.start_time,
-        _end_time: selectedSlotForBooking.end_time,
+      // 1) cria a consulta
+      const { data: apt, error: aptErr } = await supabase
+        .from("appointments")
+        .insert({
+          doctor_id: user.id,
+          patient_id: selectedPatientForBookingId,
+          slot_id: selectedSlotForBooking.id,
+          start_time: toUtcIso(new Date(selectedSlotForBooking.start_time)), // Convert to UTC ISO
+          end_time: toUtcIso(new Date(selectedSlotForBooking.end_time)),     // Convert to UTC ISO
+          status: "confirmed"
+        })
+        .select()
+        .single();
+      if (aptErr) throw aptErr;
+
+      // 2) marca o slot como indisponível
+      const { error: slotErr } = await supabase
+        .from("availability_slots")
+        .update({ is_available: false })
+        .eq("id", selectedSlotForBooking.id);
+      if (slotErr) throw slotErr;
+
+      // 3) update otimista do overview
+      setOverview(o => ({ total: o.total, available: Math.max(0, o.available - 1), occupied: o.occupied + 1 }));
+      setOverviewAppointments(list => [{
+        id: apt.id,
+        patient_name: patients.find(p => p.id === selectedPatientForBookingId)?.full_name ?? "Paciente Desconhecido",
+        start_time: selectedSlotForBooking.start_time,
+        end_time: selectedSlotForBooking.end_time
+      }, ...list]);
+
+      toast({
+        title: "Sucesso",
+        description: "Consulta agendada para o paciente!",
       });
 
-      if (error) {
-        console.error("Doctor.tsx: Error booking slot for patient:", error);
-        toast({
-          title: "Erro ao agendar consulta",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        console.log("Doctor.tsx: Appointment booked for patient. Data:", data);
-        toast({
-          title: "Sucesso",
-          description: "Consulta agendada para o paciente!",
-        });
-        setSelectedPatientForBookingId(null);
-        setSelectedSlotForBooking(null);
-        const dateObj = createLocalDateFromISOString(selectedDate!);
-        const startOfDayLocal = startOfDay(dateObj);
-        const endOfDayLocal = endOfDay(dateObj);
-        const scheduleSlots = await fetchSlotsData(user.id, startOfDayLocal, endOfDayLocal);
-        setSlots(scheduleSlots.slots); // Refresh slots to show updated availability
-        fetchAppointments(); // Refresh appointments list
-        queryClient.invalidateQueries({ queryKey: ["overviewSlots", user.id] }); // Invalidate overview query
-      }
-    } catch (error: any) {
-      console.error("Doctor.tsx: Error in handleBookSlotForPatient catch block:", error);
+      // 4) refresh confiável
+      await fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate);
+      
+      setSelectedPatientForBookingId(null);
+      setSelectedSlotForBooking(null);
+      const dateObj = createLocalDateFromISOString(selectedDate!);
+      const startOfDayLocal = startOfDay(dateObj);
+      const endOfDayLocal = endOfDay(dateObj);
+      const scheduleSlots = await fetchSlotsData(user.id, startOfDayLocal, endOfDayLocal);
+      setSlots(scheduleSlots.slots); // Refresh slots to show updated availability
+      fetchAppointments(); // Refresh appointments list
+
+    } catch (e: any) {
+      console.error("Error in handleBookSlotForPatient:", e);
       toast({
         title: "Erro",
-        description: error.message || "Não foi possível agendar a consulta para o paciente.",
+        description: e.message || "Não foi possível agendar a consulta para o paciente. Tente novamente.",
         variant: "destructive",
       });
     } finally {
       setIsBookingForPatient(false);
     }
-  };
+  }
 
-  // Realtime subscription for availability_slots in Doctor.tsx
+  // Realtime subscription for availability_slots and appointments in Doctor.tsx
   useEffect(() => {
-    if (!user) return;
-    console.log("Doctor.tsx: Setting up real-time subscription for availability_slots for doctor's view.");
-    const channel = supabase
-      .channel(`doctor_availability_slots_${user.id}`)
+    if (!user?.id) return;
+    console.log("Doctor.tsx: Setting up real-time subscription for doctor's view.");
+    const channel = supabase.channel("overview-sync")
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'availability_slots', filter: `doctor_id=eq.${user.id}` },
-        (payload) => {
-          console.log('Doctor.tsx: Real-time change detected in availability_slots for doctor:', payload);
-          // Invalidate queries for both overview and schedule tabs
-          queryClient.invalidateQueries({ queryKey: ["overviewSlots", user.id] }); // Invalidate overview query
-          queryClient.invalidateQueries({ queryKey: ["availableDates", user.id] }); // Invalidate available dates for calendar
-          if (activeTab === 'schedule' && selectedDate) {
-            // For schedule tab, directly refetch its state
-            const dateObj = createLocalDateFromISOString(selectedDate);
-            const startOfDayLocal = startOfDay(dateObj);
-            const endOfDayLocal = endOfDay(dateObj);
-            fetchSlotsData(user.id, startOfDayLocal, endOfDayLocal).then(result => setSlots(result.slots));
-          }
-        }
+        "postgres_changes",
+        { event: "*", schema: "public", table: "appointments", filter: `doctor_id=eq.${user.id}` },
+        () => fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate)
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "availability_slots", filter: `doctor_id=eq.${user.id}` },
+        () => fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate)
       )
       .subscribe();
 
@@ -687,7 +682,8 @@ const Doctor = () => {
       console.log("Doctor.tsx: Unsubscribing from real-time channel for doctor's view.");
       supabase.removeChannel(channel);
     };
-  }, [user, selectedDate, activeTab, queryClient]); // Depend on user, selectedDate, activeTab
+  }, [user?.id, selectedTimeframe, customStartDate, customEndDate, fetchOverview]);
+
 
   // Define handleDeletePatient here, so it's in scope for the map function
   const handleDeletePatient = useCallback(async () => {
@@ -756,16 +752,16 @@ const Doctor = () => {
 
   // Helper to format date range for display
   const getDisplayDateRange = useCallback(() => {
-    const { startDate, endDate } = getDatesForTimeframe(selectedTimeframe, customStartDate, customEndDate);
+    const { start, end } = getDatesForTimeframe(selectedTimeframe, customStartDate, customEndDate);
     if (selectedTimeframe === 'today') {
-      return format(startDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+      return format(start, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
     } else if (selectedTimeframe === '7_days' || selectedTimeframe === '14_days') {
-      return `${format(startDate, "dd/MM", { locale: ptBR })} - ${format(endDate, "dd/MM/yyyy", { locale: ptBR })}`;
+      return `${format(start, "dd/MM", { locale: ptBR })} - ${format(end, "dd/MM/yyyy", { locale: ptBR })}`;
     } else if (selectedTimeframe === 'custom' && customStartDate && customEndDate) {
       return `${format(customStartDate, "dd/MM/yyyy", { locale: ptBR })} - ${format(customEndDate, "dd/MM/yyyy", { locale: ptBR })}`;
     }
     return "Período Selecionado";
-  }, [selectedTimeframe, customStartDate, customEndDate, getDatesForTimeframe]);
+  }, [selectedTimeframe, customStartDate, customEndDate]);
 
 
   console.log("Doctor component is rendering. User:", user?.id, "Loading:", loading);
@@ -957,7 +953,7 @@ const Doctor = () => {
                     Agenda para {getDisplayDateRange()}
                   </h3>
                   <div className="mb-4">
-                    <ToggleGroup type="single" value={selectedTimeframe} onValueChange={(value: typeof selectedTimeframe) => {
+                    <ToggleGroup type="single" value={selectedTimeframe} onValueChange={(value: Timeframe) => {
                       setSelectedTimeframe(value);
                       if (value !== 'custom') {
                         setCustomStartDate(undefined);
@@ -1039,29 +1035,51 @@ const Doctor = () => {
                     </div>
                   )}
 
-                  {isLoadingOverviewSlots ? (
+                  {isLoadingSlots ? ( // Using isLoadingSlots for overview
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" /> Carregando horários...
-                    </div>
-                  ) : isOverviewSlotsError ? ( // Renderiza mensagem de erro se houver
-                    <div className="flex items-center gap-2 text-destructive">
-                      <AlertCircle className="h-4 w-4" /> Erro ao carregar horários: {overviewSlotsError?.message || "Erro desconhecido."}
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="flex items-center gap-2">
                         <Clock className="h-5 w-5 text-primary" />
-                        <p>Total de Horários: <span className="font-bold">{overviewSlotsData?.total || 0}</span></p>
+                        <p>Total de Horários: <span className="font-bold">{overview.total || 0}</span></p>
                       </div>
                       <div className="flex items-center gap-2">
                         <CheckCircle className="h-5 w-5 text-green-500" />
-                        <p>Disponíveis: <span className="font-bold">{overviewSlotsData?.available || 0}</span></p>
+                        <p>Disponíveis: <span className="font-bold">{overview.available || 0}</span></p>
                       </div>
                       <div className="flex items-center gap-2">
                         <XCircle className="h-5 w-5 text-red-500" />
-                        <p>Ocupados: <span className="font-bold">{overviewSlotsData?.occupied || 0}</span></p>
+                        <p>Ocupados: <span className="font-bold">{overview.occupied || 0}</span></p>
                       </div>
                     </div>
+                  )}
+                </div>
+
+                {/* Lista de pacientes que agendaram no período */}
+                <div className="mt-6 border-t pt-4">
+                  <h4 className="font-semibold mb-3">Consultas no período</h4>
+                  {isLoadingSlots ? (
+                    <div className="flex justify-center p-8">
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                    </div>
+                  ) : overviewAppointments.length === 0 ? (
+                    <p className="text-muted-foreground">Nenhuma consulta agendada.</p>
+                  ) : (
+                    <ul className="space-y-3">
+                      {overviewAppointments.map(a => (
+                        <li key={a.id} className="flex items-center justify-between rounded-lg border p-3">
+                          <div>
+                            <p className="font-medium">{a.patient_name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {format(new Date(a.start_time), "dd/MM/yyyy HH:mm", { locale: ptBR })} – {format(new Date(a.end_time), "HH:mm", { locale: ptBR })}
+                            </p>
+                          </div>
+                          <span className="text-xs px-2 py-1 rounded bg-muted">Agendado</span>
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </div>
               </CardContent>
