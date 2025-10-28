@@ -69,13 +69,32 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Timeout promise helper
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("Tempo limite excedido ao carregar dados.")), 10000) // 10 segundos
+  );
+
   // Fetch all patients for the doctor
   const { data: patients, isLoading: isLoadingPatients } = useQuery({
     queryKey: ["doctorPatients", currentUserId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_patients_for_doctor");
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await Promise.race([
+          supabase.rpc("get_patients_for_doctor"),
+          timeoutPromise,
+        ]) as { data: PatientProfile[] | null; error: any };
+
+        if (error) throw error;
+        return data;
+      } catch (err: any) {
+        console.error("Error fetching doctor patients:", err);
+        toast({
+          title: "Erro de Conexão",
+          description: err.message || "Não foi possível carregar a lista de pacientes devido a um erro de rede ou tempo limite.",
+          variant: "destructive",
+        });
+        throw err; // Re-throw to let react-query handle the error state
+      }
     },
   });
 
@@ -83,9 +102,23 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
   const { data: doctors, isLoading: isLoadingDoctors } = useQuery({
     queryKey: ["doctors"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_doctors_public");
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await Promise.race([
+          supabase.rpc("get_doctors_public"),
+          timeoutPromise,
+        ]) as { data: any[] | null; error: any }; // Adjust type if get_doctors_public returns a specific type
+
+        if (error) throw error;
+        return data;
+      } catch (err: any) {
+        console.error("Error fetching public doctors:", err);
+        toast({
+          title: "Erro de Conexão",
+          description: err.message || "Não foi possível carregar a lista de médicos devido a um erro de rede ou tempo limite.",
+          variant: "destructive",
+        });
+        throw err; // Re-throw to let react-query handle the error state
+      }
     },
   });
 
@@ -94,13 +127,27 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
     queryKey: ["patientProfile", selectedPatientId],
     queryFn: async () => {
       if (!selectedPatientId) return null;
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', selectedPatientId)
-        .single();
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await Promise.race([
+          supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', selectedPatientId)
+            .single(),
+          timeoutPromise,
+        ]) as { data: PatientProfile | null; error: any };
+
+        if (error) throw error;
+        return data;
+      } catch (err: any) {
+        console.error("Error fetching selected patient profile:", err);
+        toast({
+          title: "Erro de Conexão",
+          description: err.message || "Não foi possível carregar o perfil do paciente devido a um erro de rede ou tempo limite.",
+          variant: "destructive",
+        });
+        throw err;
+      }
     },
     enabled: !!selectedPatientId,
   });
@@ -110,13 +157,27 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
     queryKey: ["patientSessions", selectedPatientId],
     queryFn: async () => {
       if (!selectedPatientId) return [];
-      const { data, error } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('patient_id', selectedPatientId)
-        .order('session_date', { ascending: false });
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await Promise.race([
+          supabase
+            .from('sessions')
+            .select('*')
+            .eq('patient_id', selectedPatientId)
+            .order('session_date', { ascending: false }),
+          timeoutPromise,
+        ]) as { data: Session[] | null; error: any };
+
+        if (error) throw error;
+        return data;
+      } catch (err: any) {
+        console.error("Error fetching patient sessions:", err);
+        toast({
+          title: "Erro de Conexão",
+          description: err.message || "Não foi possível carregar as sessões do paciente devido a um erro de rede ou tempo limite.",
+          variant: "destructive",
+        });
+        throw err;
+      }
     },
     enabled: !!selectedPatientId,
   });
@@ -126,13 +187,27 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
     queryKey: ["patientMedicalRecords", selectedPatientId],
     queryFn: async () => {
       if (!selectedPatientId) return [];
-      const { data, error } = await supabase
-        .from('medical_records')
-        .select('*')
-        .eq('patient_id', selectedPatientId)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await Promise.race([
+          supabase
+            .from('medical_records')
+            .select('*')
+            .eq('patient_id', selectedPatientId)
+            .order('created_at', { ascending: false }),
+          timeoutPromise,
+        ]) as { data: MedicalRecord[] | null; error: any };
+
+        if (error) throw error;
+        return data;
+      } catch (err: any) {
+        console.error("Error fetching patient medical records:", err);
+        toast({
+          title: "Erro de Conexão",
+          description: err.message || "Não foi possível carregar os prontuários do paciente devido a um erro de rede ou tempo limite.",
+          variant: "destructive",
+        });
+        throw err;
+      }
     },
     enabled: !!selectedPatientId,
   });
@@ -163,10 +238,13 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
 
       console.log("Attempting to insert session with data:", sessionToInsert);
 
-      const { data, error } = await supabase
-        .from('sessions')
-        .insert(sessionToInsert)
-        .select();
+      const { data, error } = await Promise.race([
+        supabase
+          .from('sessions')
+          .insert(sessionToInsert)
+          .select(),
+        timeoutPromise,
+      ]) as { data: Session[] | null; error: any };
 
       if (error) {
         console.error("Supabase insert error:", error);
@@ -215,10 +293,13 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
 
       console.log("Attempting to insert medical record with data:", recordToInsert);
 
-      const { data, error } = await supabase
-        .from('medical_records')
-        .insert(recordToInsert)
-        .select();
+      const { data, error } = await Promise.race([
+        supabase
+          .from('medical_records')
+          .insert(recordToInsert)
+          .select(),
+        timeoutPromise,
+      ]) as { data: MedicalRecord[] | null; error: any };
 
       if (error) {
         console.error("Supabase medical record insert error:", error);
@@ -268,35 +349,68 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
     if (!patientToDelete) return;
 
     setIsDeleting(true);
+    console.log("Doctor.tsx: Attempting to delete patient:", patientToDelete.id);
     try {
       // Delete the patient's profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', patientToDelete.id);
+      const { data: deleteData, error: profileError } = await Promise.race([
+        supabase
+          .from('profiles')
+          .delete()
+          .eq('id', patientToDelete.id)
+          .select(), // Adicionado .select() para obter o count de linhas afetadas
+        timeoutPromise,
+      ]) as { data: PatientProfile[] | null; error: any };
 
       if (profileError) {
         console.error("Supabase delete profile error:", profileError);
         throw profileError;
       }
 
+      // Verifica se alguma linha foi realmente excluída
+      if (!deleteData || deleteData.length === 0) {
+        console.warn("Doctor.tsx: Delete operation returned success but no rows were affected. Likely RLS issue.");
+        toast({
+          title: "Aviso",
+          description: "O paciente não pôde ser excluído. Verifique as permissões de segurança (RLS) no Supabase.",
+          variant: "destructive",
+        });
+        // Não prossegue com a atualização otimista ou re-busca se a exclusão falhou silenciosamente
+        setIsDeleting(false);
+        setIsDeleteDialogOpen(false);
+        return;
+      }
+
+      // Optimistically remove from UI first
+      setPatients(prevPatients => {
+        const updatedPatients = prevPatients.filter(p => p.id !== patientToDelete.id);
+        console.log("Doctor.tsx: Optimistically updated patients list:", updatedPatients);
+        return updatedPatients;
+      });
+      
+      toast({ title: "Sucesso", description: `Paciente ${patientToDelete.full_name} excluído com sucesso!` });
+      
       // Invalidate queries to refetch patient list and clear selected patient data
-      queryClient.invalidateQueries({ queryKey: ["doctorPatients", currentUserId] });
+      if (currentUserId) { // Safely access currentUserId
+        queryClient.invalidateQueries({ queryKey: ["doctorPatients", currentUserId] });
+        // Não é necessário um atraso aqui, pois a atualização otimista já ocorreu.
+        // A fetchPatients irá eventualmente ressincronizar, mas a UI já está atualizada.
+        // Se a exclusão realmente falhou, a re-busca trará o paciente de volta, o que é o comportamento correto.
+        // await fetchPatients(currentUserId); // This is not needed here as it's handled by react-query invalidate
+      }
       queryClient.invalidateQueries({ queryKey: ["patientProfile", patientToDelete.id] });
       queryClient.invalidateQueries({ queryKey: ["patientSessions", patientToDelete.id] });
       queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", patientToDelete.id] });
 
-      toast({ title: "Sucesso", description: `Paciente ${patientToDelete.full_name} excluído com sucesso!` });
-      setSelectedPatientId(null); // Clear selected patient
+      setSelectedPatient(null); // Clear selected patient
       setPatientToDelete(null);
       setIsDeleteDialogOpen(false);
     } catch (error: any) {
       console.error("Error deleting patient:", error);
-      toast({ title: "Erro", description: error.message || "Não foi possível excluir o paciente.", variant: "destructive" });
+      toast({ title: "Erro", description: error.message || "Não foi possível excluir o paciente.", variant: "destructive",});
     } finally {
       setIsDeleting(false);
     }
-  };
+  }, [patientToDelete, currentUserId, queryClient, toast, setSelectedPatient, setPatients, setPatientToDelete, setIsDeleteDialogOpen, setIsDeleting]);
 
   if (isLoadingPatients || isLoadingDoctors) {
     return (
@@ -551,7 +665,7 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
                     <Textarea
                       id="homework"
                       value={newSessionData.homework}
-                      onChange={(e) => setNewSessionData({ ...newSessionData.homework, homework: e.target.value })}
+                      onChange={(e) => setNewSessionData({ ...newSessionData, homework: e.target.value })}
                       placeholder="Atividades ou reflexões recomendadas para o paciente..."
                       rows={3}
                     />
