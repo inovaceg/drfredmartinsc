@@ -10,17 +10,11 @@ export function cn(...inputs: ClassValue[]) {
 export const formatDateToDisplay = (dateString: string | null): string => {
   if (!dateString) return "";
   try {
-    // Assuming dateString is "YYYY-MM-DD" from Supabase
-    const parts = dateString.split('-').map(Number);
-    if (parts.length === 3) {
-      const [year, month, day] = parts;
-      // Create a Date object in the local timezone to avoid timezone issues
-      const date = new Date(year, month - 1, day); // month is 0-indexed
-      
-      if (isNaN(date.getTime())) return "";
-      return format(date, "dd/MM/yyyy"); // Format for display
-    }
-    return ""; // Invalid dateString format
+    // Ensure it's parsed as a local date at midnight to avoid timezone shifts
+    const date = new Date(dateString + 'T00:00:00'); 
+    
+    if (isNaN(date.getTime())) return "";
+    return format(date, "dd/MM/yyyy"); // Format for display
   } catch {
     return "";
   }
@@ -51,6 +45,6 @@ export const parseDateFromInput = (inputString: string): string | null => {
 
 // Nova função utilitária para criar um objeto Date local a partir de uma string YYYY-MM-DD
 export const createLocalDateFromISOString = (isoDateString: string): Date => {
-  const [year, month, day] = isoDateString.split('-').map(Number);
-  return new Date(year, month - 1, day); // Month is 0-indexed, so subtract 1
+  // Using 'T00:00:00' to ensure it's parsed as a local date at midnight
+  return new Date(isoDateString + 'T00:00:00');
 };
