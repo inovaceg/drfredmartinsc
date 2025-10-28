@@ -156,7 +156,7 @@ const Doctor = () => {
         console.error("fetchOverview: Error fetching slots:", slotsErr);
         throw slotsErr;
       }
-      console.log("fetchOverview: Fetched slots:", slots);
+      console.log("fetchOverview: Raw slots data:", slots);
 
       // 2) consultas do período + nome do paciente
       const { data: appts, error: apptsErr } = await supabase
@@ -170,7 +170,7 @@ const Doctor = () => {
         console.error("fetchOverview: Error fetching appointments:", apptsErr);
         throw apptsErr;
       }
-      console.log("fetchOverview: Fetched appointments:", appts);
+      console.log("fetchOverview: Raw appointments data:", appts);
 
       // índice de slot_id -> existe consulta
       const occupiedSet = new Set(appts.map(a => a.slot_id));
@@ -644,8 +644,8 @@ const Doctor = () => {
       setOverviewAppointments(list => [{
         id: apt.id,
         patient_name: patients.find(p => p.id === selectedPatientForBookingId)?.full_name ?? "Paciente Desconhecido",
-        start_time: selectedSlotForBooking.start_time,
-        end_time: selectedSlotForBooking.end_time
+        start_time: apt.start_time, // Use apt.start_time and apt.end_time from the inserted appointment
+        end_time: apt.end_time
       }, ...list]);
 
       toast({
