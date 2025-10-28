@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
-import { Menu, X, Instagram, LogIn, LogOut, MessageSquare } from "lucide-react";
+import { Menu, X, Instagram, LogIn, LogOut, MessageSquare, Wifi, WifiOff, CloudOff } from "lucide-react"; // Added Wifi, WifiOff, CloudOff
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/drawer";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js"; // Import User type
+import { Badge } from "@/components/ui/badge"; // Import Badge
 
 const Navbar = () => {
   const [user, setUser] = useState<User | null>(null); // Explicitly type user state
@@ -22,6 +23,8 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const { toast } = useToast();
+  const [isOnline, setIsOnline] = useState(navigator.onLine); // Track browser online status
+  const [isSupabaseConnected, setIsSupabaseConnected] = useState(true); // Track Supabase connection
 
   useEffect(() => {
     const fetchUserRole = async (userId: string) => {
@@ -80,6 +83,42 @@ const Navbar = () => {
 
     return () => subscription.unsubscribe();
   }, [toast]); // Added toast to dependency array
+
+  // New: Effect to monitor network status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Periodically check Supabase connection
+    const checkSupabaseConnection = async () => {
+      try {
+        // A lightweight query to check if Supabase is reachable
+        const { error } = await supabase.from('profiles').select('id').limit(1);
+        if (error) {
+          console.warn("Supabase connection check failed:", error.message);
+          setIsSupabaseConnected(false);
+        } else {
+          setIsSupabaseConnected(true);
+        }
+      } catch (e) {
+        console.warn("Supabase connection check failed (network error):", e);
+        setIsSupabaseConnected(false);
+      }
+    };
+
+    // Check immediately and then every 10 seconds
+    checkSupabaseConnection();
+    const interval = setInterval(checkSupabaseConnection, 10000); // Check every 10 seconds
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      clearInterval(interval);
+    };
+  }, []); // Run once on mount
 
   const scrollToSection = (sectionId: string) => {
     try {
@@ -196,6 +235,20 @@ const Navbar = () => {
               <LogIn size={16} />
               Entrar
             </Button>
+          )}
+          {/* New: Network Status Indicator */}
+          {!isOnline ? (
+            <Badge variant="destructive" className="flex items-center gap-1">
+              <WifiOff className="h-3 w-3" /> Offline
+            </Badge>
+          ) : !isSupabaseConnected ? (
+            <Badge variant="secondary" className="flex items-center gap-1 bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+              <CloudOff className="h-3 w-3" /> Supabase Offline
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="flex items-center gap-1 bg-green-500/10 text-green-400 border-green-500/30">
+              <Wifi className="h-3 w-3" /> Online
+            </Badge>
           )}
         </nav>
 
