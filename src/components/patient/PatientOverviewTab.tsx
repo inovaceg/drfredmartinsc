@@ -1,16 +1,13 @@
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, FileText, Video, LayoutGrid } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Calendar, Clock, FileText, Video, LayoutGrid, Stethoscope } from "lucide-react"; // Adicionado Stethoscope
 
 interface PatientOverviewTabProps {
   setActiveTab: (tab: string) => void;
 }
 
 export const PatientOverviewTab: React.FC<PatientOverviewTabProps> = ({ setActiveTab }) => {
-  const navigate = useNavigate();
-
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setActiveTab("schedule")}>
@@ -65,9 +62,9 @@ export const PatientOverviewTab: React.FC<PatientOverviewTabProps> = ({ setActiv
         </CardContent>
       </Card>
 
-      <Card className="hover:shadow-lg transition-shadow">
+      <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setActiveTab("medical-records")}> {/* Atualizado para a nova aba */}
         <CardHeader>
-          <FileText className="h-8 w-8 mb-2 text-primary" />
+          <Stethoscope className="h-8 w-8 mb-2 text-primary" /> {/* Ícone para prontuário */}
           <CardTitle>Prontuário</CardTitle>
           <CardDescription>
             Acesse seu histórico médico e prontuários

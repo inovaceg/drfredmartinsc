@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Clock, FileText, LogOut, Video, LayoutGrid, MessageSquare, Menu } from "lucide-react"; // Adicionado Menu
+import { Calendar, Clock, FileText, LogOut, Video, LayoutGrid, MessageSquare, Menu, BookOpen, Stethoscope } from "lucide-react"; // Adicionado Stethoscope
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +15,7 @@ import PatientDocumentsPage from "@/pages/PatientDocumentsPage";
 import { PatientOverviewTab } from "@/components/patient/PatientOverviewTab";
 import { PatientScheduleTab } from "@/components/patient/PatientScheduleTab";
 import { PatientAppointmentsTab } from "@/components/patient/PatientAppointmentsTab";
+import { PatientMedicalRecordsTab } from "@/components/patient/PatientMedicalRecordsTab"; // Importar o novo componente
 import {
   Drawer,
   DrawerClose,
@@ -178,6 +179,10 @@ const Patient = () => {
               <FileText className="h-4 w-4 mr-2" />
               Documentos
             </TabsTrigger>
+            <TabsTrigger value="medical-records" className="px-3 py-2 text-sm whitespace-nowrap">
+              <Stethoscope className="h-4 w-4 mr-2" /> {/* Ícone para prontuário */}
+              Prontuário
+            </TabsTrigger>
           </TabsList>
 
           {/* Mobile Drawer Menu */}
@@ -191,6 +196,7 @@ const Patient = () => {
                   {activeTab === "appointments" && "Consultas"}
                   {activeTab === "online-consultation" && "Consulta Online"}
                   {activeTab === "documents" && "Documentos"}
+                  {activeTab === "medical-records" && "Prontuário"} {/* Adicionado */}
                 </Button>
               </DrawerTrigger>
               <DrawerContent className="h-[80vh] rounded-t-[10px] flex flex-col">
@@ -220,6 +226,10 @@ const Patient = () => {
                       <FileText className="h-4 w-4 mr-2" />
                       Documentos
                     </TabsTrigger>
+                    <TabsTrigger value="medical-records" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("medical-records")}>
+                      <Stethoscope className="h-4 w-4 mr-2" /> {/* Ícone para prontuário */}
+                      Prontuário
+                    </TabsTrigger>
                   </TabsList>
                 </div>
                 <DrawerFooter>
@@ -236,15 +246,7 @@ const Patient = () => {
           </TabsContent>
 
           <TabsContent value="schedule">
-            <PatientScheduleTab
-              user={user}
-              setActiveTab={handleTabChange}
-              onAppointmentBooked={() => {
-                // This callback will trigger a re-fetch in PatientAppointmentsTab
-                // by changing the key or directly calling a refetch function if passed down.
-                // For simplicity, we'll just rely on the Appointments tab re-fetching on mount/tab change.
-              }}
-            />
+            <PatientScheduleTab />
           </TabsContent>
 
           <TabsContent value="appointments">
@@ -263,6 +265,10 @@ const Patient = () => {
 
           <TabsContent value="documents">
             {user && <PatientDocumentsPage />}
+          </TabsContent>
+
+          <TabsContent value="medical-records"> {/* Nova TabsContent para prontuário */}
+            {user && <PatientMedicalRecordsTab currentUserId={user.id} />}
           </TabsContent>
         </Tabs>
       </main>
