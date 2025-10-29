@@ -31,7 +31,7 @@ const Patient = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null); // Explicitly type user state
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("schedule"); // Alterado o valor padrão para 'schedule'
   const [patientProfile, setPatientProfile] = useState<any>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false); // Estado para controlar o Drawer
   const { toast } = useToast();
@@ -159,28 +159,20 @@ const Patient = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
           {/* Desktop TabsList */}
           <TabsList className="hidden md:flex w-full bg-muted p-1 rounded-lg border space-x-1">
-            <TabsTrigger value="overview" className="px-3 py-2 text-sm whitespace-nowrap">
-              <LayoutGrid className="h-4 w-4 mr-2" />
-              Início
-            </TabsTrigger>
             <TabsTrigger value="schedule" className="px-3 py-2 text-sm whitespace-nowrap">
               <Calendar className="h-4 w-4 mr-2" />
-              Agendar
+              Agendar Consulta
             </TabsTrigger>
             <TabsTrigger value="appointments" className="px-3 py-2 text-sm whitespace-nowrap">
               <Clock className="h-4 w-4 mr-2" />
-              Consultas
+              Minhas Consultas
             </TabsTrigger>
             <TabsTrigger value="online-consultation" className="px-3 py-2 text-sm whitespace-nowrap">
               <MessageSquare className="h-4 w-4 mr-2" />
               Consulta Online
             </TabsTrigger>
-            <TabsTrigger value="documents" className="px-3 py-2 text-sm whitespace-nowrap">
-              <FileText className="h-4 w-4 mr-2" />
-              Documentos
-            </TabsTrigger>
             <TabsTrigger value="medical-records" className="px-3 py-2 text-sm whitespace-nowrap">
-              <Stethoscope className="h-4 w-4 mr-2" /> {/* Ícone para prontuário */}
+              <Stethoscope className="h-4 w-4 mr-2" />
               Prontuário
             </TabsTrigger>
           </TabsList>
@@ -191,12 +183,10 @@ const Patient = () => {
               <DrawerTrigger asChild>
                 <Button variant="outline" className="w-full justify-start">
                   <Menu className="h-4 w-4 mr-2" />
-                  {activeTab === "overview" && "Início"}
-                  {activeTab === "schedule" && "Agendar"}
-                  {activeTab === "appointments" && "Consultas"}
+                  {activeTab === "schedule" && "Agendar Consulta"}
+                  {activeTab === "appointments" && "Minhas Consultas"}
                   {activeTab === "online-consultation" && "Consulta Online"}
-                  {activeTab === "documents" && "Documentos"}
-                  {activeTab === "medical-records" && "Prontuário"} {/* Adicionado */}
+                  {activeTab === "medical-records" && "Prontuário"}
                 </Button>
               </DrawerTrigger>
               <DrawerContent className="h-[80vh] rounded-t-[10px] flex flex-col">
@@ -206,28 +196,20 @@ const Patient = () => {
                 </DrawerHeader>
                 <div className="p-4 flex-1 overflow-y-auto">
                   <TabsList className="flex flex-col w-full bg-muted p-1 rounded-lg border space-y-1">
-                    <TabsTrigger value="overview" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("overview")}>
-                      <LayoutGrid className="h-4 w-4 mr-2" />
-                      Início
-                    </TabsTrigger>
                     <TabsTrigger value="schedule" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("schedule")}>
                       <Calendar className="h-4 w-4 mr-2" />
-                      Agendar
+                      Agendar Consulta
                     </TabsTrigger>
                     <TabsTrigger value="appointments" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("appointments")}>
                       <Clock className="h-4 w-4 mr-2" />
-                      Consultas
+                      Minhas Consultas
                     </TabsTrigger>
                     <TabsTrigger value="online-consultation" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("online-consultation")}>
                       <MessageSquare className="h-4 w-4 mr-2" />
                       Consulta Online
                     </TabsTrigger>
-                    <TabsTrigger value="documents" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("documents")}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Documentos
-                    </TabsTrigger>
                     <TabsTrigger value="medical-records" className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left" onClick={() => handleTabChange("medical-records")}>
-                      <Stethoscope className="h-4 w-4 mr-2" /> {/* Ícone para prontuário */}
+                      <Stethoscope className="h-4 w-4 mr-2" />
                       Prontuário
                     </TabsTrigger>
                   </TabsList>
@@ -241,10 +223,7 @@ const Patient = () => {
             </Drawer>
           </div>
 
-          <TabsContent value="overview" className="space-y-4">
-            <PatientOverviewTab setActiveTab={handleTabChange} />
-          </TabsContent>
-
+          {/* Conteúdo das abas */}
           <TabsContent value="schedule">
             <PatientScheduleTab />
           </TabsContent>
@@ -263,11 +242,7 @@ const Patient = () => {
             {user && <OnlineConsultationTab currentUserId={user.id} />}
           </TabsContent>
 
-          <TabsContent value="documents">
-            {user && <PatientDocumentsPage />}
-          </TabsContent>
-
-          <TabsContent value="medical-records"> {/* Nova TabsContent para prontuário */}
+          <TabsContent value="medical-records">
             {user && <PatientMedicalRecordsTab currentUserId={user.id} />}
           </TabsContent>
         </Tabs>
