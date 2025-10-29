@@ -104,7 +104,7 @@ const Navbar = () => {
       let authErrorMessage = '';
 
       const connectionTimeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Tempo limite de conexão excedido.")), 15000) // 15 seconds timeout
+        setTimeout(() => reject(new Error("Tempo limite de conexão excedido.")), 30000) // Increased to 30 seconds
       );
 
       try {
