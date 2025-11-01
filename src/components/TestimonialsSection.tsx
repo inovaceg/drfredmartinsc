@@ -1,7 +1,12 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Star } from "lucide-react";
+import { useEffect } from "react"; // Import useEffect
 
 const TestimonialsSection = () => {
+  useEffect(() => {
+    console.log("[TestimonialsSection]: Component rendered. Element ID 'testimonials' found:", document.getElementById('testimonials'));
+  }, []);
+
   return (
     <section id="testimonials" className="py-12 md:py-16 lg:py-20 bg-gradient-to-b from-slate-900 to-blue-900 border-t border-white/5">
       <div className="container mx-auto px-4">

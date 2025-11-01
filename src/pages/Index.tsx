@@ -9,8 +9,13 @@ import ServicesSection from "@/components/ServicesSection"; // Novo
 import BlogSection from "@/components/BlogSection"; // Novo
 import FaqSection from "@/components/FaqSection"; // Novo
 import ContactSection from "@/components/ContactSection"; // Novo
+import { useEffect } from "react"; // Import useEffect
 
 const Index = () => {
+  useEffect(() => {
+    console.log("[Index]: Main page rendered.");
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
       <AnnouncementBanner />
@@ -22,7 +27,6 @@ const Index = () => {
         <TestimonialsSection />
         <BlogSection />
         <FaqSection />
-        <CredentialsSection />
         <ContactSection />
       </main>
       <Footer />

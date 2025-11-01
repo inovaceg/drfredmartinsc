@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react'; // Import useEffect
 import { CheckCircle, User, Users, HeartCrack, Brain, Leaf, Lightbulb } from "lucide-react"; // Importando novos ícones
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
 const ServicesSection = () => {
+  useEffect(() => {
+    console.log("[ServicesSection]: Component rendered. Element ID 'services' found:", document.getElementById('services'));
+  }, []);
+
   return (
     <section id="services" className="py-12 md:py-20 lg:py-24 bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900">
       <div className="container mx-auto px-4">
