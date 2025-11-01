@@ -71,9 +71,13 @@
 }
  
 @layer base {
-  html, body, #root {
+  html, body {
     height: 100%; /* Garante que ocupem a altura total */
-    overflow-y: auto; /* Permite rolagem vertical */
+    overflow-y: scroll; /* Força a barra de rolagem vertical */
+  }
+  #root {
+    height: 100%; /* Garante que o #root ocupe a altura total */
+    /* Removido overflow-y: auto; do #root */
   }
   body {
     @apply bg-background text-foreground;
