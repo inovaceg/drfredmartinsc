@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, User, Users, HeartCrack, Brain, Leaf, Lightbulb } from "lucide-react"; // Importando novos ícones
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
@@ -56,7 +56,7 @@ const ServicesSection = () => {
 
 const servicesList = [
   {
-    icon: <img src="/lovable-uploads/2a06e255-a166-4b44-ad3b-fe166bfd605d.png" alt="Terapia Individual" className="h-8 w-8" />,
+    icon: <User className="h-8 w-8 text-white" />, // Ícone atualizado
     title: "Terapia Individual",
     description: "Sessões focadas no seu desenvolvimento pessoal, superação de desafios e autoconhecimento.",
     benefits: [
@@ -67,7 +67,7 @@ const servicesList = [
     ]
   },
   {
-    icon: <img src="/lovable-uploads/51f61a3e-a337-4249-a772-bcb482ca78e1.png" alt="Terapia de Casal" className="h-8 w-8" />,
+    icon: <Users className="h-8 w-8 text-white" />, // Ícone atualizado
     title: "Terapia de Casal",
     description: "Apoio para casais que buscam melhorar a comunicação, resolver conflitos e fortalecer o relacionamento.",
     benefits: [
@@ -78,7 +78,7 @@ const servicesList = [
     ]
   },
   {
-    icon: <img src="/lovable-uploads/403ad55d-9786-4efa-8737-1d19449d8300.png" alt="Sexologia" className="h-8 w-8" />,
+    icon: <HeartCrack className="h-8 w-8 text-white" />, // Ícone atualizado
     title: "Sexologia",
     description: "Abordagem especializada para questões relacionadas à sexualidade, intimidade e bem-estar sexual.",
     benefits: [
@@ -89,7 +89,7 @@ const servicesList = [
     ]
   },
   {
-    icon: <img src="/lovable-uploads/0abc4ff9-5b18-464e-ba6d-9e0c91fbb14c.png" alt="Psicanálise" className="h-8 w-8" />,
+    icon: <Brain className="h-8 w-8 text-white" />, // Ícone atualizado
     title: "Psicanálise",
     description: "Exploração profunda do inconsciente para compreender padrões de comportamento e emoções.",
     benefits: [
@@ -100,7 +100,7 @@ const servicesList = [
     ]
   },
   {
-    icon: <img src="/lovable-uploads/70978ae6-f448-446a-ad43-4474707e9838.png" alt="Espiritualidade e Bem-Estar" className="h-8 w-8" />,
+    icon: <Leaf className="h-8 w-8 text-white" />, // Ícone atualizado
     title: "Espiritualidade e Bem-Estar",
     description: "Integração de aspectos espirituais na busca por um equilíbrio e sentido de vida.",
     benefits: [
@@ -111,7 +111,7 @@ const servicesList = [
     ]
   },
   {
-    icon: <img src="/lovable-uploads/5d51f2d9-5988-43ae-bdfb-0e4b52f54e08.png" alt="Workshops e Palestras" className="h-8 w-8" />,
+    icon: <Lightbulb className="h-8 w-8 text-white" />, // Ícone atualizado
     title: "Workshops e Palestras",
     description: "Eventos e conteúdos educativos sobre saúde mental, relacionamentos e desenvolvimento pessoal.",
     benefits: [
