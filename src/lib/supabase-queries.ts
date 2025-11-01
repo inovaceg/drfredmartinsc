@@ -21,6 +21,8 @@ export const fetchSlotsData = async (doctorId: string, startDate: Date, endDate:
   const _start_time_gte = toUtcIso(startDate);
   const _end_time_lte = toUtcIso(endDate);
 
+  console.log("fetchSlotsData: Querying Supabase for doctor:", doctorId, "from", _start_time_gte, "to", _end_time_lte); // NEW LOG
+
   try {
     const { data, error } = await supabase
       .from("availability_slots")
@@ -31,9 +33,11 @@ export const fetchSlotsData = async (doctorId: string, startDate: Date, endDate:
       .order("start_time", { ascending: true });
 
     if (error) {
-      console.error("Error fetching slots from Supabase:", error);
+      console.error("fetchSlotsData: Error fetching slots from Supabase:", error); // NEW LOG
       throw error;
     }
+
+    console.log("fetchSlotsData: Raw data from Supabase:", data); // NEW LOG: Show raw data before filtering
 
     // Retorna todos os slots, a lógica de contagem será feita na Visão Geral
     const availableSlots = data.filter(slot => slot.is_available);
@@ -46,7 +50,7 @@ export const fetchSlotsData = async (doctorId: string, startDate: Date, endDate:
       slots: data,
     };
   } catch (err) {
-    console.error("Unexpected error during fetchSlotsData:", err);
+    console.error("fetchSlotsData: Unexpected error during fetchSlotsData:", err); // NEW LOG
     throw err;
   }
 };

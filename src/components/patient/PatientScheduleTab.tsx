@@ -47,13 +47,25 @@ export const PatientScheduleTab = () => {
     queryKey: ["doctors"],
     queryFn: async () => {
       console.log("PatientScheduleTab: Fetching doctors...");
-      const { data, error } = await supabase.rpc("get_doctors_public");
-      if (error) {
-        console.error("PatientScheduleTab: Error fetching doctors:", error);
-        throw error;
+      try {
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Tempo limite excedido ao carregar médicos.")), 30000)
+        );
+        const { data, error } = await Promise.race([
+          supabase.rpc("get_doctors_public"),
+          timeoutPromise,
+        ]);
+        if (error) {
+          console.error("PatientScheduleTab: Error fetching doctors:", error);
+          throw error;
+        }
+        console.log("PatientScheduleTab: Doctors fetched:", data); // NEW LOG
+        return data;
+      } catch (err: any) {
+        console.error("PatientScheduleTab: Error in fetchDoctors (catch block):", err);
+        toast.error(err.message || "Não foi possível carregar a lista de médicos devido a um erro de rede ou tempo limite.");
+        throw err;
       }
-      console.log("PatientScheduleTab: Doctors fetched:", data);
-      return data;
     },
   });
 
@@ -65,19 +77,31 @@ export const PatientScheduleTab = () => {
         return [];
       }
       console.log("PatientScheduleTab: Fetching available dates for doctor:", selectedDoctorId);
-      const { data, error } = await supabase.rpc("get_doctor_available_dates", {
-        _doctor_id: selectedDoctorId,
-      });
-      if (error) {
-        console.error("PatientScheduleTab: Error fetching available dates:", error);
-        throw error;
+      try {
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Tempo limite excedido ao carregar datas disponíveis.")), 30000)
+        );
+        const { data, error } = await Promise.race([
+          supabase.rpc("get_doctor_available_dates", {
+            _doctor_id: selectedDoctorId,
+          }),
+          timeoutPromise,
+        ]);
+        if (error) {
+          console.error("PatientScheduleTab: Error fetching available dates:", error);
+          throw error;
+        }
+        console.log("PatientScheduleTab: Available dates from RPC (raw):", data); // NEW LOG
+        // Convert string dates (YYYY-MM-DD) from Supabase into local Date objects
+        return data.map((dateString: string) => {
+          const [year, month, day] = dateString.split('-').map(Number);
+          return new Date(year, month - 1, day); // Month is 0-indexed
+        });
+      } catch (err: any) {
+        console.error("PatientScheduleTab: Error in fetchAvailableDates (catch block):", err);
+        toast.error(err.message || "Não foi possível carregar as datas disponíveis devido a um erro de rede ou tempo limite.");
+        throw err;
       }
-      console.log("PatientScheduleTab: Available dates fetched:", data);
-      // Convert string dates (YYYY-MM-DD) from Supabase into local Date objects
-      return data.map((dateString: string) => {
-        const [year, month, day] = dateString.split('-').map(Number);
-        return new Date(year, month - 1, day); // Month is 0-indexed
-      });
     },
     enabled: !!selectedDoctorId,
   });
@@ -96,8 +120,17 @@ export const PatientScheduleTab = () => {
       const endOfDayLocal = endOfDay(localSelectedDateObj);
 
       console.log("PatientScheduleTab: Fetching available slots for doctor:", selectedDoctorId, "date (startOfDayLocal):", startOfDayLocal.toISOString(), "date (endOfDayLocal):", endOfDayLocal.toISOString());
-      const result = await fetchSlotsData(selectedDoctorId, startOfDayLocal, endOfDayLocal);
-      return result.slots.filter(slot => slot.is_available); // Only return truly available slots
+      try {
+        const result = await fetchSlotsData(selectedDoctorId, startOfDayLocal, endOfDayLocal);
+        console.log("PatientScheduleTab: Raw slots fetched by fetchSlotsData (before filtering for is_available):", result.slots); // ADDED LOG FOR DEBUGGING
+        const filteredSlots = result.slots.filter(slot => slot.is_available);
+        console.log("PatientScheduleTab: Filtered available slots (after filtering for is_available):", filteredSlots); // NEW LOG
+        return filteredSlots; // Only return truly available slots
+      } catch (err: any) {
+        console.error("PatientScheduleTab: Error in fetchSlotsData (catch block):", err);
+        toast.error(err.message || "Não foi possível carregar os horários disponíveis devido a um erro de rede ou tempo limite.");
+        throw err;
+      }
     },
     enabled: !!selectedDoctorId && !!selectedDate,
   });
@@ -144,13 +177,20 @@ export const PatientScheduleTab = () => {
       const startTimeUTC = toUtcIso(new Date(selectedSlotStartTime));
       const endTimeUTC = toUtcIso(new Date(selectedSlotEndTime));
 
-      const { data, error } = await supabase.rpc("book_slot_and_create_appointment", {
-        _slot_id: selectedSlotId,
-        _patient_id: patientId,
-        _doctor_id: selectedDoctorId,
-        _start_time: startTimeUTC,
-        _end_time: endTimeUTC,
-      });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Tempo limite excedido ao agendar consulta.")), 30000)
+      );
+
+      const { data, error } = await Promise.race([
+        supabase.rpc("book_slot_and_create_appointment", {
+          _slot_id: selectedSlotId,
+          _patient_id: patientId,
+          _doctor_id: selectedDoctorId,
+          _start_time: startTimeUTC,
+          _end_time: endTimeUTC,
+        }),
+        timeoutPromise,
+      ]);
 
       if (error) {
         toast.error(error.message);
@@ -165,9 +205,9 @@ export const PatientScheduleTab = () => {
       console.log("PatientScheduleTab: Forcing re-fetch of available dates and slots after successful booking.");
       await queryClient.refetchQueries({ queryKey: ["availableDates", selectedDoctorId] });
       await queryClient.refetchQueries({ queryKey: ["availableSlots", selectedDoctorId, selectedDate] });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao agendar consulta:", error);
-      // toast.error("Erro ao agendar consulta. Tente novamente.");
+      toast.error(error.message || "Erro ao agendar consulta. Tente novamente.");
     }
   };
 
@@ -193,7 +233,7 @@ export const PatientScheduleTab = () => {
             disabled={isLoadingDoctors}
           >
             <SelectTrigger id="doctor-select">
-              <SelectValue placeholder="Selecione um profissional" />
+              <SelectValue placeholder={isLoadingDoctors ? "Carregando profissionais..." : "Selecione um profissional"} />
             </SelectTrigger>
             <SelectContent>
               {doctors?.map((doctor) => (
@@ -277,6 +317,7 @@ export const PatientScheduleTab = () => {
                       const availableDateString = `${availableYear}-${availableMonth}-${availableDay}`;
                       return availableDateString === dateToCheckString;
                     });
+                    console.log(`Patient Calendar: Date ${dateToCheckString} is available: ${isDateAvailable}`); // NEW LOG
                     return !isDateAvailable;
                   }
 
