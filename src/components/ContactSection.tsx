@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Import useEffect
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,10 @@ import { formatPhone, unformatPhone } from "@/lib/format-phone";
 import { BRAZILIAN_STATES } from "@/lib/brazilian-states";
 
 const ContactSection = () => {
+  useEffect(() => {
+    console.log("[ContactSection]: Component rendered. Element ID 'contact' found:", document.getElementById('contact'));
+  }, []);
+
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",

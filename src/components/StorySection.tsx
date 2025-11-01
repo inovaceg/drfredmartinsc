@@ -1,8 +1,13 @@
 import { ArrowRight, Award, Users, GraduationCap, Star, Tv, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import drFrederickStory from "@/assets/dr-frederick-2.png";
+import { useEffect } from "react"; // Import useEffect
 
 const StorySection = () => {
+  useEffect(() => {
+    console.log("[StorySection]: Component rendered. Element ID 'about' found:", document.getElementById('about'));
+  }, []);
+
   const openWhatsApp = () => {
     window.open('https://wa.me/553291931779', '_blank');
   };

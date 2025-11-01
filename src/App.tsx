@@ -29,21 +29,32 @@ const ScrollToHashElement = () => {
   const navbarHeight = 80; // Ensure this matches the Navbar's height
 
   useEffect(() => {
+    console.log("[ScrollToHashElement]: Current location hash:", location.hash);
     if (location.hash) {
       const id = location.hash.substring(1); // Remove '#'
       const element = document.getElementById(id);
+      
       if (element) {
-        // Use a small delay to ensure the element is rendered and its position is stable
+        console.log(`[ScrollToHashElement]: Element with ID '${id}' found.`, element);
         setTimeout(() => {
-          const targetPosition = element.getBoundingClientRect().top + window.scrollY - navbarHeight;
+          const elementRect = element.getBoundingClientRect();
+          const currentScrollY = window.scrollY;
+          const targetPosition = elementRect.top + currentScrollY - navbarHeight;
+          
+          console.log(`[ScrollToHashElement]: Attempting to scroll to #${id}.`);
+          console.log(`  Element top (relative to viewport): ${elementRect.top}`);
+          console.log(`  Current scroll Y: ${currentScrollY}`);
+          console.log(`  Navbar height: ${navbarHeight}`);
+          console.log(`  Calculated target position: ${targetPosition}`);
+
           window.scrollTo({
             top: targetPosition,
             behavior: 'smooth'
           });
-          console.log(`App.tsx: Scrolled to #${id} at position ${targetPosition}`);
-        }, 50); // Small delay
+          console.log(`[ScrollToHashElement]: Scroll initiated for #${id}.`);
+        }, 100); // Increased delay slightly to 100ms
       } else {
-        console.warn(`App.tsx: Element with ID ${id} not found for scrolling.`);
+        console.warn(`[ScrollToHashElement]: Element with ID '${id}' NOT found for scrolling.`);
       }
     }
   }, [location, navbarHeight]); // Depend on location and navbarHeight
