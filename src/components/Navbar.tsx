@@ -164,7 +164,7 @@ const Navbar = () => {
           toast({
             title: "Conexão Supabase Perdida",
             description: `Não foi possível conectar ao servidor. Detalhes: ${e.message || 'Erro desconhecido'}. Algumas funcionalidades podem estar limitadas.`,
-            variant: "destructive",
+          variant: "destructive",
           });
           setLastSupabaseStatus(currentStatus);
         }
@@ -337,48 +337,48 @@ const Navbar = () => {
             </DrawerHeader>
             <div className="p-4 flex-1 overflow-y-auto">
               <div className="flex flex-col space-y-2">
-                <Button 
-                  onClick={() => handleNavigationAndScroll("about")}
-                  variant="ghost"
+                <Link 
+                  to="/#about"
+                  onClick={() => setIsDrawerOpen(false)}
                   className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block w-full justify-start"
                 >
                   Sobre
-                </Button>
-                <Button 
-                  onClick={() => handleNavigationAndScroll("services")}
-                  variant="ghost"
+                </Link>
+                <Link 
+                  to="/#services"
+                  onClick={() => setIsDrawerOpen(false)}
                   className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block w-full justify-start"
                 >
                   Serviços
-                </Button>
-                <Button 
-                  onClick={() => handleNavigationAndScroll("testimonials")}
-                  variant="ghost"
+                </Link>
+                <Link 
+                  to="/#testimonials"
+                  onClick={() => setIsDrawerOpen(false)}
                   className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block w-full justify-start"
                 >
                   Depoimentos
-                </Button>
-                <Button 
-                  onClick={() => handleNavigationAndScroll("blog")}
-                  variant="ghost"
+                </Link>
+                <Link 
+                  to="/#blog"
+                  onClick={() => setIsDrawerOpen(false)}
                   className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block w-full justify-start"
                 >
                   Blog
-                </Button>
-                <Button 
-                  onClick={() => handleNavigationAndScroll("faq")}
-                  variant="ghost"
+                </Link>
+                <Link 
+                  to="/#faq"
+                  onClick={() => setIsDrawerOpen(false)}
                   className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block w-full justify-start"
                 >
                   FAQ
-                </Button>
-                <Button 
-                  onClick={() => handleNavigationAndScroll("contact")}
-                  variant="ghost"
+                </Link>
+                <Link 
+                  to="/#contact"
+                  onClick={() => setIsDrawerOpen(false)}
                   className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block w-full justify-start"
                 >
                   Contato
-                </Button>
+                </Link>
                 {user && userRole === 'doctor' && (
                   <Button 
                     onClick={() => {
