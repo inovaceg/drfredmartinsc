@@ -182,41 +182,12 @@ const Navbar = () => {
     };
   }, [toast, lastSupabaseStatus]); // Added lastSupabaseStatus to dependency array
 
-  const scrollToSection = useCallback((sectionId: string) => {
-    console.log("scrollToSection called for:", sectionId); // Debug log 1
-    const targetElement = document.getElementById(sectionId);
-    const navbarHeight = 80; // Altura do navbar (h-20 = 5rem = 80px)
-
-    if (window.location.pathname !== '/') {
-      console.log("Not on home page, navigating to /#", sectionId); // Debug log
-      navigate(`/#${sectionId}`);
-      setTimeout(() => {
-        const recheckTargetElement = document.getElementById(sectionId);
-        if (recheckTargetElement) {
-          console.log("Found target element after navigation:", recheckTargetElement); // Debug log 2
-          const targetPosition = recheckTargetElement.getBoundingClientRect().top + window.scrollY - navbarHeight;
-          console.log("Calculated target position:", targetPosition); // Debug log 3
-          window.scrollTo({
-            top: targetPosition,
-            behavior: 'smooth'
-          });
-        } else {
-          console.error("Target element not found after navigation for ID:", sectionId); // Debug error
-        }
-      }, 100); // Pequeno atraso para permitir que a página renderize e o navegador role para o hash
-    } else if (targetElement) {
-      console.log("Found target element on home page:", targetElement); // Debug log 2
-      const targetPosition = targetElement.getBoundingClientRect().top + window.scrollY - navbarHeight;
-      console.log("Calculated target position:", targetPosition); // Debug log 3
-      window.scrollTo({
-        top: targetPosition,
-        behavior: 'smooth'
-      });
-      setIsDrawerOpen(false); // Fecha o drawer após a navegação
-    } else {
-      console.error("Target element not found on home page for ID:", sectionId); // Debug error
-    }
-  }, [navigate]); // Adiciona navigate às dependências do useCallback
+  const handleNavigationAndScroll = useCallback((sectionId: string) => {
+    console.log("handleNavigationAndScroll called for:", sectionId);
+    // Always navigate to the root path with the hash
+    navigate(`/#${sectionId}`);
+    setIsDrawerOpen(false); // Close drawer regardless
+  }, [navigate]);
 
   return (
     <header className="sticky top-0 z-50 bg-card border-b border-border shadow-sm backdrop-blur-md">
@@ -231,42 +202,42 @@ const Navbar = () => {
         
         <nav className="hidden md:flex items-center space-x-8">
           <Button 
-            onClick={() => scrollToSection("about")}
+            onClick={() => handleNavigationAndScroll("about")}
             variant="ghost"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
             Sobre
           </Button>
           <Button 
-            onClick={() => scrollToSection("services")}
+            onClick={() => handleNavigationAndScroll("services")}
             variant="ghost"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
             Serviços
           </Button>
           <Button 
-            onClick={() => scrollToSection("testimonials")}
+            onClick={() => handleNavigationAndScroll("testimonials")}
             variant="ghost"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
             Depoimentos
           </Button>
           <Button 
-            onClick={() => scrollToSection("blog")}
+            onClick={() => handleNavigationAndScroll("blog")}
             variant="ghost"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
             Blog
           </Button>
           <Button 
-            onClick={() => scrollToSection("faq")}
+            onClick={() => handleNavigationAndScroll("faq")}
             variant="ghost"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
             FAQ
           </Button>
           <Button 
-            onClick={() => scrollToSection("contact")}
+            onClick={() => handleNavigationAndScroll("contact")}
             variant="ghost"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
@@ -367,42 +338,42 @@ const Navbar = () => {
             <div className="p-4 flex-1 overflow-y-auto">
               <div className="flex flex-col space-y-2">
                 <Button 
-                  onClick={() => scrollToSection("about")}
+                  onClick={() => handleNavigationAndScroll("about")}
                   variant="ghost"
                   className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block w-full justify-start"
                 >
                   Sobre
                 </Button>
                 <Button 
-                  onClick={() => scrollToSection("services")}
+                  onClick={() => handleNavigationAndScroll("services")}
                   variant="ghost"
                   className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block w-full justify-start"
                 >
                   Serviços
                 </Button>
                 <Button 
-                  onClick={() => scrollToSection("testimonials")}
+                  onClick={() => handleNavigationAndScroll("testimonials")}
                   variant="ghost"
                   className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block w-full justify-start"
                 >
                   Depoimentos
                 </Button>
                 <Button 
-                  onClick={() => scrollToSection("blog")}
+                  onClick={() => handleNavigationAndScroll("blog")}
                   variant="ghost"
                   className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block w-full justify-start"
                 >
                   Blog
                 </Button>
                 <Button 
-                  onClick={() => scrollToSection("faq")}
+                  onClick={() => handleNavigationAndScroll("faq")}
                   variant="ghost"
                   className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block w-full justify-start"
                 >
                   FAQ
                 </Button>
                 <Button 
-                  onClick={() => scrollToSection("contact")}
+                  onClick={() => handleNavigationAndScroll("contact")}
                   variant="ghost"
                   className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block w-full justify-start"
                 >

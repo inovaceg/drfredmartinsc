@@ -2,7 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { useEffect } from "react"; // Import useEffect
 import Index from "./pages/Index";
 import Shop from "./pages/Shop";
 import Licensee from "./pages/Licensee";
@@ -22,12 +23,41 @@ import { WhatsappTranscriptionsPage } from "./pages/WhatsappTranscriptionsPage";
 
 const queryClient = new QueryClient();
 
+// New component to handle scrolling to hash links
+const ScrollToHashElement = () => {
+  const location = useLocation();
+  const navbarHeight = 80; // Ensure this matches the Navbar's height
+
+  useEffect(() => {
+    if (location.hash) {
+      const id = location.hash.substring(1); // Remove '#'
+      const element = document.getElementById(id);
+      if (element) {
+        // Use a small delay to ensure the element is rendered and its position is stable
+        setTimeout(() => {
+          const targetPosition = element.getBoundingClientRect().top + window.scrollY - navbarHeight;
+          window.scrollTo({
+            top: targetPosition,
+            behavior: 'smooth'
+          });
+          console.log(`App.tsx: Scrolled to #${id} at position ${targetPosition}`);
+        }, 50); // Small delay
+      } else {
+        console.warn(`App.tsx: Element with ID ${id} not found for scrolling.`);
+      }
+    }
+  }, [location, navbarHeight]); // Depend on location and navbarHeight
+
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <ScrollToHashElement /> {/* Add the new component here */}
         <Routes>
           <Route path="/" element={<Index />} />
           {/* Rotas removidas para About, Services, Testimonials, Blog, Faq, Contact */}
