@@ -212,37 +212,42 @@ const Navbar = () => {
         </div>
         
         <nav className="hidden md:flex items-center space-x-8">
-          <a 
-            href="#about"
-            onClick={(e) => {
-              e.preventDefault();
-              const element = document.querySelector('#about');
-              if (element) element.scrollIntoView({ behavior: 'smooth' });
-            }}
+          <Link 
+            to="/about"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
             Sobre
-          </a>
-          <a 
-            href="#credentials"
-            onClick={(e) => {
-              e.preventDefault();
-              const element = document.querySelector('#credentials');
-              if (element) element.scrollIntoView({ behavior: 'smooth' });
-            }}
+          </Link>
+          <Link 
+            to="/services"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
-            Formação
-          </a>
-          <a 
-            href="https://instagram.com/drfredmartinsjf"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-foreground/70 hover:text-foreground transition-colors flex items-center gap-2"
+            Serviços
+          </Link>
+          <Link 
+            to="/testimonials"
+            className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
-            <Instagram size={20} />
-            Instagram
-          </a>
+            Depoimentos
+          </Link>
+          <Link 
+            to="/blog"
+            className="font-medium text-foreground/70 hover:text-foreground transition-colors"
+          >
+            Blog
+          </Link>
+          <Link 
+            to="/faq"
+            className="font-medium text-foreground/70 hover:text-foreground transition-colors"
+          >
+            FAQ
+          </Link>
+          <Link 
+            to="/contact"
+            className="font-medium text-foreground/70 hover:text-foreground transition-colors"
+          >
+            Contato
+          </Link>
           {user && userRole === 'doctor' && (
             <Button 
               onClick={() => navigate("/doctor")}
@@ -315,12 +320,13 @@ const Navbar = () => {
         </nav>
 
         <div className="hidden md:block">
-          <Button 
-            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-6"
-            onClick={() => scrollToSection('about')} // Changed to 'about' since 'contact' is removed
-          >
-            Agende Agora
-          </Button>
+          <Link to="/patient"> {/* Link para a página do paciente para agendamento */}
+            <Button 
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-6"
+            >
+              Agende Agora
+            </Button>
+          </Link>
         </div>
 
         <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
@@ -336,35 +342,48 @@ const Navbar = () => {
             </DrawerHeader>
             <div className="p-4 flex-1 overflow-y-auto">
               <div className="flex flex-col space-y-2">
-                <a 
-                  href="#about"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    scrollToSection('about');
-                  }}
+                <Link 
+                  to="/about"
+                  onClick={() => setIsDrawerOpen(false)}
                   className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block"
                 >
                   Sobre
-                </a>
-                <a 
-                  href="#credentials"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    scrollToSection('credentials');
-                  }}
+                </Link>
+                <Link 
+                  to="/services"
+                  onClick={() => setIsDrawerOpen(false)}
                   className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block"
                 >
-                  Formação
-                </a>
-                <a 
-                  href="https://instagram.com/drfredmartinsjf"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg flex items-center gap-2"
+                  Serviços
+                </Link>
+                <Link 
+                  to="/testimonials"
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block"
                 >
-                  <Instagram size={20} />
-                  Instagram
-                </a>
+                  Depoimentos
+                </Link>
+                <Link 
+                  to="/blog"
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block"
+                >
+                  Blog
+                </Link>
+                <Link 
+                  to="/faq"
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block"
+                >
+                  FAQ
+                </Link>
+                <Link 
+                  to="/contact"
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block"
+                >
+                  Contato
+                </Link>
                 {user && userRole === 'doctor' && (
                   <Button 
                     onClick={() => {
@@ -430,14 +449,14 @@ const Navbar = () => {
                     Entrar
                   </Button>
                 )}
-                <Button
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full w-full mt-2 py-4 text-lg"
-                  onClick={() => {
-                    scrollToSection('about'); // Changed to 'about' since 'contact' is removed
-                  }}
-                >
-                  Agende Agora
-                </Button>
+                <Link to="/patient"> {/* Link para a página do paciente para agendamento */}
+                  <Button
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full w-full mt-2 py-4 text-lg"
+                    onClick={() => setIsDrawerOpen(false)}
+                  >
+                    Agende Agora
+                  </Button>
+                </Link>
               </div>
             </div>
             <DrawerFooter>

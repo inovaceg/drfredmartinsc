@@ -5,6 +5,7 @@ import { Instagram, Phone, Mail, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatPhone, unformatPhone } from "@/lib/format-phone"; // Importar formatPhone e unformatPhone
+import { Link } from "react-router-dom"; // Importar Link
 
 const Footer = () => {
   const [email, setEmail] = useState("");
@@ -92,30 +93,68 @@ const Footer = () => {
             <h3 className="text-xl font-bold mb-6 text-white tracking-tight">Navegação</h3>
             <ul className="space-y-3">
               <li>
-                <a 
-                  href="#about" 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const element = document.querySelector('#about');
-                    if (element) element.scrollIntoView({ behavior: 'smooth' });
-                  }}
+                <Link 
+                  to="/about" 
                   className="text-white/70 hover:text-white transition-opacity"
                 >
                   Sobre
-                </a>
+                </Link>
               </li>
               <li>
-                <a 
-                  href="#credentials" 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const element = document.querySelector('#credentials');
-                    if (element) element.scrollIntoView({ behavior: 'smooth' });
-                  }}
+                <Link 
+                  to="/services" 
                   className="text-white/70 hover:text-white transition-opacity"
                 >
-                  Formação
-                </a>
+                  Serviços
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to="/testimonials" 
+                  className="text-white/70 hover:text-white transition-opacity"
+                >
+                  Depoimentos
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to="/blog" 
+                  className="text-white/70 hover:text-white transition-opacity"
+                >
+                  Blog
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to="/faq" 
+                  className="text-white/70 hover:text-white transition-opacity"
+                >
+                  FAQ
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to="/contact" 
+                  className="text-white/70 hover:text-white transition-opacity"
+                >
+                  Contato
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to="/privacy-policy" 
+                  className="text-white/70 hover:text-white transition-opacity"
+                >
+                  Política de Privacidade
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to="/terms-of-service" 
+                  className="text-white/70 hover:text-white transition-opacity"
+                >
+                  Termos de Uso
+                </Link>
               </li>
             </ul>
           </div>

@@ -1,19 +1,18 @@
-import AnnouncementBanner from "@/components/AnnouncementBanner";
+import React from 'react';
 import Navbar from "@/components/Navbar";
-import HeroSection from "@/components/HeroSection";
 import Footer from "@/components/Footer";
+import TestimonialsSection from "@/components/TestimonialsSection";
 
-const Index = () => {
+const Testimonials = () => {
   return (
     <div className="min-h-screen flex flex-col">
-      <AnnouncementBanner />
       <Navbar />
       <main>
-        <HeroSection />
+        <TestimonialsSection />
       </main>
       <Footer />
     </div>
   );
 };
 
-export default Index;
+export default Testimonials;
