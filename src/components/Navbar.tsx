@@ -182,20 +182,34 @@ const Navbar = () => {
     };
   }, [toast, lastSupabaseStatus]); // Added lastSupabaseStatus to dependency array
 
-  const scrollToSection = (sectionId: string) => {
-    // Check if we are already on the home page
+  const scrollToSection = useCallback((sectionId: string) => {
+    const targetElement = document.getElementById(sectionId);
+    const navbarHeight = 80; // Altura do navbar (h-20 = 5rem = 80px)
+
     if (window.location.pathname !== '/') {
-      // If not, navigate to home and then scroll
+      // Se não estiver na página inicial, navega para a página inicial com o hash
+      // e tenta rolar após um pequeno atraso para garantir que o elemento esteja no DOM
       navigate(`/#${sectionId}`);
-    } else {
-      // If already on home page, just scroll
-      const section = document.getElementById(sectionId);
-      if (section) {
-        section.scrollIntoView({ behavior: 'smooth' });
-        setIsDrawerOpen(false);
-      }
+      setTimeout(() => {
+        const recheckTargetElement = document.getElementById(sectionId);
+        if (recheckTargetElement) {
+          const targetPosition = recheckTargetElement.getBoundingClientRect().top + window.scrollY - navbarHeight;
+          window.scrollTo({
+            top: targetPosition,
+            behavior: 'smooth'
+          });
+        }
+      }, 100); // Pequeno atraso para permitir que a página renderize e o navegador role para o hash
+    } else if (targetElement) {
+      // Se já estiver na página inicial, rola diretamente com o offset
+      const targetPosition = targetElement.getBoundingClientRect().top + window.scrollY - navbarHeight;
+      window.scrollTo({
+        top: targetPosition,
+        behavior: 'smooth'
+      });
+      setIsDrawerOpen(false); // Fecha o drawer após a navegação
     }
-  };
+  }, [navigate]); // Adiciona navigate às dependências do useCallback
 
   return (
     <header className="sticky top-0 z-50 bg-card border-b border-border shadow-sm backdrop-blur-md">
