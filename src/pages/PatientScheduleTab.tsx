@@ -122,6 +122,7 @@ export const PatientScheduleTab = () => {
       console.log("PatientScheduleTab: Fetching available slots for doctor:", selectedDoctorId, "date (startOfDayLocal):", startOfDayLocal.toISOString(), "date (endOfDayLocal):", endOfDayLocal.toISOString());
       try {
         const result = await fetchSlotsData(selectedDoctorId, startOfDayLocal, endOfDayLocal);
+        console.log("PatientScheduleTab: Raw slots fetched by fetchSlotsData:", result.slots); // ADDED LOG FOR DEBUGGING
         return result.slots.filter(slot => slot.is_available); // Only return truly available slots
       } catch (err: any) {
         console.error("PatientScheduleTab: Error in fetchSlotsData (catch block):", err);
