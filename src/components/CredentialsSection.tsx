@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Award } from "lucide-react";
 
 const CredentialsSection = () => {
-  const credentialText = "Reconhecido 5 vezes em premiações como melhor terapeuta em São Paulo. mãos e Mentes Brilhantes. Profissional do ano destaque de 2023. Premio raimundo nonato , personalidades 2023, 2024 e 2025.";
+  const credentialText = "Reconhecimento em grandes eventos em São Paulo como o melhor profissional em destaque. Anos premiados: 2023, 2024 e 2025.";
 
   return (
     <section id="credentials" className="py-12 md:py-16 lg:py-20 bg-gradient-to-b from-slate-900 to-blue-900 border-t border-white/5">
