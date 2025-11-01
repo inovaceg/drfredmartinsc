@@ -328,7 +328,7 @@ const Doctor = () => {
           console.error("Error loading schedule slots:", error);
           toast({
             title: "Erro",
-            description: "Não foi possível carregar os horários da agenda.",
+            description: error.message,
             variant: "destructive",
           });
           setSlots([]);
@@ -408,7 +408,7 @@ const Doctor = () => {
         variant: "destructive",
       });
     } else {
-      console.log("Doctor.tsx: Slots created successfully. Data:", data);
+      console.log("Doctor.tsx: Slots created successfully. Data:", data); // LOG DE SUCESSO
       toast({
         title: "Sucesso",
         description: "Horários criados com sucesso!",
@@ -419,7 +419,7 @@ const Doctor = () => {
       const scheduleSlots = await fetchSlotsData(user.id, startOfDayLocal, endOfDayLocal);
       setSlots(scheduleSlots.slots);
       queryClient.invalidateQueries({ queryKey: ["availableDates", user.id] });
-      // fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
+      fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
     setIsLoadingScheduleSlots(false); // Use renamed loading state
   };
@@ -441,14 +441,18 @@ const Doctor = () => {
         variant: "destructive",
       });
     } else {
-      console.log("Doctor.tsx: Slot availability updated. Data:", data);
+      console.log("Doctor.tsx: Slot availability updated. Data:", data); // LOG DE SUCESSO
+      toast({
+        title: "Sucesso",
+        description: "Disponibilidade do horário atualizada!",
+      });
       const dateObj = createLocalDateFromISOString(selectedDate!);
       const startOfDayLocal = startOfDay(dateObj);
       const endOfDayLocal = endOfDay(dateObj);
       const scheduleSlots = await fetchSlotsData(user!.id, startOfDayLocal, endOfDayLocal);
       setSlots(scheduleSlots.slots);
       queryClient.invalidateQueries({ queryKey: ["availableDates", user!.id] });
-      // fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
+      fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
   };
 
@@ -484,7 +488,7 @@ const Doctor = () => {
         variant: "destructive",
       });
     } else {
-      console.log("Doctor.tsx: Slots deleted successfully. Data:", data);
+      console.log("Doctor.tsx: Slots deleted successfully. Data:", data); // LOG DE SUCESSO
       toast({
         title: "Sucesso",
         description: `${selectedSlotIds.length} horários excluídos com sucesso!`,
@@ -496,7 +500,7 @@ const Doctor = () => {
       const scheduleSlots = await fetchSlotsData(user!.id, startOfDayLocal, endOfDayLocal);
       setSlots(scheduleSlots.slots);
       queryClient.invalidateQueries({ queryKey: ["availableDates", user!.id] });
-      // fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
+      fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
     setIsLoadingScheduleSlots(false); // Use renamed loading state
   };
@@ -520,7 +524,7 @@ const Doctor = () => {
         variant: "destructive",
       });
     } else {
-      console.log("Doctor.tsx: Bulk slot availability updated. Data:", data);
+      console.log("Doctor.tsx: Bulk slot availability updated. Data:", data); // LOG DE SUCESSO
       toast({
         title: "Sucesso",
         description: `${selectedSlotIds.length} horários marcados como ${makeAvailable ? 'disponíveis' : 'indisponíveis'}!`,
@@ -532,7 +536,7 @@ const Doctor = () => {
       const scheduleSlots = await fetchSlotsData(user!.id, startOfDayLocal, endOfDayLocal);
       setSlots(scheduleSlots.slots);
       queryClient.invalidateQueries({ queryKey: ["availableDates", user!.id] });
-      // fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
+      fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
     setIsLoadingScheduleSlots(false); // Use renamed loading state
   };
@@ -559,7 +563,7 @@ const Doctor = () => {
         description: "Status atualizado!",
       });
       fetchAppointments();
-      // fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
+      fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
   };
 
@@ -634,7 +638,7 @@ const Doctor = () => {
       });
 
       // 4) refresh confiável
-      // await fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate);
+      fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate);
       
       setSelectedPatientForBookingId(null);
       setSelectedSlotForBooking(null);
