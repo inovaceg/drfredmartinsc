@@ -5,7 +5,7 @@ import { Instagram, Phone, Mail, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatPhone, unformatPhone } from "@/lib/format-phone"; // Importar formatPhone e unformatPhone
-import { Link } from "react-router-dom"; // Importar Link
+import { Link, useNavigate } from "react-router-dom"; // Importar Link e useNavigate
 
 const Footer = () => {
   const [email, setEmail] = useState("");
@@ -13,6 +13,7 @@ const Footer = () => {
   const [whatsapp, setWhatsapp] = useState(""); // Novo estado para o WhatsApp
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate(); // Inicializar useNavigate
 
   const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +67,20 @@ const Footer = () => {
     }
   };
 
+  const scrollToSection = (sectionId: string) => {
+    // Check if we are already on the home page
+    if (window.location.pathname !== '/') {
+      // If not, navigate to home and then scroll
+      navigate(`/#${sectionId}`);
+    } else {
+      // If already on home page, just scroll
+      const section = document.getElementById(sectionId);
+      if (section) {
+        section.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
+
   return (
     <footer className="bg-gradient-to-b from-slate-900 to-black border-t border-white/10">
       <div className="container mx-auto px-4 py-16">
@@ -93,52 +108,52 @@ const Footer = () => {
             <h3 className="text-xl font-bold mb-6 text-white tracking-tight">Navegação</h3>
             <ul className="space-y-3">
               <li>
-                <Link 
-                  to="/about" 
-                  className="text-white/70 hover:text-white transition-opacity"
+                <button 
+                  onClick={() => scrollToSection("about")} 
+                  className="text-white/70 hover:text-white transition-opacity text-left w-full"
                 >
                   Sobre
-                </Link>
+                </button>
               </li>
               <li>
-                <Link 
-                  to="/services" 
-                  className="text-white/70 hover:text-white transition-opacity"
+                <button 
+                  onClick={() => scrollToSection("services")} 
+                  className="text-white/70 hover:text-white transition-opacity text-left w-full"
                 >
                   Serviços
-                </Link>
+                </button>
               </li>
               <li>
-                <Link 
-                  to="/testimonials" 
-                  className="text-white/70 hover:text-white transition-opacity"
+                <button 
+                  onClick={() => scrollToSection("testimonials")} 
+                  className="text-white/70 hover:text-white transition-opacity text-left w-full"
                 >
                   Depoimentos
-                </Link>
+                </button>
               </li>
               <li>
-                <Link 
-                  to="/blog" 
-                  className="text-white/70 hover:text-white transition-opacity"
+                <button 
+                  onClick={() => scrollToSection("blog")} 
+                  className="text-white/70 hover:text-white transition-opacity text-left w-full"
                 >
                   Blog
-                </Link>
+                </button>
               </li>
               <li>
-                <Link 
-                  to="/faq" 
-                  className="text-white/70 hover:text-white transition-opacity"
+                <button 
+                  onClick={() => scrollToSection("faq")} 
+                  className="text-white/70 hover:text-white transition-opacity text-left w-full"
                 >
                   FAQ
-                </Link>
+                </button>
               </li>
               <li>
-                <Link 
-                  to="/contact" 
-                  className="text-white/70 hover:text-white transition-opacity"
+                <button 
+                  onClick={() => scrollToSection("contact")} 
+                  className="text-white/70 hover:text-white transition-opacity text-left w-full"
                 >
                   Contato
-                </Link>
+                </button>
               </li>
               <li>
                 <Link 

@@ -183,18 +183,15 @@ const Navbar = () => {
   }, [toast, lastSupabaseStatus]); // Added lastSupabaseStatus to dependency array
 
   const scrollToSection = (sectionId: string) => {
-    try {
+    // Check if we are already on the home page
+    if (window.location.pathname !== '/') {
+      // If not, navigate to home and then scroll
+      navigate(`/#${sectionId}`);
+    } else {
+      // If already on home page, just scroll
       const section = document.getElementById(sectionId);
       if (section) {
         section.scrollIntoView({ behavior: 'smooth' });
-        setIsDrawerOpen(false);
-      }
-    } catch (error) {
-      console.error(`Error scrolling to ${sectionId}:`, error);
-      const element = document.getElementById(sectionId);
-      if (element) {
-        const yOffset = element.getBoundingClientRect().top + window.pageYOffset;
-        window.scrollTo({top: yOffset, behavior: 'smooth'});
         setIsDrawerOpen(false);
       }
     }
@@ -212,42 +209,48 @@ const Navbar = () => {
         </div>
         
         <nav className="hidden md:flex items-center space-x-8">
-          <Link 
-            to="/about"
+          <Button 
+            onClick={() => scrollToSection("about")}
+            variant="ghost"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
             Sobre
-          </Link>
-          <Link 
-            to="/services"
+          </Button>
+          <Button 
+            onClick={() => scrollToSection("services")}
+            variant="ghost"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
             Serviços
-          </Link>
-          <Link 
-            to="/testimonials"
+          </Button>
+          <Button 
+            onClick={() => scrollToSection("testimonials")}
+            variant="ghost"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
             Depoimentos
-          </Link>
-          <Link 
-            to="/blog"
+          </Button>
+          <Button 
+            onClick={() => scrollToSection("blog")}
+            variant="ghost"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
             Blog
-          </Link>
-          <Link 
-            to="/faq"
+          </Button>
+          <Button 
+            onClick={() => scrollToSection("faq")}
+            variant="ghost"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
             FAQ
-          </Link>
-          <Link 
-            to="/contact"
+          </Button>
+          <Button 
+            onClick={() => scrollToSection("contact")}
+            variant="ghost"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
             Contato
-          </Link>
+          </Button>
           {user && userRole === 'doctor' && (
             <Button 
               onClick={() => navigate("/doctor")}
@@ -342,48 +345,48 @@ const Navbar = () => {
             </DrawerHeader>
             <div className="p-4 flex-1 overflow-y-auto">
               <div className="flex flex-col space-y-2">
-                <Link 
-                  to="/about"
-                  onClick={() => setIsDrawerOpen(false)}
-                  className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block"
+                <Button 
+                  onClick={() => scrollToSection("about")}
+                  variant="ghost"
+                  className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block w-full justify-start"
                 >
                   Sobre
-                </Link>
-                <Link 
-                  to="/services"
-                  onClick={() => setIsDrawerOpen(false)}
-                  className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block"
+                </Button>
+                <Button 
+                  onClick={() => scrollToSection("services")}
+                  variant="ghost"
+                  className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block w-full justify-start"
                 >
                   Serviços
-                </Link>
-                <Link 
-                  to="/testimonials"
-                  onClick={() => setIsDrawerOpen(false)}
-                  className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block"
+                </Button>
+                <Button 
+                  onClick={() => scrollToSection("testimonials")}
+                  variant="ghost"
+                  className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block w-full justify-start"
                 >
                   Depoimentos
-                </Link>
-                <Link 
-                  to="/blog"
-                  onClick={() => setIsDrawerOpen(false)}
-                  className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block"
+                </Button>
+                <Button 
+                  onClick={() => scrollToSection("blog")}
+                  variant="ghost"
+                  className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block w-full justify-start"
                 >
                   Blog
-                </Link>
-                <Link 
-                  to="/faq"
-                  onClick={() => setIsDrawerOpen(false)}
-                  className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block"
+                </Button>
+                <Button 
+                  onClick={() => scrollToSection("faq")}
+                  variant="ghost"
+                  className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block w-full justify-start"
                 >
                   FAQ
-                </Link>
-                <Link 
-                  to="/contact"
-                  onClick={() => setIsDrawerOpen(false)}
-                  className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block"
+                </Button>
+                <Button 
+                  onClick={() => scrollToSection("contact")}
+                  variant="ghost"
+                  className="font-medium text-foreground/80 hover:text-foreground bg-accent/50 hover:bg-accent rounded-lg px-4 py-3 transition-colors text-lg block w-full justify-start"
                 >
                   Contato
-                </Link>
+                </Button>
                 {user && userRole === 'doctor' && (
                   <Button 
                     onClick={() => {

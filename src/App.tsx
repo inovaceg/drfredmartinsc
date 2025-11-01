@@ -19,12 +19,6 @@ import Auth from "./pages/Auth";
 import Patient from "./pages/Patient";
 import Doctor from "./pages/Doctor";
 import { WhatsappTranscriptionsPage } from "./pages/WhatsappTranscriptionsPage";
-import About from "./pages/About"; // Nova importação
-import Services from "./pages/Services"; // Nova importação
-import Testimonials from "./pages/Testimonials"; // Nova importação
-import Blog from "./pages/Blog"; // Nova importação
-import Faq from "./pages/Faq"; // Nova importação
-import Contact from "./pages/Contact"; // Nova importação
 
 const queryClient = new QueryClient();
 
@@ -36,12 +30,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/about" element={<About />} /> {/* Nova rota */}
-          <Route path="/services" element={<Services />} /> {/* Nova rota */}
-          <Route path="/testimonials" element={<Testimonials />} /> {/* Nova rota */}
-          <Route path="/blog" element={<Blog />} /> {/* Nova rota */}
-          <Route path="/faq" element={<Faq />} /> {/* Nova rota */}
-          <Route path="/contact" element={<Contact />} /> {/* Nova rota */}
+          {/* Rotas removidas para About, Services, Testimonials, Blog, Faq, Contact */}
           <Route path="/shop" element={<Shop />} />
           <Route path="/licensee" element={<Licensee />} />
           <Route path="/owners" element={<Owners />} />
