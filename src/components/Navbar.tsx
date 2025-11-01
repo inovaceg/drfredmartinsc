@@ -183,31 +183,38 @@ const Navbar = () => {
   }, [toast, lastSupabaseStatus]); // Added lastSupabaseStatus to dependency array
 
   const scrollToSection = useCallback((sectionId: string) => {
+    console.log("scrollToSection called for:", sectionId); // Debug log 1
     const targetElement = document.getElementById(sectionId);
     const navbarHeight = 80; // Altura do navbar (h-20 = 5rem = 80px)
 
     if (window.location.pathname !== '/') {
-      // Se não estiver na página inicial, navega para a página inicial com o hash
-      // e tenta rolar após um pequeno atraso para garantir que o elemento esteja no DOM
+      console.log("Not on home page, navigating to /#", sectionId); // Debug log
       navigate(`/#${sectionId}`);
       setTimeout(() => {
         const recheckTargetElement = document.getElementById(sectionId);
         if (recheckTargetElement) {
+          console.log("Found target element after navigation:", recheckTargetElement); // Debug log 2
           const targetPosition = recheckTargetElement.getBoundingClientRect().top + window.scrollY - navbarHeight;
+          console.log("Calculated target position:", targetPosition); // Debug log 3
           window.scrollTo({
             top: targetPosition,
             behavior: 'smooth'
           });
+        } else {
+          console.error("Target element not found after navigation for ID:", sectionId); // Debug error
         }
       }, 100); // Pequeno atraso para permitir que a página renderize e o navegador role para o hash
     } else if (targetElement) {
-      // Se já estiver na página inicial, rola diretamente com o offset
+      console.log("Found target element on home page:", targetElement); // Debug log 2
       const targetPosition = targetElement.getBoundingClientRect().top + window.scrollY - navbarHeight;
+      console.log("Calculated target position:", targetPosition); // Debug log 3
       window.scrollTo({
         top: targetPosition,
         behavior: 'smooth'
       });
       setIsDrawerOpen(false); // Fecha o drawer após a navegação
+    } else {
+      console.error("Target element not found on home page for ID:", sectionId); // Debug error
     }
   }, [navigate]); // Adiciona navigate às dependências do useCallback
 
