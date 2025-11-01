@@ -202,42 +202,42 @@ const Navbar = () => {
         
         <nav className="hidden md:flex items-center space-x-8">
           <Button 
-            onClick={() => handleNavigationAndScroll("about")}
+            onClick={() => { console.log("Desktop menu click: Sobre"); handleNavigationAndScroll("about"); }}
             variant="ghost"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
             Sobre
           </Button>
           <Button 
-            onClick={() => handleNavigationAndScroll("services")}
+            onClick={() => { console.log("Desktop menu click: Serviços"); handleNavigationAndScroll("services"); }}
             variant="ghost"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
             Serviços
           </Button>
           <Button 
-            onClick={() => handleNavigationAndScroll("testimonials")}
+            onClick={() => { console.log("Desktop menu click: Depoimentos"); handleNavigationAndScroll("testimonials"); }}
             variant="ghost"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
             Depoimentos
           </Button>
           <Button 
-            onClick={() => handleNavigationAndScroll("blog")}
+            onClick={() => { console.log("Desktop menu click: Blog"); handleNavigationAndScroll("blog"); }}
             variant="ghost"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
             Blog
           </Button>
           <Button 
-            onClick={() => handleNavigationAndScroll("faq")}
+            onClick={() => { console.log("Desktop menu click: FAQ"); handleNavigationAndScroll("faq"); }}
             variant="ghost"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >
             FAQ
           </Button>
           <Button 
-            onClick={() => handleNavigationAndScroll("contact")}
+            onClick={() => { console.log("Desktop menu click: Contato"); handleNavigationAndScroll("contact"); }}
             variant="ghost"
             className="font-medium text-foreground/70 hover:text-foreground transition-colors"
           >

@@ -38,19 +38,32 @@ const ScrollToHashElement = () => {
         console.log(`[ScrollToHashElement]: Element with ID '${id}' found.`, element);
         setTimeout(() => {
           const elementRect = element.getBoundingClientRect();
-          const currentScrollY = window.scrollY;
+          const currentScrollY = window.scrollY; // Still useful for debugging context
           const targetPosition = elementRect.top + currentScrollY - navbarHeight;
           
           console.log(`[ScrollToHashElement]: Attempting to scroll to #${id}.`);
           console.log(`  Element top (relative to viewport): ${elementRect.top}`);
-          console.log(`  Current scroll Y: ${currentScrollY}`);
+          console.log(`  Current window scroll Y: ${currentScrollY}`);
           console.log(`  Navbar height: ${navbarHeight}`);
           console.log(`  Calculated target position: ${targetPosition}`);
 
-          window.scrollTo({
-            top: targetPosition,
-            behavior: 'smooth'
-          });
+          // Try scrolling document.documentElement (HTML element) first
+          if (document.documentElement) {
+            console.log("[ScrollToHashElement]: Attempting to scroll document.documentElement.");
+            document.documentElement.scrollTo({
+              top: targetPosition,
+              behavior: 'smooth'
+            });
+          } else if (document.body) { // Fallback to document.body
+            console.log("[ScrollToHashElement]: Attempting to scroll document.body as fallback.");
+            document.body.scrollTo({
+              top: targetPosition,
+              behavior: 'smooth'
+            });
+          } else {
+            console.warn("[ScrollToHashElement]: No scrollable element (documentElement or body) found.");
+          }
+          
           console.log(`[ScrollToHashElement]: Scroll initiated for #${id}.`);
         }, 100); // Increased delay slightly to 100ms
       } else {
