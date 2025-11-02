@@ -10,7 +10,6 @@ import { useLocation } from "react-router-dom"; // Import useLocation
 import ServicesSection from "@/components/ServicesSection";
 import TestimonialsSection from "@/components/TestimonialsSection";
 import BlogSection from "@/components/BlogSection";
-import Navbar from "@/components/Navbar"; // Import Navbar
 
 export default function Index() {
   const location = useLocation();
@@ -19,18 +18,13 @@ export default function Index() {
     if (location.hash) {
       const element = document.getElementById(location.hash.substring(1));
       if (element) {
-        // Usar setTimeout para garantir que a rolagem ocorra após a renderização do React
-        // e para dar tempo ao navegador de aplicar o scroll-margin-top.
-        setTimeout(() => {
-          element.scrollIntoView({ behavior: 'smooth' });
-        }, 100); // Pequeno atraso de 100ms
+        element.scrollIntoView({ behavior: "smooth" });
       }
     }
   }, [location]);
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar /> {/* Adicionado o Navbar aqui */}
       <HeroSection />
       <StorySection />
       <ServicesSection />
