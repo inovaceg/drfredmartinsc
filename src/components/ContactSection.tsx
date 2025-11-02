@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
@@ -23,6 +22,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ptBR } from "date-fns/locale";
+import { Textarea } from "@/components/ui/textarea"; // Importar Textarea
 
 const contactSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -85,7 +85,7 @@ export function ContactSection() {
   };
 
   return (
-    <section id="contact" className="py-12 md:py-24 lg:py-32 bg-rest-blue text-white">
+    <section id="contact" className="py-12 md:py-24 lg:py-32 bg-rest-darkblue text-white">
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex flex-col items-center justify-center space-y-4 text-center">
           <div className="space-y-2">
