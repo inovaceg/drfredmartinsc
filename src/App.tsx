@@ -2,8 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import { useEffect } from "react"; // Import useEffect
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Shop from "./pages/Shop";
 import Licensee from "./pages/Licensee";
@@ -23,54 +22,8 @@ import { WhatsappTranscriptionsPage } from "./pages/WhatsappTranscriptionsPage";
 
 const queryClient = new QueryClient();
 
-// New component to handle scrolling to hash links
-const ScrollToHashElement = () => {
-  const location = useLocation();
-  // const navbarHeight = 80; // No longer needed for direct subtraction, CSS handles it
-
-  useEffect(() => {
-    console.log("[ScrollToHashElement]: Current location hash:", location.hash);
-    if (location.hash) {
-      const id = location.hash.substring(1); // Remove '#'
-      const element = document.getElementById(id);
-      
-      if (element) {
-        console.log(`[ScrollToHashElement]: Element with ID '${id}' found.`, element);
-        setTimeout(() => {
-          const elementRect = element.getBoundingClientRect();
-          
-          // Determine the actual scrollable element (html or body)
-          const scrollTarget = document.documentElement.scrollHeight > document.documentElement.clientHeight ? document.documentElement : document.body;
-          const currentScrollTop = scrollTarget.scrollTop; // Get current scroll position of the actual scroll target
-
-          // Calculate the target position: current scroll + element's position relative to viewport.
-          // The navbar offset is now handled by CSS scroll-margin-top.
-          const targetPosition = currentScrollTop + elementRect.top; 
-          
-          console.log(`[ScrollToHashElement]: Attempting to scroll to #${id}.`);
-          console.log(`  Element top (relative to viewport): ${elementRect.top}`);
-          console.log(`  Current scroll top of target: ${currentScrollTop}`);
-          // console.log(`  Navbar height: ${navbarHeight}`); // No longer used in calculation
-          console.log(`  Calculated target position: ${targetPosition}`);
-
-          if (scrollTarget) {
-            scrollTarget.scrollTo({
-              top: targetPosition,
-              behavior: 'smooth'
-            });
-            console.log(`[ScrollToHashElement]: Scroll initiated for #${id} on target:`, scrollTarget);
-          } else {
-            console.warn(`[ScrollToHashElement]: Scroll not initiated for #${id} as no scroll target was identified.`);
-          }
-        }, 100); // Increased delay slightly to 100ms
-      } else {
-        console.warn(`[ScrollToHashElement]: Element with ID '${id}' NOT found for scrolling.`);
-      }
-    }
-  }, [location]); // Depend on location only, navbarHeight removed
-
-  return null;
-};
+// Removendo o componente ScrollToHashElement para confiar na rolagem nativa do navegador.
+// O navegador agora usará o 'scroll-behavior: smooth' e 'scroll-margin-top' definidos no CSS.
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -78,10 +31,9 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <ScrollToHashElement /> {/* Add the new component here */}
+        {/* <ScrollToHashElement /> foi removido */}
         <Routes>
           <Route path="/" element={<Index />} />
-          {/* Rotas removidas para About, Services, Testimonials, Blog, Faq, Contact */}
           <Route path="/shop" element={<Shop />} />
           <Route path="/licensee" element={<Licensee />} />
           <Route path="/owners" element={<Owners />} />
