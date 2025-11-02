@@ -3,11 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Mail, CalendarDays, Phone, User as UserIcon } from "lucide-react"; // Adicionado Phone e UserIcon
+import { Loader2, Mail, CalendarDays, Phone, User as UserIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { formatPhone } from "@/lib/format-phone"; // Importar formatPhone
+import { formatPhone } from "@/lib/format-phone";
 
 type NewsletterSubscription = Database['public']['Tables']['newsletter_subscriptions']['Row'];
 
@@ -18,9 +18,10 @@ export const DoctorNewsletterSubscriptionsTab: React.FC = () => {
 
   const fetchSubscriptions = useCallback(async () => {
     setLoading(true);
+    // Seleção explícita das colunas para garantir que 'name' e 'whatsapp' sejam buscados
     const { data, error } = await supabase
       .from('newsletter_subscriptions')
-      .select('*')
+      .select('id, email, name, whatsapp, created_at')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -65,9 +66,9 @@ export const DoctorNewsletterSubscriptionsTab: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead> {/* Nova coluna */}
+                  <TableHead>Nome</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>WhatsApp</TableHead> {/* Nova coluna */}
+                  <TableHead>WhatsApp</TableHead>
                   <TableHead className="text-right">Data de Inscrição</TableHead>
                 </TableRow>
               </TableHeader>
@@ -77,12 +78,12 @@ export const DoctorNewsletterSubscriptionsTab: React.FC = () => {
                     <TableCell className="font-medium flex items-center gap-2">
                       <UserIcon className="h-4 w-4 text-muted-foreground" />
                       {subscription.name || 'Não Informado'}
-                    </TableCell> {/* Exibe o nome */}
+                    </TableCell>
                     <TableCell>{subscription.email}</TableCell>
                     <TableCell className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-muted-foreground" />
                       {subscription.whatsapp ? formatPhone(subscription.whatsapp) : 'Não Informado'}
-                    </TableCell> {/* Exibe o WhatsApp formatado */}
+                    </TableCell>
                     <TableCell className="text-right">
                       {subscription.created_at ? format(new Date(subscription.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }) : '-'}
                     </TableCell>
