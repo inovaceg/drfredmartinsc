@@ -10,6 +10,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
   // toast.error("Erro de configuração: Chaves do Supabase ausentes.");
 }
 
+// Adicionando logs explícitos para depuração
+console.log("Dyad Debug: supabaseUrl sendo usado:", supabaseUrl);
+console.log("Dyad Debug: supabaseAnonKey sendo usado:", supabaseAnonKey ? "Chave carregada (não exibida por segurança)" : "Chave não carregada");
+
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     flowType: "pkce",
