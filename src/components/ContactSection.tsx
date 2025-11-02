@@ -85,7 +85,7 @@ export function ContactSection() {
   };
 
   return (
-    <section id="contact" className="py-12 md:py-24 lg:py-32 bg-rest-darkblue text-white">
+    <section id="contact" className="py-12 md:py-24 lg:py-32 bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900 text-white">
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex flex-col items-center justify-center space-y-4 text-center">
           <div className="space-y-2">
@@ -98,7 +98,7 @@ export function ContactSection() {
             </p>
           </div>
         </div>
-        <div className="mx-auto w-full max-w-2xl mt-8">
+        <div className="mx-auto w-full max-w-2xl mt-8 bg-white/10 border border-white/10 backdrop-blur-md p-8 rounded-2xl">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
