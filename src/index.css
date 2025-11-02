@@ -82,6 +82,11 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Adiciona scroll-margin-top para todas as seções com ID para compensar a navbar fixa */
+  section[id] {
+    scroll-margin-top: 80px; /* Altura da navbar */
+  }
 }
 
 /* Custom scrollbar hiding */

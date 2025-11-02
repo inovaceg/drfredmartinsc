@@ -26,7 +26,7 @@ const queryClient = new QueryClient();
 // New component to handle scrolling to hash links
 const ScrollToHashElement = () => {
   const location = useLocation();
-  const navbarHeight = 80; // Ensure this matches the Navbar's height
+  // const navbarHeight = 80; // No longer needed for direct subtraction, CSS handles it
 
   useEffect(() => {
     console.log("[ScrollToHashElement]: Current location hash:", location.hash);
@@ -43,13 +43,14 @@ const ScrollToHashElement = () => {
           const scrollTarget = document.documentElement.scrollHeight > document.documentElement.clientHeight ? document.documentElement : document.body;
           const currentScrollTop = scrollTarget.scrollTop; // Get current scroll position of the actual scroll target
 
-          // Calculate the target position: current scroll + element's position relative to viewport - navbar height
-          const targetPosition = currentScrollTop + elementRect.top - navbarHeight;
+          // Calculate the target position: current scroll + element's position relative to viewport.
+          // The navbar offset is now handled by CSS scroll-margin-top.
+          const targetPosition = currentScrollTop + elementRect.top; 
           
           console.log(`[ScrollToHashElement]: Attempting to scroll to #${id}.`);
           console.log(`  Element top (relative to viewport): ${elementRect.top}`);
           console.log(`  Current scroll top of target: ${currentScrollTop}`);
-          console.log(`  Navbar height: ${navbarHeight}`);
+          // console.log(`  Navbar height: ${navbarHeight}`); // No longer used in calculation
           console.log(`  Calculated target position: ${targetPosition}`);
 
           if (scrollTarget) {
@@ -66,7 +67,7 @@ const ScrollToHashElement = () => {
         console.warn(`[ScrollToHashElement]: Element with ID '${id}' NOT found for scrolling.`);
       }
     }
-  }, [location, navbarHeight]); // Depend on location and navbarHeight
+  }, [location]); // Depend on location only, navbarHeight removed
 
   return null;
 };
