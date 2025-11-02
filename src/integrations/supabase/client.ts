@@ -40,8 +40,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   }
 })();
 
-// Adicionar listener para erros do Realtime
-supabase.realtime.on('error', (err) => {
-  console.error('[Supabase Realtime Error]', err);
-  // Você pode adicionar um toast ou outra notificação aqui se desejar
-});
+// A linha abaixo foi removida pois supabase.realtime.on não é uma função válida.
+// O monitoramento de conexão geral já é feito no Navbar.tsx.
+// supabase.realtime.on('error', (err) => {
+//   console.error('[Supabase Realtime Error]', err);
+// });
