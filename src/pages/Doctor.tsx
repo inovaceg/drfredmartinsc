@@ -9,7 +9,7 @@ import { Calendar as CalendarIcon, Clock, FileText, LogOut, Users, Video, BarCha
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import { Footer } from "@/components/Footer"; // Corrected import
 import { useToast } from "@/hooks/use-toast";
 import { format, addDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -17,7 +17,7 @@ import { EditPatientDialog } from "@/components/EditPatientDialog";
 import { formatPhone } from "@/lib/format-phone";
 import { DoctorProfileForm } from "@/components/DoctorProfileForm";
 import { DoctorMedicalRecordsTab } from "@/components/doctor/DoctorMedicalRecordsTab";
-import { DoctorOnlineConsultationTab } from "@/components/DoctorOnlineConsultationTab";
+import { DoctorOnlineConsultationTab } from "@/components/DoctorOnlineConsultationTab"; // Corrected import
 import { DoctorFormResponsesTab } from "@/components/DoctorFormResponsesTab";
 import { DoctorNewsletterSubscriptionsTab } from "@/components/doctor/DoctorNewsletterSubscriptionsTab";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -53,7 +53,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 
 // Importar as novas funções de data e queries
 import { getDatesForTimeframe, toUtcIso } from "@/lib/dates";
-import { fetchSlotsData } from "@/lib/supabase-queries";
+import { getDoctorAvailabilitySlots } from "@/lib/supabase-queries"; // Corrected import
 
 type AvailabilitySlot = Database['public']['Tables']['availability_slots']['Row'];
 type Appointment = Database['public']['Tables']['appointments']['Row'] & {
@@ -161,7 +161,7 @@ const Doctor = () => {
       // 2) consultas do período + nome do paciente
       const { data: appts, error: apptsErr } = await supabase
         .from("appointments")
-        .select("id, slot_id, start_time, end_time, patient_id:profiles(full_name)")
+        .select("id, slot_id, start_time, end_time, patient_full_name:profiles(full_name)") // Corrected to use patient_full_name directly
         .eq("doctor_id", doctorId)
         .gte("start_time", startIso)
         .lte("end_time",   endIso)
@@ -184,8 +184,8 @@ const Doctor = () => {
       // montar lista de pacientes para renderizar abaixo do dashboard
       const mappedAppointments = appts.map(a => ({
         id: a.id,
-        patient_name: (a.patient_id as { full_name: string })?.full_name ?? "Paciente Desconhecido",
-        start_time: a.start_time,
+        patient_name: (a.patient_full_name as { full_name: string })?.full_name ?? "Paciente Desconhecido", // Corrected to use patient_full_name
+        start_time: a.start_time, // Use apt.start_time and apt.end_time from the inserted appointment
         end_time: a.end_time
       }));
       console.log("fetchOverview: Mapped overview appointments:", mappedAppointments);
@@ -256,7 +256,7 @@ const Doctor = () => {
 
     console.log('Doctor.tsx: Fetching patients for doctor:', doctorId);
     const { data: patientsData, error } = await supabase
-      .rpc('get_patients_for_doctor');
+      .rpc('get_patients_for_doctor').returns<PatientProfile[]>(); // Explicitly type RPC return
 
     if (error) {
       console.error('Doctor.tsx: Error fetching patients:', error);
@@ -289,7 +289,7 @@ const Doctor = () => {
       // For 'Gerenciar Agenda' tab, fetch slots for today initially
       const todayStart = startOfDay(new Date());
       const todayEnd = endOfDay(new Date());
-      const scheduleSlotsResult = await fetchSlotsData(currentUser.id, todayStart, todayEnd);
+      const scheduleSlotsResult = await getDoctorAvailabilitySlots(currentUser.id, toUtcIso(todayStart), toUtcIso(todayEnd)); // Corrected usage
       setSlots(scheduleSlotsResult.slots);
       setIsLoadingScheduleSlots(false);
 
@@ -322,7 +322,7 @@ const Doctor = () => {
         const startOfDayLocal = startOfDay(dateObj);
         const endOfDayLocal = endOfDay(dateObj);
         try {
-          const result = await fetchSlotsData(user.id, startOfDayLocal, endOfDayLocal);
+          const result = await getDoctorAvailabilitySlots(user.id, toUtcIso(startOfDayLocal), toUtcIso(endOfDayLocal)); // Corrected usage
           setSlots(result.slots);
         } catch (error) {
           console.error("Error loading schedule slots:", error);
@@ -416,7 +416,7 @@ const Doctor = () => {
       const dateObj = createLocalDateFromISOString(selectedDate!);
       const startOfDayLocal = startOfDay(dateObj);
       const endOfDayLocal = endOfDay(dateObj);
-      const scheduleSlots = await fetchSlotsData(user.id, startOfDayLocal, endOfDayLocal);
+      const scheduleSlots = await getDoctorAvailabilitySlots(user.id, toUtcIso(startOfDayLocal), toUtcIso(endOfDayLocal)); // Corrected usage
       setSlots(scheduleSlots.slots);
       queryClient.invalidateQueries({ queryKey: ["availableDates", user.id] });
       fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
@@ -449,7 +449,7 @@ const Doctor = () => {
       const dateObj = createLocalDateFromISOString(selectedDate!);
       const startOfDayLocal = startOfDay(dateObj);
       const endOfDayLocal = endOfDay(dateObj);
-      const scheduleSlots = await fetchSlotsData(user!.id, startOfDayLocal, endOfDayLocal);
+      const scheduleSlots = await getDoctorAvailabilitySlots(user!.id, toUtcIso(startOfDayLocal), toUtcIso(endOfDayLocal)); // Corrected usage
       setSlots(scheduleSlots.slots);
       queryClient.invalidateQueries({ queryKey: ["availableDates", user!.id] });
       fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
@@ -497,7 +497,7 @@ const Doctor = () => {
       const dateObj = createLocalDateFromISOString(selectedDate!);
       const startOfDayLocal = startOfDay(dateObj);
       const endOfDayLocal = endOfDay(dateObj);
-      const scheduleSlots = await fetchSlotsData(user!.id, startOfDayLocal, endOfDayLocal);
+      const scheduleSlots = await getDoctorAvailabilitySlots(user!.id, toUtcIso(startOfDayLocal), toUtcIso(endOfDayLocal)); // Corrected usage
       setSlots(scheduleSlots.slots);
       queryClient.invalidateQueries({ queryKey: ["availableDates", user!.id] });
       fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
@@ -533,7 +533,7 @@ const Doctor = () => {
       const dateObj = createLocalDateFromISOString(selectedDate!);
       const startOfDayLocal = startOfDay(dateObj);
       const endOfDayLocal = endOfDay(dateObj);
-      const scheduleSlots = await fetchSlotsData(user!.id, startOfDayLocal, endOfDayLocal);
+      const scheduleSlots = await getDoctorAvailabilitySlots(user!.id, toUtcIso(startOfDayLocal), toUtcIso(endOfDayLocal)); // Corrected usage
       setSlots(scheduleSlots.slots);
       queryClient.invalidateQueries({ queryKey: ["availableDates", user!.id] });
       fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
@@ -645,7 +645,7 @@ const Doctor = () => {
       const dateObj = createLocalDateFromISOString(selectedDate!);
       const startOfDayLocal = startOfDay(dateObj);
       const endOfDayLocal = endOfDay(dateObj);
-      const scheduleSlots = await fetchSlotsData(user.id, startOfDayLocal, endOfDayLocal);
+      const scheduleSlots = await getDoctorAvailabilitySlots(user.id, toUtcIso(startOfDayLocal), toUtcIso(endOfDayLocal)); // Corrected usage
       setSlots(scheduleSlots.slots); // Refresh slots to show updated availability
       fetchAppointments(); // Refresh appointments list
 
@@ -768,7 +768,7 @@ const Doctor = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex justify-center items-center min-h-screen">
         <p>Carregando...</p>
       </div>
     );
@@ -1331,7 +1331,7 @@ const Doctor = () => {
           </TabsContent>
 
           <TabsContent value="online-consultation">
-            {user && <DoctorOnlineConsultationTab currentUserId={user.id} />}
+            {user && <DoctorOnlineConsultationTab isDoctorView={true} />}
           </TabsContent>
 
           <TabsContent value="contact-forms">

@@ -153,7 +153,7 @@ export function VideoCallWindow({
       const { error } = await Promise.race([
         supabase
           .from("video_sessions")
-          .update({ offer: peerConnection.current.localDescription as Json })
+          .update({ offer: peerConnection.current.localDescription as unknown as Json }) // Fixed: Added unknown as Json
           .eq("id", sessionId),
         timeoutPromise,
       ]);
@@ -177,7 +177,7 @@ export function VideoCallWindow({
       const { error } = await Promise.race([
         supabase
           .from("video_sessions")
-          .update({ answer: peerConnection.current?.localDescription as Json, status: "active", started_at: new Date().toISOString() })
+          .update({ answer: peerConnection.current?.localDescription as unknown as Json, status: "active", started_at: new Date().toISOString() }) // Fixed: Added unknown as Json
           .eq("id", incomingSessionId),
         timeoutPromise,
       ]);
@@ -221,10 +221,10 @@ export function VideoCallWindow({
         setCallStatus(existingSession.status || "connecting");
         if (existingSession.offer && !peerConnection.current?.remoteDescription) {
           // If there's an offer but no answer, this user should create an answer
-          await createAnswer(sessionId, existingSession.offer as RTCSessionDescriptionInit);
+          await peerConnection.current?.setRemoteDescription(new RTCSessionDescription(existingSession.offer as unknown as RTCSessionDescriptionInit)); // Fixed: Added unknown as RTCSessionDescriptionInit
         } else if (existingSession.answer) {
           // If there's an answer, set remote description
-          await peerConnection.current?.setRemoteDescription(new RTCSessionDescription(existingSession.answer as RTCSessionDescriptionInit));
+          await peerConnection.current?.setRemoteDescription(new RTCSessionDescription(existingSession.answer as unknown as RTCSessionDescriptionInit)); // Fixed: Added unknown as RTCSessionDescriptionInit
           setCallStatus("active");
         }
         // Add ICE candidates
@@ -252,7 +252,7 @@ export function VideoCallWindow({
           if (error) throw error;
           // Update sessionId state to the newly created one
           // This is a bit tricky as sessionId is a prop. For simplicity, we'll assume the parent component will re-render with the new sessionId or handle it.
-          // For now, we'll proceed with the newSessionId locally.
+          // For now, we'll just use the newSessionId for subsequent operations.
           // If the parent needs to know, it should pass a callback.
           // For this example, we'll just use the newSessionId for subsequent operations.
           // If the parent component is not re-rendering with the new sessionId, this will cause issues.
@@ -285,14 +285,14 @@ export function VideoCallWindow({
           setCallStatus(updatedSession.status || "connecting");
 
           if (updatedSession.offer && !peerConnection.current?.remoteDescription) {
-            await peerConnection.current?.setRemoteDescription(new RTCSessionDescription(updatedSession.offer as RTCSessionDescriptionInit));
+            await peerConnection.current?.setRemoteDescription(new RTCSessionDescription(updatedSession.offer as unknown as RTCSessionDescriptionInit)); // Fixed: Added unknown as RTCSessionDescriptionInit
             if (!isDoctor) { // Only patient should create answer if doctor initiated
-              await createAnswer(sessionId, updatedSession.offer as RTCSessionDescriptionInit);
+              await createAnswer(sessionId, updatedSession.offer as unknown as RTCSessionDescriptionInit); // Fixed: Added unknown as RTCSessionDescriptionInit
             }
           }
 
           if (updatedSession.answer && !peerConnection.current?.currentRemoteDescription) {
-            await peerConnection.current?.setRemoteDescription(new RTCSessionDescription(updatedSession.answer as RTCSessionDescriptionInit));
+            await peerConnection.current?.setRemoteDescription(new RTCSessionDescription(updatedSession.answer as unknown as RTCSessionDescriptionInit)); // Fixed: Added unknown as RTCSessionDescriptionInit
             setCallStatus("active");
             toast.success("Chamada conectada!");
           }

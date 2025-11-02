@@ -22,11 +22,11 @@ interface ActiveSession extends VideoSession {
   doctor_profile?: Profile;
 }
 
-interface OnlineConsultationTabProps {
+interface DoctorOnlineConsultationTabProps {
   isDoctorView: boolean;
 }
 
-export function OnlineConsultationTab({ isDoctorView }: OnlineConsultationTabProps) {
+export function DoctorOnlineConsultationTab({ isDoctorView }: DoctorOnlineConsultationTabProps) {
   const { user } = useUser();
   const currentUserId = user?.id;
 
@@ -61,7 +61,7 @@ export function OnlineConsultationTab({ isDoctorView }: OnlineConsultationTabPro
 
       if (error) throw error;
 
-      console.log("OnlineConsultationTab: Active sessions fetched:", data);
+      console.log("DoctorOnlineConsultationTab: Active sessions fetched:", data);
       setActiveSessions(data as ActiveSession[]);
     } catch (error: any) {
       console.error("Error fetching active sessions:", error.message);
@@ -144,20 +144,22 @@ export function OnlineConsultationTab({ isDoctorView }: OnlineConsultationTabPro
     );
   }
 
-  if (isChatOpen && selectedSession) {
+  if (isChatOpen && selectedSession && currentUserId) {
     const otherUserId = isDoctorView ? selectedSession.patient_id! : selectedSession.doctor_id!;
     return (
       <ChatWindow
+        currentUserId={currentUserId} // Pass currentUserId
         receiverId={otherUserId}
         appointmentId={selectedSession.appointment_id || undefined}
       />
     );
   }
 
-  if (isVideoCallOpen && selectedSession) {
+  if (isVideoCallOpen && selectedSession && currentUserId) {
     const otherUserId = isDoctorView ? selectedSession.patient_id! : selectedSession.doctor_id!;
     return (
       <VideoCallWindow
+        currentUserId={currentUserId} // Pass currentUserId
         sessionId={selectedSession.id}
         otherUserId={otherUserId}
         appointmentId={selectedSession.appointment_id || undefined}

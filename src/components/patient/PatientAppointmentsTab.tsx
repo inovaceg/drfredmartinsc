@@ -44,7 +44,7 @@ export function PatientAppointmentsTab() {
       let doctorProfiles: Profile[] = [];
 
       if (doctorIds.length > 0) {
-        const { data: profilesData, error: profilesError } = await supabase.rpc('get_doctor_profiles_by_ids', { _ids: doctorIds }).returns<Profile[]>(); // Explicitly type RPC return
+        const { data: profilesData, error: profilesError } = await supabase.rpc('get_doctor_profiles_by_ids', { _ids: doctorIds }).returns<Profile[]>();
         if (profilesError) {
           console.error("Error fetching doctor profiles:", profilesError.message);
         } else {

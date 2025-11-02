@@ -248,9 +248,7 @@ const AddMedicalRecordDialog: React.FC<AddMedicalRecordDialogProps> = ({ onSave,
 };
 
 
-export function DoctorMedicalRecordsTab() {
-  const { user } = useUser();
-  const currentUserId = user?.id;
+export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: { currentUserId: string; setSelectedPatient: React.Dispatch<React.SetStateAction<Profile | null>> }) {
   const queryClient = useQueryClient();
 
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
