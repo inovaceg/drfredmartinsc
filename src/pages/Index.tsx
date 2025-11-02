@@ -3,7 +3,7 @@
 import HeroSection from "@/components/HeroSection";
 import { Footer } from "@/components/Footer";
 import StorySection from "@/components/StorySection"; // Reutilizando
-import { FaqSection } from "@/components/FaqSection"; // Novo
+import FaqSection from "@/components/FaqSection"; // Corrected import
 import { ContactSection } from "@/components/ContactSection"; // Novo
 import { useEffect } from "react"; // Import useEffect
 import { useLocation } from "react-router-dom"; // Import useLocation
