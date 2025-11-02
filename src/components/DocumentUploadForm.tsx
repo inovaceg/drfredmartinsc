@@ -66,7 +66,7 @@ const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({ patientId, doct
       // 3. Inserir metadados do documento no banco de dados
       const { error: dbError } = await supabase
         .from('documents')
-        .insert({
+        .insert([{ // Wrapped in an array
           patient_id: patientId,
           doctor_id: doctorId,
           file_name: selectedFile.name,
@@ -75,7 +75,7 @@ const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({ patientId, doct
           created_at: new Date().toISOString(), // Use created_at instead of uploaded_at
           file_type: selectedFile.type,
           file_size: selectedFile.size,
-        });
+        }]);
 
       if (dbError) {
         // Se a inserção no DB falhar, tentar remover o arquivo do storage para evitar lixo

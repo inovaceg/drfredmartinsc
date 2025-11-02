@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/hooks/useUser";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Button } from "lucide-react"; // Added Button import
+import { Loader2 } from "lucide-react"; 
 import { PatientProfileForm } from "@/components/PatientProfileForm";
 import { PatientScheduleTab } from "@/components/patient/PatientScheduleTab";
 import { PatientAppointmentsTab } from "@/components/patient/PatientAppointmentsTab";
@@ -17,7 +17,7 @@ import { OnlineConsultationTab } from "@/components/OnlineConsultationTab";
 import { PatientDocumentsPage } from "@/pages/PatientDocumentsPage"; // Named export
 import { WhatsappTranscriptionsPage } from "@/pages/WhatsappTranscriptionsPage"; // Named export
 import { Tables } from "@/integrations/supabase/types";
-import { Button as ShadcnButton } from "@/components/ui/button"; // Renamed import to avoid conflict
+import { Button } from "@/components/ui/button"; // Corrected Button import
 
 type Profile = Tables<'profiles'>;
 
@@ -80,7 +80,7 @@ export default function Patient() {
         <p className="text-lg text-muted-foreground mb-6">
           Não foi possível carregar as informações do seu perfil. Por favor, tente novamente.
         </p>
-        <ShadcnButton onClick={() => navigate("/")}>Voltar para a Página Inicial</ShadcnButton> {/* Used ShadcnButton */}
+        <Button onClick={() => navigate("/")}>Voltar para a Página Inicial</Button> {/* Used ShadcnButton */}
       </div>
     );
   }

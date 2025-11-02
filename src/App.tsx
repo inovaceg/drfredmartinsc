@@ -7,7 +7,7 @@ import { useEffect } from "react"; // Import useEffect
 import Index from "./pages/Index";
 import Shop from "./pages/Shop";
 import Licensee from "./pages/Licensee";
-import Owners from "./pages/Owners";
+import { Owners } from "./pages/Owners"; // Corrected import to named export
 import NotFound from "./pages/NotFound";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
@@ -16,7 +16,7 @@ import Accessibility from "./pages/Accessibility";
 import CookiePolicy from "./pages/CookiePolicy";
 import ReturnsPolicy from "./pages/ReturnsPolicy";
 import Redirect from "./pages/Redirect";
-import Auth from "./pages/Auth";
+import { AuthPage } from "./pages/Auth"; // Corrected import to named export
 import Patient from "./pages/Patient";
 import Doctor from "./pages/Doctor";
 import { WhatsappTranscriptionsPage } from "./pages/WhatsappTranscriptionsPage";
@@ -72,7 +72,7 @@ const App = () => (
           <Route path="/licensee" element={<Licensee />} />
           <Route path="/owners" element={<Owners />} />
           <Route path="/redirect" element={<Redirect />} />
-          <Route path="/auth" element={<Auth />} />
+          <Route path="/auth" element={<AuthPage />} />
           <Route path="/doctor" element={<Doctor />} />
           <Route path="/patient" element={<Patient />} />
           <Route path="/whatsapp-transcriptions" element={<WhatsappTranscriptionsPage />} />

@@ -467,7 +467,12 @@ export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: {
         <div>
           <Label htmlFor="patient-select">Selecionar Paciente</Label>
           <Select
-            onValueChange={(value) => setSelectedPatientId(value)}
+            onValueChange={(value) => {
+              setSelectedPatientId(value);
+              // Also update the selected patient in the parent Doctor component
+              const selected = patients?.find(p => p.id === value) || null;
+              setSelectedPatient(selected);
+            }}
             value={selectedPatientId || ""}
           >
             <SelectTrigger>
