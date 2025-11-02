@@ -12,8 +12,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 // Adicionando logs explícitos para depuração
 console.log("Dyad Debug: supabaseUrl sendo usado:", supabaseUrl);
-// TEMPORÁRIO: Logando a chave anon para depuração. REMOVA ISSO DEPOIS!
-console.log("Dyad Debug: supabaseAnonKey sendo usado (TEMPORÁRIO):", supabaseAnonKey);
 
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
