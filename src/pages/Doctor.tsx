@@ -340,15 +340,19 @@ const Doctor = () => {
   useEffect(() => {
     const loadScheduleSlots = async () => {
       if (user?.id && activeTab === 'schedule' && selectedDate) {
+        console.log("Doctor.tsx: loadScheduleSlots triggered for selectedDate:", selectedDate); // NEW LOG
         setIsLoadingScheduleSlots(true); // Use renamed loading state
         const dateObj = createLocalDateFromISOString(selectedDate);
         const startOfDayLocal = startOfDay(dateObj);
         const endOfDayLocal = endOfDay(dateObj);
+        console.log("Doctor.tsx: Date objects for fetching - startOfDayLocal:", startOfDayLocal, "endOfDayLocal:", endOfDayLocal); // NEW LOG
+        console.log("Doctor.tsx: UTC ISO strings for fetching - _start_time_gte:", toUtcIso(startOfDayLocal), "_end_time_lte:", toUtcIso(endOfDayLocal)); // NEW LOG
         try {
           const result = await getDoctorAvailabilitySlots(user.id, toUtcIso(startOfDayLocal), toUtcIso(endOfDayLocal)); // Corrected usage
-          setSlots(result.slots);
-        } catch (error) {
-          console.error("Error loading schedule slots:", error);
+          console.log("Doctor.tsx: Result from getDoctorAvailabilitySlots:", result.slots); // NEW LOG
+          setSlots(result.slots); // This should set all slots
+        } catch (error: any) { // Explicitly type error
+          console.error("Doctor.tsx: Error loading schedule slots:", error);
           toast({
             title: "Erro",
             description: error.message,
@@ -358,6 +362,8 @@ const Doctor = () => {
         } finally {
           setIsLoadingScheduleSlots(false); // Use renamed loading state
         }
+      } else {
+        console.log("Doctor.tsx: loadScheduleSlots skipped. Conditions: user.id=", user?.id, "activeTab=", activeTab, "selectedDate=", selectedDate); // NEW LOG
       }
     };
     loadScheduleSlots();
@@ -440,6 +446,7 @@ const Doctor = () => {
       const startOfDayLocal = startOfDay(dateObj);
       const endOfDayLocal = endOfDay(dateObj);
       const scheduleSlots = await getDoctorAvailabilitySlots(user.id, toUtcIso(startOfDayLocal), toUtcIso(endOfDayLocal)); // Corrected usage
+      console.log("Doctor.tsx: Slots after creation and refresh:", scheduleSlots.slots); // NEW LOG
       setSlots(scheduleSlots.slots);
       queryClient.invalidateQueries({ queryKey: ["availableDates", user.id] });
       fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
