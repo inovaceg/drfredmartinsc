@@ -97,3 +97,4 @@ export const DoctorNewsletterSubscriptionsTab: React.FC = () => {
     </Card>
   );
 };
+// Comentário adicionado para forçar a recompilação.
