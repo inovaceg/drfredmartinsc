@@ -15,6 +15,7 @@ export function AuthPage() {
   useEffect(() => {
     if (!isLoading && user) {
       // User is authenticated, redirect to home or dashboard
+      console.log("AuthPage: User already authenticated, redirecting to /");
       navigate("/");
     }
   }, [user, isLoading, navigate]);
@@ -23,29 +24,17 @@ export function AuthPage() {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === "SIGNED_IN" && session?.user) {
-          // Upsert user profile
-          const { user: supabaseUser } = session;
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert({
-              id: supabaseUser.id,
-              full_name: supabaseUser.user_metadata.full_name || supabaseUser.email,
-              email: supabaseUser.email,
-              created_at: supabaseUser.created_at,
-              updated_at: new Date().toISOString(),
-            }, { onConflict: 'id' }); // Use onConflict to handle existing profiles
-
-          if (profileError) {
-            console.error("Error upserting profile:", profileError.message);
-            toast.error("Erro ao criar/atualizar perfil: " + profileError.message);
-          } else {
-            toast.success("Login realizado com sucesso!");
-            navigate("/");
-          }
+          // Profile creation is handled by the 'handle_new_user' trigger in Supabase.
+          // We just need to ensure the user is redirected after successful sign-in.
+          console.log("AuthPage: SIGNED_IN event, user:", session.user.id, ". Relying on trigger for profile creation.");
+          toast.success("Login realizado com sucesso!");
+          navigate("/");
         } else if (event === "SIGNED_OUT") {
+          console.log("AuthPage: SIGNED_OUT event.");
           toast.info("Você foi desconectado.");
           navigate("/auth");
         } else if (event === "USER_UPDATED") {
+          console.log("AuthPage: USER_UPDATED event.");
           toast.info("Seu perfil foi atualizado.");
         }
       }
