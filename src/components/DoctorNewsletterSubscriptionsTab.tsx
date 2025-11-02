@@ -66,21 +66,21 @@ export const DoctorNewsletterSubscriptionsTab: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
+                  <TableHead>Nome</TableHead> {/* Adicionado */}
                   <TableHead>Email</TableHead>
-                  <TableHead>WhatsApp</TableHead>
+                  <TableHead>WhatsApp</TableHead> {/* Adicionado */}
                   <TableHead className="text-right">Data de Inscrição</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {subscriptions.map((subscription) => (
                   <TableRow key={subscription.id}>
-                    <TableCell className="font-medium flex items-center gap-2">
+                    <TableCell className="font-medium flex items-center gap-2"> {/* Adicionado */}
                       <UserIcon className="h-4 w-4 text-muted-foreground" />
                       {subscription.name || 'Não Informado'}
                     </TableCell>
                     <TableCell>{subscription.email}</TableCell>
-                    <TableCell className="flex items-center gap-2">
+                    <TableCell className="flex items-center gap-2"> {/* Adicionado */}
                       <Phone className="h-4 w-4 text-muted-foreground" />
                       {subscription.whatsapp ? formatPhone(subscription.whatsapp) : 'Não Informado'}
                     </TableCell>
