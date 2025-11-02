@@ -2,7 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { useEffect } from "react"; // Import useEffect
 import Index from "./pages/Index";
 import Shop from "./pages/Shop";
 import Licensee from "./pages/Licensee";
@@ -22,8 +23,32 @@ import { WhatsappTranscriptionsPage } from "./pages/WhatsappTranscriptionsPage";
 
 const queryClient = new QueryClient();
 
-// Removendo o componente ScrollToHashElement para confiar na rolagem nativa do navegador.
-// O navegador agora usará o 'scroll-behavior: smooth' e 'scroll-margin-top' definidos no CSS.
+// Componente para lidar com a rolagem para links de âncora (hash)
+const ScrollToHashElement = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    console.log("[ScrollToHashElement]: Current location hash:", location.hash);
+    if (location.hash) {
+      const id = location.hash.substring(1); // Remove '#'
+      const element = document.getElementById(id);
+      
+      if (element) {
+        console.log(`[ScrollToHashElement]: Element with ID '${id}' found.`, element);
+        // Usar setTimeout para garantir que a rolagem ocorra após a renderização do React
+        // e para dar tempo ao navegador de aplicar o scroll-margin-top.
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth' });
+          console.log(`[ScrollToHashElement]: Scroll initiated for #${id}.`);
+        }, 100); // Pequeno atraso de 100ms
+      } else {
+        console.warn(`[ScrollToHashElement]: Element with ID '${id}' NOT found for scrolling.`);
+      }
+    }
+  }, [location]); // Depende apenas da localização para re-executar quando o hash muda
+
+  return null;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -31,7 +56,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        {/* <ScrollToHashElement /> foi removido */}
+        <ScrollToHashElement /> {/* Re-adicionado o componente de rolagem */}
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/shop" element={<Shop />} />
