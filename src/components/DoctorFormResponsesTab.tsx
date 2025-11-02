@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatPhone } from "@/lib/format-phone"; // Importar formatPhone
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { parseYYYYMMDDToLocalDate } from "@/lib/utils"; // Importar a nova função
 
 type ContactSubmission = Database['public']['Tables']['contact_submissions']['Row']; // Alterado para o novo tipo
 
@@ -143,7 +144,7 @@ export const DoctorFormResponsesTab: React.FC = () => {
                     {message.date_of_birth && (
                       <p className="flex items-center gap-2">
                         <CalendarDays className="h-4 w-4 text-primary" />
-                        Nascimento: {format(new Date(message.date_of_birth), "dd/MM/yyyy", { locale: ptBR })}
+                        Nascimento: {format(parseYYYYMMDDToLocalDate(message.date_of_birth)!, "dd/MM/yyyy", { locale: ptBR })}
                       </p>
                     )}
                     {(message.street || message.neighborhood) && (

@@ -48,3 +48,18 @@ export const createLocalDateFromISOString = (isoDateString: string): Date => {
   // Using 'T00:00:00' to ensure it's parsed as a local date at midnight
   return new Date(isoDateString + 'T00:00:00');
 };
+
+// Nova função para parsear strings YYYY-MM-DD para objetos Date locais
+export const parseYYYYMMDDToLocalDate = (dateString: string | null): Date | null => {
+  if (!dateString) return null;
+  const parts = dateString.split('-').map(Number);
+  if (parts.length === 3 && !parts.some(isNaN)) {
+    // Month is 0-indexed in JavaScript Date constructor
+    const date = new Date(parts[0], parts[1] - 1, parts[2]);
+    // Validate if the date components match (e.g., prevent Feb 30th)
+    if (date.getFullYear() === parts[0] && date.getMonth() === parts[1] - 1 && date.getDate() === parts[2]) {
+      return date;
+    }
+  }
+  return null;
+};
