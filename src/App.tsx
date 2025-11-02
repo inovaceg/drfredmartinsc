@@ -38,34 +38,19 @@ const ScrollToHashElement = () => {
         console.log(`[ScrollToHashElement]: Element with ID '${id}' found.`, element);
         setTimeout(() => {
           const elementRect = element.getBoundingClientRect();
-          const currentScrollY = window.scrollY;
-          const targetPosition = elementRect.top + currentScrollY - navbarHeight;
+          
+          // Determine the actual scrollable element (html or body)
+          const scrollTarget = document.documentElement.scrollHeight > document.documentElement.clientHeight ? document.documentElement : document.body;
+          const currentScrollTop = scrollTarget.scrollTop; // Get current scroll position of the actual scroll target
+
+          // Calculate the target position: current scroll + element's position relative to viewport - navbar height
+          const targetPosition = currentScrollTop + elementRect.top - navbarHeight;
           
           console.log(`[ScrollToHashElement]: Attempting to scroll to #${id}.`);
           console.log(`  Element top (relative to viewport): ${elementRect.top}`);
-          console.log(`  Current window scroll Y: ${currentScrollY}`);
+          console.log(`  Current scroll top of target: ${currentScrollTop}`);
           console.log(`  Navbar height: ${navbarHeight}`);
           console.log(`  Calculated target position: ${targetPosition}`);
-
-          let scrollTarget: HTMLElement | null = null;
-
-          // Prioritize scrolling the <main> element if it exists and is scrollable
-          const mainElement = document.querySelector('main');
-          if (mainElement && mainElement.scrollHeight > mainElement.clientHeight) {
-            scrollTarget = mainElement;
-            console.log("[ScrollToHashElement]: Targeting <main> element for scroll.");
-            console.log(`  Main scrollHeight: ${mainElement.scrollHeight}, clientHeight: ${mainElement.clientHeight}`);
-          } else if (document.documentElement.scrollHeight > document.documentElement.clientHeight) {
-            scrollTarget = document.documentElement;
-            console.log("[ScrollToHashElement]: Targeting document.documentElement for scroll.");
-            console.log(`  DocumentElement scrollHeight: ${document.documentElement.scrollHeight}, clientHeight: ${document.documentElement.clientHeight}`);
-          } else if (document.body.scrollHeight > document.body.clientHeight) {
-            scrollTarget = document.body;
-            console.log("[ScrollToHashElement]: Targeting document.body for scroll.");
-            console.log(`  Body scrollHeight: ${document.body.scrollHeight}, clientHeight: ${document.body.clientHeight}`);
-          } else {
-            console.warn("[ScrollToHashElement]: No obvious scrollable element found (main, document.documentElement, or document.body).");
-          }
 
           if (scrollTarget) {
             scrollTarget.scrollTo({
