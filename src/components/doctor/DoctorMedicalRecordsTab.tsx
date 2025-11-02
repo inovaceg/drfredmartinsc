@@ -1,440 +1,260 @@
+"use client";
+
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Database } from "@/integrations/supabase/types";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useUser } from "@/hooks/useUser";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, PlusCircle, Edit, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, User, CalendarDays, BookOpen, MessageSquareText, ClipboardList, CheckCircle, XCircle, Stethoscope, FileText, Edit, LayoutGrid, Trash2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { EditMedicalRecordDialog } from "./EditMedicalRecordDialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { EditPatientDialog } from "@/components/EditPatientDialog";
-import { EditTherapySessionDialog } from "./EditTherapySessionDialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { formatDateToDisplay } from "@/lib/utils"; // Import formatDateToDisplay
+import { EditTherapySessionDialog } from "@/components/doctor/EditTherapySessionDialog";
+import { EditMedicalRecordDialog } from "@/components/doctor/EditMedicalRecordDialog";
+import { Tables } from "@/integrations/supabase/types";
 
-type PatientProfile = Database['public']['Tables']['profiles']['Row'];
-type Session = Database['public']['Tables']['sessions']['Row'];
-type MedicalRecord = Database['public']['Tables']['medical_records']['Row'];
+type Profile = Tables<'profiles'>;
+type Session = Tables<'sessions'>;
+type MedicalRecord = Tables<'medical_records'>;
 
-interface DoctorMedicalRecordsTabProps {
-  currentUserId: string;
-  setSelectedPatient: React.Dispatch<React.SetStateAction<PatientProfile | null>>; // Adicionando setSelectedPatient como prop
-}
-
-export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = ({ currentUserId, setSelectedPatient }) => {
-  const { toast } = useToast();
+export function DoctorMedicalRecordsTab() {
+  const { user } = useUser();
+  const currentUserId = user?.id;
   const queryClient = useQueryClient();
+
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
-  const [newSessionData, setNewSessionData] = useState({
-    session_date: "",
-    session_theme: "",
-    interventions_used: "",
-    notes: "",
-    homework: "",
-  });
-  const [addingSession, setAddingSession] = useState(false);
+  const [isAddSessionDialogOpen, setIsAddSessionDialogOpen] = useState(false);
+  const [isAddMedicalRecordDialogOpen, setIsAddMedicalRecordDialogOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<Session | null>(null);
+  const [editingMedicalRecord, setEditingMedicalRecord] = useState<MedicalRecord | null>(null);
 
-  const [newMedicalRecordData, setNewMedicalRecordData] = useState({
-    diagnosis: "",
-    prescription: "",
-    notes: "",
-  });
-  const [addingMedicalRecord, setAddingMedicalRecord] = useState(false);
-
-  const [isEditRecordDialogOpen, setIsEditRecordDialogOpen] = useState(false);
-  const [recordToEdit, setRecordToEdit] = useState<MedicalRecord | null>(null);
-  const [activeSubTab, setActiveSubTab] = useState("overview");
-
-  const [isEditPatientDialogOpen, setIsEditPatientDialogOpen] = useState(false);
-  
-  const [isEditSessionDialogOpen, setIsEditSessionDialogOpen] = useState(false);
-  const [sessionToEdit, setSessionToEdit] = useState<Session | null>(null);
-
-  const [patientToDelete, setPatientToDelete] = useState<PatientProfile | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  // Timeout promise helper
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("Tempo limite excedido ao carregar dados.")), 30000) // 30 segundos
-  );
-
-  // Fetch all patients for the doctor
-  const { data: patients, isLoading: isLoadingPatients } = useQuery({
-    queryKey: ["doctorPatients", currentUserId],
+  // Fetch Patients
+  const {
+    data: patients,
+    isLoading: isLoadingPatients,
+    isError: isErrorPatients,
+    error: errorPatients,
+  } = useQuery<Profile[], Error>({
+    queryKey: ["patientsForDoctor", currentUserId],
     queryFn: async () => {
-      try {
-        const { data, error } = await Promise.race([
-          supabase.rpc("get_patients_for_doctor"),
-          timeoutPromise,
-        ]) as { data: PatientProfile[] | null; error: any };
-
-        if (error) throw error;
-        return data;
-      } catch (err: any) {
-        console.error("Error fetching doctor patients:", err);
-        toast({
-          title: "Erro de Conexão",
-          description: err.message || "Não foi possível carregar a lista de pacientes devido a um erro de rede ou tempo limite.",
-          variant: "destructive",
-        });
-        throw err; // Re-throw to let react-query handle the error state
-      }
+      if (!currentUserId) return [];
+      const { data, error } = await supabase.rpc("get_patients_for_doctor");
+      if (error) throw error;
+      return data || [];
     },
+    enabled: !!currentUserId,
     onSuccess: (data) => { // Add onSuccess callback to automatically select the first patient
       if (data && data.length > 0 && !selectedPatientId) {
-        setSelectedPatientId(data[0].id); // Automatically select the first patient
-      }
-    }
-  });
-
-  // Query para buscar a lista de doutores (adicionado para resolver o erro)
-  const { data: doctors, isLoading: isLoadingDoctors } = useQuery({
-    queryKey: ["doctors"],
-    queryFn: async () => {
-      try {
-        const { data, error } = await Promise.race([
-          supabase.rpc("get_doctors_public"),
-          timeoutPromise,
-        ]) as { data: any[] | null; error: any }; // Adjust type if get_doctors_public returns a specific type
-
-        if (error) throw error;
-        return data;
-      } catch (err: any) {
-        console.error("Error fetching public doctors:", err);
-        toast({
-          title: "Erro de Conexão",
-          description: err.message || "Não foi possível carregar a lista de médicos devido a um erro de rede ou tempo limite.",
-          variant: "destructive",
-        });
-        throw err; // Re-throw to let react-query handle the error state
+        setSelectedPatientId(data[0].id);
       }
     },
   });
 
-  // Fetch selected patient's full profile (including new therapeutic fields)
-  const { data: selectedPatientProfile, isLoading: isLoadingSelectedPatient } = useQuery({
-    queryKey: ["patientProfile", selectedPatientId],
+  // Fetch Selected Patient Profile
+  const {
+    data: selectedPatientProfile,
+    isLoading: isLoadingSelectedPatient,
+    isError: isErrorSelectedPatient,
+    error: errorSelectedPatient,
+  } = useQuery<Profile | null, Error>({
+    queryKey: ["selectedPatientProfile", selectedPatientId],
     queryFn: async () => {
       if (!selectedPatientId) return null;
-      try {
-        const { data, error } = await Promise.race([
-          supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', selectedPatientId)
-            .single(),
-          timeoutPromise,
-        ]) as { data: PatientProfile | null; error: any };
-
-        if (error) throw error;
-        return data;
-      } catch (err: any) {
-        console.error("Error fetching selected patient profile:", err);
-        toast({
-          title: "Erro de Conexão",
-          description: err.message || "Não foi possível carregar o perfil do paciente devido a um erro de rede ou tempo limite.",
-          variant: "destructive",
-        });
-        throw err;
-      }
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', selectedPatientId)
+        .single();
+      if (error) throw error;
+      return data;
     },
     enabled: !!selectedPatientId,
   });
 
-  // Fetch sessions for the selected patient
-  const { data: patientSessions, isLoading: isLoadingSessions } = useQuery({
+  // Fetch Sessions for Selected Patient
+  const {
+    data: patientSessions,
+    isLoading: isLoadingSessions,
+    isError: isErrorSessions,
+    error: errorSessions,
+  } = useQuery<Session[], Error>({
     queryKey: ["patientSessions", selectedPatientId],
     queryFn: async () => {
       if (!selectedPatientId) return [];
-      try {
-        const { data, error } = await Promise.race([
-          supabase
-            .from('sessions')
-            .select('*')
-            .eq('patient_id', selectedPatientId)
-            .order('session_date', { ascending: false }),
-          timeoutPromise,
-        ]) as { data: Session[] | null; error: any };
-
-        if (error) throw error;
-        return data;
-      } catch (err: any) {
-        console.error("Error fetching patient sessions:", err);
-        toast({
-          title: "Erro de Conexão",
-          description: err.message || "Não foi possível carregar as sessões do paciente devido a um erro de rede ou tempo limite.",
-          variant: "destructive",
-        });
-        throw err;
-      }
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('patient_id', selectedPatientId)
+        .order('session_date', { ascending: false });
+      if (error) throw error;
+      return data || [];
     },
     enabled: !!selectedPatientId,
   });
 
-  // Fetch medical records for the selected patient
-  const { data: patientMedicalRecords, isLoading: isLoadingMedicalRecords } = useQuery({
+  // Fetch Medical Records for Selected Patient
+  const {
+    data: patientMedicalRecords,
+    isLoading: isLoadingMedicalRecords,
+    isError: isErrorMedicalRecords,
+    error: errorMedicalRecords,
+  } = useQuery<MedicalRecord[], Error>({
     queryKey: ["patientMedicalRecords", selectedPatientId],
     queryFn: async () => {
       if (!selectedPatientId) return [];
-      try {
-        const { data, error } = await Promise.race([
-          supabase
-            .from('medical_records')
-            .select('*')
-            .eq('patient_id', selectedPatientId)
-            .order('created_at', { ascending: false }),
-          timeoutPromise,
-        ]) as { data: MedicalRecord[] | null; error: any };
-
-        if (error) throw error;
-        return data;
-      } catch (err: any) {
-        console.error("Error fetching patient medical records:", err);
-        toast({
-          title: "Erro de Conexão",
-          description: err.message || "Não foi possível carregar os prontuários do paciente devido a um erro de rede ou tempo limite.",
-          variant: "destructive",
-        });
-        throw err;
-      }
+      const { data, error } = await supabase
+        .from('medical_records')
+        .select('*')
+        .eq('patient_id', selectedPatientId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
     },
     enabled: !!selectedPatientId,
   });
 
-  const handleAddSession = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedPatientId || !newSessionData.session_date) {
-      toast({ title: "Erro", description: "Selecione um paciente e a data da sessão.", variant: "destructive" });
+  const handleAddSession = async (formData: {
+    session_date: Date;
+    session_theme: string;
+    interventions_used: string;
+    notes: string;
+    homework: string;
+  }) => {
+    if (!selectedPatientId || !currentUserId) {
+      toast.error("Selecione um paciente e certifique-se de estar logado.");
       return;
     }
 
-    if (!currentUserId) {
-      toast({ title: "Erro", description: "ID do doutor não disponível. Por favor, faça login novamente.", variant: "destructive" });
-      return;
-    }
-
-    setAddingSession(true);
     try {
       const sessionToInsert = {
         patient_id: selectedPatientId,
         therapist_id: currentUserId,
-        session_date: new Date(newSessionData.session_date).toISOString(),
-        session_theme: newSessionData.session_theme || null,
-        interventions_used: newSessionData.interventions_used || null,
-        notes: newSessionData.notes || null,
-        homework: newSessionData.homework || null,
+        session_date: formData.session_date.toISOString(),
+        session_theme: formData.session_theme || null,
+        interventions_used: formData.interventions_used || null,
+        notes: formData.notes || null,
+        homework: formData.homework || null,
       };
 
-      console.log("Attempting to insert session with data:", sessionToInsert);
+      const { error } = await supabase
+        .from('sessions')
+        .insert(sessionToInsert)
+        .select();
 
-      const { data, error } = await Promise.race([
-        supabase
-          .from('sessions')
-          .insert(sessionToInsert)
-          .select(),
-        timeoutPromise,
-      ]) as { data: Session[] | null; error: any };
+      if (error) throw error;
 
-      if (error) {
-        console.error("Supabase insert error:", error);
-        throw error;
-      }
-
-      console.log("Session inserted successfully:", data);
-      toast({ title: "Sucesso", description: "Sessão registrada com sucesso!" });
-      setNewSessionData({
-        session_date: "",
-        session_theme: "",
-        interventions_used: "",
-        notes: "",
-        homework: "",
-      });
+      toast.success("Sessão adicionada com sucesso!");
+      setIsAddSessionDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ["patientSessions", selectedPatientId] });
     } catch (error: any) {
-      console.error("Error adding session in catch block:", error);
-      toast({ title: "Erro", description: error.message || "Não foi possível registrar a sessão.", variant: "destructive" });
-    } finally {
-      setAddingSession(false);
+      console.error("Error adding session:", error.message);
+      toast.error("Erro ao adicionar sessão: " + error.message);
     }
   };
 
-  const handleAddMedicalRecord = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedPatientId || (!newMedicalRecordData.diagnosis && !newMedicalRecordData.prescription && !newMedicalRecordData.notes)) {
-      toast({ title: "Erro", description: "Preencha ao menos um campo (diagnóstico, prescrição ou notas) para o prontuário.", variant: "destructive" });
+  const handleAddMedicalRecord = async (formData: {
+    diagnosis: string;
+    prescription: string;
+    notes: string;
+  }) => {
+    if (!selectedPatientId || !currentUserId) {
+      toast.error("Selecione um paciente e certifique-se de estar logado.");
       return;
     }
 
-    if (!currentUserId) {
-      toast({ title: "Erro", description: "ID do doutor não disponível. Por favor, faça login novamente.", variant: "destructive" });
-      return;
-    }
-
-    setAddingMedicalRecord(true);
     try {
       const recordToInsert = {
         patient_id: selectedPatientId,
         doctor_id: currentUserId,
-        diagnosis: newMedicalRecordData.diagnosis || null,
-        prescription: newMedicalRecordData.prescription || null,
-        notes: newMedicalRecordData.notes || null,
+        diagnosis: formData.diagnosis || null,
+        prescription: formData.prescription || null,
+        notes: formData.notes || null,
       };
 
-      console.log("Attempting to insert medical record with data:", recordToInsert);
+      const { error } = await supabase
+        .from('medical_records')
+        .insert(recordToInsert)
+        .select();
 
-      const { data, error } = await Promise.race([
-        supabase
-          .from('medical_records')
-          .insert(recordToInsert)
-          .select(),
-        timeoutPromise,
-      ]) as { data: MedicalRecord[] | null; error: any };
+      if (error) throw error;
 
-      if (error) {
-        console.error("Supabase medical record insert error:", error);
-        throw error;
-      }
-
-      console.log("Medical record inserted successfully:", data);
-      toast({ title: "Sucesso", description: "Prontuário médico registrado com sucesso!" });
-      setNewMedicalRecordData({
-        diagnosis: "",
-        prescription: "",
-        notes: "",
-      });
+      toast.success("Prontuário adicionado com sucesso!");
+      setIsAddMedicalRecordDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", selectedPatientId] });
     } catch (error: any) {
-      console.error("Error adding medical record in catch block:", error);
-      toast({ title: "Erro", description: error.message || "Não foi possível registrar o prontuário médico.", variant: "destructive" });
-    } finally {
-      setAddingMedicalRecord(false);
+      console.error("Error adding medical record:", error.message);
+      toast.error("Erro ao adicionar prontuário: " + error.message);
     }
   };
 
-  const handleEditRecord = (record: MedicalRecord) => {
-    setRecordToEdit(record);
-    setIsEditRecordDialogOpen(true);
-  };
-
-  const handleRecordUpdated = () => {
-    queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", selectedPatientId] });
-  };
-
-  const handleEditSession = (session: Session) => {
-    setSessionToEdit(session);
-    setIsEditSessionDialogOpen(true);
-  };
-
-  const handleSessionUpdated = () => {
-    queryClient.invalidateQueries({ queryKey: ["patientSessions", selectedPatientId] });
-  };
-
-  const handlePatientProfileUpdated = () => {
-    queryClient.invalidateQueries({ queryKey: ["patientProfile", selectedPatientId] });
-    queryClient.invalidateQueries({ queryKey: ["doctorPatients", currentUserId] });
-  };
-
-  const handleDeletePatient = useCallback(async () => {
-    if (!patientToDelete) return;
-
-    setIsDeleting(true);
-    console.log("Doctor.tsx: Attempting to delete patient:", patientToDelete.id);
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!confirm("Tem certeza que deseja excluir esta sessão?")) return;
     try {
-      // Delete the patient's profile
-      const { data: deleteData, error: profileError } = await Promise.race([
-        (supabase as any)
-          .from('profiles')
-          .delete()
-          .eq('id', patientToDelete.id)
-          .select(), // Adicionado .select() para obter o count de linhas afetadas
-        timeoutPromise,
-      ]) as { data: any[] | null; error: any };
-
-      if (profileError) {
-        console.error("Supabase delete profile error:", profileError);
-        throw profileError;
-      }
-
-      // Verifica se alguma linha foi realmente excluída
-      if (!deleteData || deleteData.length === 0) {
-        console.warn("Doctor.tsx: Delete operation returned success but no rows were affected. Likely RLS issue.");
-        toast({
-          title: "Aviso",
-          description: "O paciente não pôde ser excluído. Verifique as permissões de segurança (RLS) no Supabase.",
-          variant: "destructive",
-        });
-        // Não prossegue com a atualização otimista ou re-busca se a exclusão falhou silenciosamente
-        setIsDeleting(false);
-        setIsDeleteDialogOpen(false);
-        return;
-      }
-
-      // Optimistically remove from UI first
-      // Note: setPatients is not directly available in this component,
-      // but the invalidateQueries will trigger a refetch in the parent Doctor component.
-      // For now, we'll rely on the query invalidation.
-      
-      toast({ title: "Sucesso", description: `Paciente ${patientToDelete.full_name} excluído com sucesso!` });
-      
-      // Invalidate queries to refetch patient list and clear selected patient data
-      if (currentUserId) { // Safely access currentUserId
-        queryClient.invalidateQueries({ queryKey: ["doctorPatients", currentUserId] });
-      }
-      queryClient.invalidateQueries({ queryKey: ["patientProfile", patientToDelete.id] });
-      queryClient.invalidateQueries({ queryKey: ["patientSessions", patientToDelete.id] });
-      queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", patientToDelete.id] });
-
-      setSelectedPatient(null); // Clear selected patient using the prop
-      setPatientToDelete(null);
-      setIsDeleteDialogOpen(false);
+      const { error } = await supabase.from('sessions').delete().eq('id', sessionId);
+      if (error) throw error;
+      toast.success("Sessão excluída com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["patientSessions", selectedPatientId] });
     } catch (error: any) {
-      console.error("Error deleting patient:", error);
-      toast({ title: "Erro", description: error.message || "Não foi possível excluir o paciente.", variant: "destructive",});
-    } finally {
-      setIsDeleting(false);
+      console.error("Error deleting session:", error.message);
+      toast.error("Erro ao excluir sessão: " + error.message);
     }
-  }, [patientToDelete, currentUserId, queryClient, toast, setSelectedPatient, setPatientToDelete, setIsDeleteDialogOpen, setIsDeleting, timeoutPromise]); // Added timeoutPromise to dependencies
+  };
 
-  if (isLoadingPatients || isLoadingDoctors) {
+  const handleDeleteMedicalRecord = async (recordId: string) => {
+    if (!confirm("Tem certeza que deseja excluir este prontuário?")) return;
+    try {
+      const { error } = await supabase.from('medical_records').delete().eq('id', recordId);
+      if (error) throw error;
+      toast.success("Prontuário excluído com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", selectedPatientId] });
+    } catch (error: any) {
+      console.error("Error deleting medical record:", error.message);
+      toast.error("Erro ao excluir prontuário: " + error.message);
+    }
+  };
+
+  if (isLoadingPatients) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (isErrorPatients) {
+    return (
+      <div className="p-4 text-red-500">
+        Erro ao carregar pacientes: {errorPatients?.message}
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-6 w-6 text-primary" />
-            Selecionar Paciente
-          </CardTitle>
-          <CardDescription>
-            Escolha um paciente para visualizar e gerenciar seu prontuário.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Select onValueChange={setSelectedPatientId} value={selectedPatientId || ""}>
+    <Card>
+      <CardHeader>
+        <CardTitle>Prontuários e Sessões de Pacientes</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div>
+          <Label htmlFor="patient-select">Selecionar Paciente</Label>
+          <Select
+            onValueChange={(value) => setSelectedPatientId(value)}
+            value={selectedPatientId || ""}
+          >
             <SelectTrigger>
               <SelectValue placeholder={isLoadingPatients ? "Carregando pacientes..." : (patients && patients.length > 0 ? "Selecione um paciente" : "Nenhum paciente encontrado")} />
             </SelectTrigger>
@@ -446,318 +266,157 @@ export const DoctorMedicalRecordsTab: React.FC<DoctorMedicalRecordsTabProps> = (
               ))}
             </SelectContent>
           </Select>
-        </CardContent>
-      </Card>
+        </div>
 
-      {selectedPatientId && (
-        <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="space-y-4">
-          <TabsList className="flex flex-wrap justify-center w-full bg-muted p-1 rounded-lg border">
-            <TabsTrigger value="overview" className="px-3 py-2 text-sm whitespace-nowrap">
-              <LayoutGrid className="h-4 w-4 mr-2" />
-              Visão Geral
-            </TabsTrigger>
-            <TabsTrigger value="add-session" className="px-3 py-2 text-sm whitespace-nowrap">
-              <BookOpen className="h-4 w-4 mr-2" />
-              Registrar Sessão
-            </TabsTrigger>
-            <TabsTrigger value="add-medical-record" className="px-3 py-2 text-sm whitespace-nowrap">
-              <FileText className="h-4 w-4 mr-2" />
-              Registrar Prontuário
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview">
-            <div className="grid gap-6 lg:grid-cols-2">
-              {/* Patient Profile Card */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5 text-primary" />
-                    Dados do Paciente
-                  </CardTitle>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setIsEditPatientDialogOpen(true)}>
-                      <Edit className="h-4 w-4" />
+        {selectedPatientId && (
+          <>
+            <Card className="p-4">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-lg font-semibold">
+                  Sessões de Terapia
+                </CardTitle>
+                <Dialog open={isAddSessionDialogOpen} onOpenChange={setIsAddSessionDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Sessão
                     </Button>
-                    <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                      <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="destructive" 
-                          size="sm" 
-                          onClick={() => setPatientToDelete(selectedPatientProfile)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Tem certeza que deseja excluir este paciente?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta ação não pode ser desfeita. Isso excluirá permanentemente o perfil do paciente e todos os dados associados (sessões, prontuários, etc.).
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleDeletePatient} disabled={isDeleting}>
-                            {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                            Excluir Paciente
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                  </DialogTrigger>
+                  <EditTherapySessionDialog
+                    session={null}
+                    onSave={handleAddSession}
+                    onClose={() => setIsAddSessionDialogOpen(false)}
+                  />
+                </Dialog>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isLoadingSessions ? (
+                  <div className="flex justify-center p-4">
+                    <Loader2 className="h-6 w-6 animate-spin" />
                   </div>
-                </CardHeader>
-                <CardDescription className="px-6">Informações pessoais e terapêuticas do paciente.</CardDescription>
-                <CardContent className="space-y-3 text-sm pt-4">
-                  {isLoadingSelectedPatient ? (
-                    <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>
-                  ) : selectedPatientProfile ? (
-                    <>
-                      <p><span className="font-semibold">Nome:</span> {selectedPatientProfile.full_name}</p>
-                      <p><span className="font-semibold">Email:</span> {selectedPatientProfile.email}</p>
-                      <p><span className="font-semibold">WhatsApp:</span> {selectedPatientProfile.whatsapp || '-'}</p>
-                      <p><span className="font-semibold">Data Nasc.:</span> {selectedPatientProfile.birth_date ? formatDateToDisplay(selectedPatientProfile.birth_date) : '-'}</p>
-                      <p><span className="font-semibold">Endereço:</span> {[selectedPatientProfile.street, selectedPatientProfile.street_number, selectedPatientProfile.neighborhood, selectedPatientProfile.city, selectedPatientProfile.state, selectedPatientProfile.zip_code].filter(Boolean).join(', ') || '-'}</p>
-                      
-                      <h4 className="font-semibold mt-4 border-t pt-3">Histórico Terapêutico</h4>
-                      <p><span className="font-semibold">Hist. Saúde Mental:</span> {selectedPatientProfile.mental_health_history || '-'}</p>
-                      <p><span className="font-semibold">Queixas Principais:</span> {selectedPatientProfile.main_complaints || '-'}</p>
-                      <p><span className="font-semibold">Diagnósticos Anteriores:</span> {selectedPatientProfile.previous_diagnoses || '-'}</p>
-                      <p><span className="font-semibold">Medicamentos Atuais:</span> {selectedPatientProfile.current_medications || '-'}</p>
-                      <p><span className="font-semibold">Hist. Sessões Passadas:</span> {selectedPatientProfile.past_sessions_history || '-'}</p>
-                      <p className="flex items-center gap-2"><span className="font-semibold">Consentimento Assinado:</span> {selectedPatientProfile.consent_status ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />} {selectedPatientProfile.consent_date ? `em ${format(new Date(selectedPatientProfile.consent_date), 'dd/MM/yyyy')}` : ''}</p>
-                      <p><span className="font-semibold">Terapeuta Principal:</span> {doctors?.find(d => d.id === selectedPatientProfile.therapist_id)?.full_name || '-'}</p>
-                    </>
-                  ) : (
-                    <p className="text-muted-foreground">Nenhum perfil encontrado.</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Container for both history cards */}
-              <div className="space-y-6">
-                {/* Sessions History Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <ClipboardList className="h-5 w-5 text-primary" />
-                      Histórico de Sessões de Terapia
-                    </CardTitle>
-                    <CardDescription>Todas as sessões de terapia registradas para este paciente.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4 max-h-[500px] overflow-y-auto scrollbar-hide">
-                    {isLoadingSessions ? (
-                      <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>
-                    ) : patientSessions && patientSessions.length > 0 ? (
-                      patientSessions.map((session) => (
-                        <div key={session.id} className="border rounded-lg p-4 space-y-2">
-                          <div className="flex justify-between items-center">
-                            <p className="font-semibold text-lg flex items-center gap-2">
-                              <CalendarDays className="h-5 w-5 text-muted-foreground" />
-                              {format(new Date(session.session_date), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
-                            </p>
-                            <Button variant="outline" size="sm" onClick={() => handleEditSession(session)}>
+                ) : isErrorSessions ? (
+                  <p className="text-red-500">
+                    Erro ao carregar sessões: {errorSessions?.message}
+                  </p>
+                ) : patientSessions && patientSessions.length > 0 ? (
+                  <div className="space-y-3">
+                    {patientSessions.map((session) => (
+                      <div key={session.id} className="border rounded-lg p-3 bg-background">
+                        <div className="flex justify-between items-center">
+                          <p className="font-medium">
+                            Sessão em: {format(parseISO(session.session_date), "dd/MM/yyyy", { locale: ptBR })}
+                          </p>
+                          <div className="flex space-x-2">
+                            <Button variant="ghost" size="icon" onClick={() => { setEditingSession(session); setIsAddSessionDialogOpen(true); }}>
                               <Edit className="h-4 w-4" />
+                              <span className="sr-only">Editar Sessão</span>
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteSession(session.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                              <span className="sr-only">Excluir Sessão</span>
                             </Button>
                           </div>
-                          {session.session_theme && <p><span className="font-medium">Tema:</span> {session.session_theme}</p>}
-                          {session.interventions_used && <p><span className="font-medium">Intervenções:</span> {session.interventions_used}</p>}
-                          {session.notes && <p><span className="font-medium">Notas:</span> {session.notes}</p>}
-                          {session.homework && <p><span className="font-medium">Tarefas:</span> {session.homework}</p>}
                         </div>
-                      ))
-                    ) : (
-                      <p className="text-muted-foreground text-center py-4">Nenhuma sessão registrada para este paciente.</p>
-                    )}
-                  </CardContent>
-                </Card>
+                        {session.session_theme && <p className="text-sm text-muted-foreground">Tema: {session.session_theme}</p>}
+                        {session.notes && <p className="text-sm mt-1">Notas: {session.notes}</p>}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">Nenhuma sessão de terapia registrada.</p>
+                )}
+              </CardContent>
+            </Card>
 
-                {/* Medical Records History Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Stethoscope className="h-5 w-5 text-primary" />
-                      Histórico de Prontuários Médicos
-                    </CardTitle>
-                    <CardDescription>Todos os prontuários médicos gerais registrados para este paciente.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4 max-h-[500px] overflow-y-auto scrollbar-hide">
-                    {isLoadingMedicalRecords ? (
-                      <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>
-                    ) : patientMedicalRecords && patientMedicalRecords.length > 0 ? (
-                      patientMedicalRecords.map((record) => (
-                        <div key={record.id} className="border rounded-lg p-4 space-y-2">
-                          <div className="flex justify-between items-center">
-                            <p className="font-semibold text-lg flex items-center gap-2">
-                              <CalendarDays className="h-5 w-5 text-muted-foreground" />
-                              {format(new Date(record.created_at!), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
-                            </p>
-                            <Button variant="outline" size="sm" onClick={() => handleEditRecord(record)}>
+            <Card className="p-4">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-lg font-semibold">
+                  Prontuários Médicos
+                </CardTitle>
+                <Dialog open={isAddMedicalRecordDialogOpen} onOpenChange={setIsAddMedicalRecordDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Prontuário
+                    </Button>
+                  </DialogTrigger>
+                  <EditMedicalRecordDialog
+                    record={null}
+                    onSave={handleAddMedicalRecord}
+                    onClose={() => setIsAddMedicalRecordDialogOpen(false)}
+                  />
+                </Dialog>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isLoadingMedicalRecords ? (
+                  <div className="flex justify-center p-4">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : isErrorMedicalRecords ? (
+                  <p className="text-red-500">
+                    Erro ao carregar prontuários: {errorMedicalRecords?.message}
+                  </p>
+                ) : patientMedicalRecords && patientMedicalRecords.length > 0 ? (
+                  <div className="space-y-3">
+                    {patientMedicalRecords.map((record) => (
+                      <div key={record.id} className="border rounded-lg p-3 bg-background">
+                        <div className="flex justify-between items-center">
+                          <p className="font-medium">
+                            Registro em: {format(parseISO(record.created_at || ""), "dd/MM/yyyy", { locale: ptBR })}
+                          </p>
+                          <div className="flex space-x-2">
+                            <Button variant="ghost" size="icon" onClick={() => { setEditingMedicalRecord(record); setIsAddMedicalRecordDialogOpen(true); }}>
                               <Edit className="h-4 w-4" />
+                              <span className="sr-only">Editar Prontuário</span>
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteMedicalRecord(record.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                              <span className="sr-only">Excluir Prontuário</span>
                             </Button>
                           </div>
-                          {record.diagnosis && <p><span className="font-medium">Diagnóstico:</span> {record.diagnosis}</p>}
-                          {record.prescription && <p><span className="font-medium">Prescrição:</span> {record.prescription}</p>}
-                          {record.notes && <p><span className="font-medium">Notas:</span> {record.notes}</p>}
                         </div>
-                      ))
-                    ) : (
-                      <p className="text-muted-foreground text-center py-4">Nenhum prontuário médico registrado para este paciente.</p>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="add-session">
-            {/* Add New Session Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5 text-primary" />
-                  Registrar Nova Sessão de Terapia
-                </CardTitle>
-                <CardDescription>Adicione os detalhes de uma nova sessão de terapia.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleAddSession} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="session_date">Data da Sessão *</Label>
-                    <Input
-                      id="session_date"
-                      type="datetime-local"
-                      value={newSessionData.session_date}
-                      onChange={(e) => setNewSessionData({ ...newSessionData, session_date: e.target.value })}
-                      required
-                    />
+                        {record.diagnosis && <p className="text-sm text-muted-foreground">Diagnóstico: {record.diagnosis}</p>}
+                        {record.prescription && <p className="text-sm text-muted-foreground">Prescrição: {record.prescription}</p>}
+                        {record.notes && <p className="text-sm mt-1">Notas: {record.notes}</p>}
+                      </div>
+                    ))}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="session_theme">Tema da Sessão</Label>
-                    <Input
-                      id="session_theme"
-                      value={newSessionData.session_theme}
-                      onChange={(e) => setNewSessionData({ ...newSessionData, session_theme: e.target.value })}
-                      placeholder="Ex: Ansiedade, Relacionamento"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="interventions_used">Intervenções Utilizadas</Label>
-                    <Textarea
-                      id="interventions_used"
-                      value={newSessionData.interventions_used}
-                      onChange={(e) => setNewSessionData({ ...newSessionData, interventions_used: e.target.value })}
-                      placeholder="Técnicas e abordagens utilizadas..."
-                      rows={3}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Notas sobre o Estado Emocional</Label>
-                    <Textarea
-                      id="notes"
-                      value={newSessionData.notes}
-                      onChange={(e) => setNewSessionData({ ...newSessionData, notes: e.target.value })}
-                      placeholder="Observações sobre o paciente durante a sessão..."
-                      rows={4}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="homework">Tarefas de Casa</Label>
-                    <Textarea
-                      id="homework"
-                      value={newSessionData.homework}
-                      onChange={(e) => setNewSessionData({ ...newSessionData, homework: e.target.value })}
-                      placeholder="Atividades ou reflexões recomendadas para o paciente..."
-                      rows={3}
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={addingSession}>
-                    {addingSession && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Registrar Sessão
-                  </Button>
-                </form>
+                ) : (
+                  <p className="text-muted-foreground">Nenhum prontuário médico registrado.</p>
+                )}
               </CardContent>
             </Card>
-          </TabsContent>
+          </>
+        )}
 
-          <TabsContent value="add-medical-record">
-            {/* Add New Medical Record Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-primary" />
-                  Registrar Prontuário Médico
-                </CardTitle>
-                <CardDescription>Adicione um novo diagnóstico, prescrição ou notas gerais.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleAddMedicalRecord} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="diagnosis">Diagnóstico</Label>
-                    <Input
-                      id="diagnosis"
-                      value={newMedicalRecordData.diagnosis}
-                      onChange={(e) => setNewMedicalRecordData({ ...newMedicalRecordData, diagnosis: e.target.value })}
-                      placeholder="Ex: Transtorno de Ansiedade Generalizada"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="prescription">Prescrição</Label>
-                    <Textarea
-                      id="prescription"
-                      value={newMedicalRecordData.prescription}
-                      onChange={(e) => setNewMedicalRecordData({ ...newMedicalRecordData, prescription: e.target.value })}
-                      placeholder="Medicamentos, dosagem, frequência..."
-                      rows={3}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="medical_notes">Notas Médicas Gerais</Label>
-                    <Textarea
-                      id="medical_notes"
-                      value={newMedicalRecordData.notes}
-                      onChange={(e) => setNewMedicalRecordData({ ...newMedicalRecordData, notes: e.target.value })}
-                      placeholder="Observações gerais sobre o estado de saúde do paciente..."
-                      rows={4}
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={addingMedicalRecord}>
-                    {addingMedicalRecord && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Registrar Prontuário
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      )}
+        {editingSession && (
+          <EditTherapySessionDialog
+            session={editingSession}
+            onSave={() => {
+              queryClient.invalidateQueries({ queryKey: ["patientSessions", selectedPatientId] });
+              setEditingSession(null);
+              setIsAddSessionDialogOpen(false);
+            }}
+            onClose={() => {
+              setEditingSession(null);
+              setIsAddSessionDialogOpen(false);
+            }}
+          />
+        )}
 
-      {recordToEdit && (
-        <EditMedicalRecordDialog
-          record={recordToEdit}
-          open={isEditRecordDialogOpen}
-          onOpenChange={setIsEditRecordDialogOpen}
-          onRecordUpdated={handleRecordUpdated}
-        />
-      )}
-
-      {sessionToEdit && (
-        <EditTherapySessionDialog
-          session={sessionToEdit}
-          open={isEditSessionDialogOpen}
-          onOpenChange={setIsEditSessionDialogOpen}
-          onSessionUpdated={handleSessionUpdated}
-        />
-      )}
-
-      {selectedPatientProfile && (
-        <EditPatientDialog
-          patient={selectedPatientProfile}
-          open={isEditPatientDialogOpen}
-          onOpenChange={setIsEditPatientDialogOpen}
-          onPatientUpdated={handlePatientProfileUpdated}
-        />
-      )}
-    </div>
+        {editingMedicalRecord && (
+          <EditMedicalRecordDialog
+            record={editingMedicalRecord}
+            onSave={() => {
+              queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", selectedPatientId] });
+              setEditingMedicalRecord(null);
+              setIsAddMedicalRecordDialogOpen(false);
+            }}
+            onClose={() => {
+              setEditingMedicalRecord(null);
+              setIsAddMedicalRecordDialogOpen(false);
+            }}
+          />
+        )}
+      </CardContent>
+    </Card>
   );
-};
+}

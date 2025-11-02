@@ -95,12 +95,21 @@ importers:
       '@supabase/auth-helpers-react':
         specifier: ^0.5.0
         version: 0.5.0(@supabase/supabase-js@2.75.0)
+      '@supabase/auth-ui-react':
+        specifier: ^0.4.7
+        version: 0.4.7(@supabase/supabase-js@2.75.0)
+      '@supabase/auth-ui-shared':
+        specifier: ^0.1.8
+        version: 0.1.8(@supabase/supabase-js@2.75.0)
       '@supabase/supabase-js':
         specifier: ^2.75.0
         version: 2.75.0
       '@tanstack/react-query':
         specifier: ^5.56.2
         version: 5.90.3(react@18.3.1)
+      '@tanstack/react-table':
+        specifier: ^8.21.3
+        version: 8.21.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -1471,6 +1480,9 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@stitches/core@1.2.8':
+    resolution: {integrity: sha512-Gfkvwk9o9kE9r9XNBmJRfV8zONvXThnm1tcuojL04Uy5uRyqg93DC83lDebl0rocZCfKSjUv+fWYtMQmEDJldg==}
+
   '@supabase/auth-helpers-react@0.5.0':
     resolution: {integrity: sha512-5QSaV2CGuhDhd7RlQCoviVEAYsP7XnrFMReOcBazDvVmqSIyjKcDwhLhWvnrxMOq5qjOaA44MHo7wXqDiF0puQ==}
     deprecated: This package is now deprecated - please use the @supabase/ssr package instead.
@@ -1479,6 +1491,16 @@ packages:
 
   '@supabase/auth-js@2.75.0':
     resolution: {integrity: sha512-J8TkeqCOMCV4KwGKVoxmEBuDdHRwoInML2vJilthOo7awVCro2SM+tOcpljORwuBQ1vHUtV62Leit+5wlxrNtw==}
+
+  '@supabase/auth-ui-react@0.4.7':
+    resolution: {integrity: sha512-Lp4FQGFh7BMX1Y/BFaUKidbryL7eskj1fl6Lby7BeHrTctbdvDbCMjVKS8wZ2rxuI8FtPS2iU900fSb70FHknQ==}
+    peerDependencies:
+      '@supabase/supabase-js': ^2.21.0
+
+  '@supabase/auth-ui-shared@0.1.8':
+    resolution: {integrity: sha512-ouQ0DjKcEFg+0gZigFIEgu01V3e6riGZPzgVD0MJsCBNsMsiDT74+GgCEIElMUpTGkwSja3xLwdFRFgMNFKcjg==}
+    peerDependencies:
+      '@supabase/supabase-js': ^2.21.0
 
   '@supabase/functions-js@2.75.0':
     resolution: {integrity: sha512-18yk07Moj/xtQ28zkqswxDavXC3vbOwt1hDuYM3/7xPnwwpKnsmPyZ7bQ5th4uqiJzQ135t74La9tuaxBR6e7w==}
@@ -1586,6 +1608,17 @@ packages:
     resolution: {integrity: sha512-i/LRL6DtuhG6bjGzavIMIVuKKPWx2AnEBIsBfuMm3YoHne0a20nWmsatOCBcVSaT0/8/5YFjNkebHAPLVUSi0Q==}
     peerDependencies:
       react: ^18 || ^19
+
+  '@tanstack/react-table@8.21.3':
+    resolution: {integrity: sha512-5nNMTSETP4ykGegmVkhjcS8tTLW6Vl4axfEGQN3v0zdHYbK4UfoqfPChclTrJ4EoK9QynqAu9oUf8VEmrpZ5Ww==}
+    engines: {node: '>=12'}
+    peerDependencies:
+      react: '>=16.8'
+      react-dom: '>=16.8'
+
+  '@tanstack/table-core@8.21.3':
+    resolution: {integrity: sha512-ldZXEhOBb8Is7xLs01fR3YEc3DERiz5silj8tnGkFZytt1abEvl/GhUmCE0PMLaMPTa3Jk4HbKmRlHmu+gCftg==}
+    engines: {node: '>=12'}
 
   '@types/d3-array@3.2.2':
     resolution: {integrity: sha512-hOLWVbm7uRza0BYXpIIW5pxfrKe0W+D5lrFiAEYR+pb6w3N2SwSMaJbXdUfSEv+dT4MfHBLtn5js0LAWaO6otw==}
@@ -3898,6 +3931,8 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.52.4':
     optional: true
 
+  '@stitches/core@1.2.8': {}
+
   '@supabase/auth-helpers-react@0.5.0(@supabase/supabase-js@2.75.0)':
     dependencies:
       '@supabase/supabase-js': 2.75.0
@@ -3905,6 +3940,19 @@ snapshots:
   '@supabase/auth-js@2.75.0':
     dependencies:
       '@supabase/node-fetch': 2.6.15
+
+  '@supabase/auth-ui-react@0.4.7(@supabase/supabase-js@2.75.0)':
+    dependencies:
+      '@stitches/core': 1.2.8
+      '@supabase/auth-ui-shared': 0.1.8(@supabase/supabase-js@2.75.0)
+      '@supabase/supabase-js': 2.75.0
+      prop-types: 15.8.1
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+
+  '@supabase/auth-ui-shared@0.1.8(@supabase/supabase-js@2.75.0)':
+    dependencies:
+      '@supabase/supabase-js': 2.75.0
 
   '@supabase/functions-js@2.75.0':
     dependencies:
@@ -4007,6 +4055,14 @@ snapshots:
     dependencies:
       '@tanstack/query-core': 5.90.3
       react: 18.3.1
+
+  '@tanstack/react-table@8.21.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@tanstack/table-core': 8.21.3
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+
+  '@tanstack/table-core@8.21.3': {}
 
   '@types/d3-array@3.2.2': {}
 
