@@ -54,7 +54,7 @@ export function Footer() {
   };
 
   return (
-    <footer className="bg-rest-darkblue text-primary-foreground p-8"> {/* Removido mt-12 */}
+    <footer className="bg-rest-darkblue text-primary-foreground p-8">
       <div className="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
         <div>
           <h3 className="text-xl font-bold mb-4">Sobre Nós</h3>
@@ -163,7 +163,7 @@ export function Footer() {
         </div>
       </div>
       <div className="mt-8 text-center text-sm border-t border-primary-foreground/20 pt-4">
-        © {new Date().getFullYear()} Sua Empresa. Todos os direitos reservados.
+        © {new Date().getFullYear()} Dr. Frederick Parreira. Todos os direitos reservados.
       </div>
     </footer>
   );
