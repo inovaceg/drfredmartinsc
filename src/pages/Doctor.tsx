@@ -158,10 +158,10 @@ const Doctor = () => {
       }
       console.log("fetchOverview: Raw slots data:", slots);
 
-      // 2) consultas do período + nome do paciente
-      const { data: appts, error: apptsErr } = await supabase
+      // 2) consultas do período (sem join inicial)
+      const { data: apptsData, error: apptsErr } = await supabase
         .from("appointments")
-        .select("id, slot_id, start_time, end_time, patient_full_name:profiles(full_name)") // Corrected to use patient_full_name directly
+        .select("id, slot_id, start_time, end_time, patient_id") // Select patient_id directly
         .eq("doctor_id", doctorId)
         .gte("start_time", startIso)
         .lte("end_time",   endIso)
@@ -170,10 +170,33 @@ const Doctor = () => {
         console.error("fetchOverview: Error fetching appointments:", apptsErr);
         throw apptsErr;
       }
-      console.log("fetchOverview: Raw appointments data:", appts);
+      console.log("fetchOverview: Raw appointments data (without join):", apptsData);
+
+      // Fetch patient profiles separately
+      const patientIds = [...new Set(apptsData.map(a => a.patient_id))];
+      let patientProfiles: Profile[] = [];
+      if (patientIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles') // Direct select from profiles table
+          .select('id, full_name')
+          .in('id', patientIds);
+        if (profilesError) {
+          console.error("fetchOverview: Error fetching patient profiles:", profilesError);
+          throw profilesError;
+        }
+        patientProfiles = profilesData || [];
+      }
+      const patientMap = new Map(patientProfiles.map(p => [p.id, p.full_name]));
+
+      // Map patient names to appointments
+      const apptsWithPatientNames = apptsData.map(apt => ({
+        ...apt,
+        patient_name: patientMap.get(apt.patient_id) || "Paciente Desconhecido"
+      }));
+      console.log("fetchOverview: Appointments with patient names:", apptsWithPatientNames);
 
       // índice de slot_id -> existe consulta
-      const occupiedSet = new Set(appts.map(a => a.slot_id));
+      const occupiedSet = new Set(apptsData.map(a => a.slot_id));
       const total = slots.length;
       const occupied = slots.filter(s => occupiedSet.has(s.id) || !s.is_available).length;
       const available = Math.max(0, total - occupied);
@@ -182,10 +205,10 @@ const Doctor = () => {
       setOverview({ total, available, occupied });
 
       // montar lista de pacientes para renderizar abaixo do dashboard
-      const mappedAppointments = appts.map(a => ({
+      const mappedAppointments = apptsWithPatientNames.map(a => ({
         id: a.id,
-        patient_name: (a.patient_full_name as { full_name: string })?.full_name ?? "Paciente Desconhecido", // Corrected to use patient_full_name
-        start_time: a.start_time, // Use apt.start_time and apt.end_time from the inserted appointment
+        patient_name: a.patient_name,
+        start_time: a.start_time,
         end_time: a.end_time
       }));
       console.log("fetchOverview: Mapped overview appointments:", mappedAppointments);
