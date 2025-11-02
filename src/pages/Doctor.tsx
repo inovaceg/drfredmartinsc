@@ -826,6 +826,10 @@ const Doctor = () => {
               <MessageSquare className="h-4 w-4 mr-2" />
               Consulta Online
             </TabsTrigger>
+            <TabsTrigger value="contact-forms" className="px-3 py-2 text-sm whitespace-nowrap"> {/* NOVA GUIA */}
+              <FileText className="h-4 w-4 mr-2" />
+              Formulário Contato
+            </TabsTrigger>
             <TabsTrigger value="newsletter-subscriptions" className="px-3 py-2 text-sm whitespace-nowrap">
               <Mail className="h-4 w-4 mr-2" />
               Newsletter
@@ -845,6 +849,7 @@ const Doctor = () => {
                   {activeTab === "patients" && "Meus Pacientes"}
                   {activeTab === "medical-records" && "Prontuários"}
                   {activeTab === "online-consultation" && "Consulta Online"}
+                  {activeTab === "contact-forms" && "Formulário Contato"} {/* NOVA GUIA */}
                   {activeTab === "newsletter-subscriptions" && "Newsletter"}
                 </Button>
               </DrawerTrigger>
@@ -903,6 +908,14 @@ const Doctor = () => {
                     >
                       <MessageSquare className="h-4 w-4 mr-2" />
                       Consulta Online
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                      onClick={() => handleTabChange("contact-forms")} {/* NOVA GUIA */}
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Formulário Contato
                     </Button>
                     <Button
                       variant="ghost"
@@ -1321,8 +1334,12 @@ const Doctor = () => {
             {user && <DoctorOnlineConsultationTab currentUserId={user.id} />}
           </TabsContent>
 
-          <TabsContent value="newsletter-subscriptions">
+          <TabsContent value="contact-forms"> {/* NOVA GUIA PARA FORMULÁRIO DE CONTATO */}
             <DoctorFormResponsesTab />
+          </TabsContent>
+
+          <TabsContent value="newsletter-subscriptions">
+            <DoctorNewsletterSubscriptionsTab /> {/* Componente correto para Newsletter */}
           </TabsContent>
         </Tabs>
       </main>
