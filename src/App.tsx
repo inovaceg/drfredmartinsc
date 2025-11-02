@@ -21,7 +21,14 @@ import Patient from "./pages/Patient";
 import Doctor from "./pages/Doctor";
 import { WhatsappTranscriptionsPage } from "./pages/WhatsappTranscriptionsPage";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: true, // Re-fetch queries when window regains focus
+      retry: 3, // Retry failed queries up to 3 times
+    },
+  },
+});
 
 // Componente para lidar com a rolagem para links de âncora (hash)
 const ScrollToHashElement = () => {
