@@ -93,13 +93,13 @@ export default function Patient() {
 
         <Tabs defaultValue="profile" className="w-full">
           <TabsList className="flex flex-wrap justify-center w-full bg-muted p-1 rounded-lg border gap-1">
-            <TabsTrigger value="profile" className="px-3 py-2 text-sm whitespace-nowrap">Meu Perfil</TabsTrigger>
-            <TabsTrigger value="schedule" className="px-3 py-2 text-sm whitespace-nowrap">Agendar Consulta</TabsTrigger>
-            <TabsTrigger value="appointments" className="px-3 py-2 text-sm whitespace-nowrap">Meus Agendamentos</TabsTrigger>
-            <TabsTrigger value="medical-records" className="px-3 py-2 text-sm whitespace-nowrap">Prontuários</TabsTrigger>
-            <TabsTrigger value="documents" className="px-3 py-2 text-sm whitespace-nowrap">Documentos</TabsTrigger>
-            <TabsTrigger value="online-consultation" className="px-3 py-2 text-sm whitespace-nowrap">Consulta Online</TabsTrigger>
-            <TabsTrigger value="whatsapp-transcriptions" className="px-3 py-2 text-sm whitespace-nowrap">Transcrições WhatsApp</TabsTrigger>
+            <TabsTrigger value="profile" className="px-3 py-2 text-sm text-center">Meu Perfil</TabsTrigger>
+            <TabsTrigger value="schedule" className="px-3 py-2 text-sm text-center">Agendar Consulta</TabsTrigger>
+            <TabsTrigger value="appointments" className="px-3 py-2 text-sm text-center">Meus Agendamentos</TabsTrigger>
+            <TabsTrigger value="medical-records" className="px-3 py-2 text-sm text-center">Prontuários</TabsTrigger>
+            <TabsTrigger value="documents" className="px-3 py-2 text-sm text-center">Documentos</TabsTrigger>
+            <TabsTrigger value="online-consultation" className="px-3 py-2 text-sm text-center">Consulta Online</TabsTrigger>
+            <TabsTrigger value="whatsapp-transcriptions" className="px-3 py-2 text-sm text-center">Transcrições WhatsApp</TabsTrigger>
           </TabsList>
           <TabsContent value="profile" className="mt-6">
             <PatientProfileForm profile={profile} onProfileUpdated={handleProfileUpdated} />
