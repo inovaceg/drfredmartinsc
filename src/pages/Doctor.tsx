@@ -433,6 +433,8 @@ const Doctor = () => {
       .insert(newSlots)
       .select();
 
+    console.log("Doctor.tsx: Supabase insert response - Data:", data, "Error:", error); // NEW LOG HERE
+
     if (error) {
       console.error("Doctor.tsx: Error creating slots:", error);
       console.error("Doctor.tsx: Supabase create slots error details:", error.message, error.details, error.hint, error.code);
@@ -475,6 +477,8 @@ const Doctor = () => {
       .eq('id', slotId)
       .select();
 
+    console.log("Doctor.tsx: Supabase update response - Data:", data, "Error:", error); // NEW LOG HERE
+
     if (error) {
       console.error("Doctor.tsx: Error toggling slot availability:", error);
       console.error("Doctor.tsx: Supabase toggle slot error details:", error.message, error.details, error.hint, error.code);
@@ -497,6 +501,7 @@ const Doctor = () => {
       queryClient.invalidateQueries({ queryKey: ["availableDates", user!.id] });
       fetchOverview(user!.id, selectedTimeframe, customStartDate, customEndDate); // Update overview
     }
+    setIsLoadingScheduleSlots(false); // Use renamed loading state
   };
 
   const handleSelectSlot = (slotId: string, isSelected: boolean) => {
@@ -521,6 +526,8 @@ const Doctor = () => {
       .from('availability_slots')
       .delete()
       .in('id', selectedSlotIds);
+
+    console.log("Doctor.tsx: Supabase delete response - Data:", data, "Error:", error); // NEW LOG HERE
 
     if (error) {
       console.error("Doctor.tsx: Error deleting bulk slots:", error);
@@ -557,6 +564,8 @@ const Doctor = () => {
       .update({ is_available: makeAvailable })
       .in('id', selectedSlotIds)
       .select();
+
+    console.log("Doctor.tsx: Supabase bulk update response - Data:", data, "Error:", error); // NEW LOG HERE
 
     if (error) {
       console.error("Doctor.tsx: Error bulk toggling availability:", error);
