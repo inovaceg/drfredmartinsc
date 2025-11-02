@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/form";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom"; // Importar o componente Link
 
 const newsletterSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -66,19 +67,44 @@ export function Footer() {
           <h3 className="text-xl font-bold mb-4">Links Rápidos</h3>
           <ul className="space-y-2">
             <li>
-              <a href="#" className="hover:underline">
+              <Link to="/#about" className="hover:underline">
+                Sobre
+              </Link>
+            </li>
+            <li>
+              <Link to="/#services" className="hover:underline">
                 Serviços
-              </a>
+              </Link>
             </li>
             <li>
-              <a href="#" className="hover:underline">
-                Nossa Equipe
-              </a>
+              <Link to="/#testimonials" className="hover:underline">
+                Depoimentos
+              </Link>
             </li>
             <li>
-              <a href="#" className="hover:underline">
+              <Link to="/#blog" className="hover:underline">
+                Blog
+              </Link>
+            </li>
+            <li>
+              <Link to="/#faq" className="hover:underline">
+                FAQ
+              </Link>
+            </li>
+            <li>
+              <Link to="/#contact" className="hover:underline">
                 Contato
-              </a>
+              </Link>
+            </li>
+            <li>
+              <Link to="/patient" className="hover:underline">
+                Portal do Paciente
+              </Link>
+            </li>
+            <li>
+              <Link to="/doctor" className="hover:underline">
+                Portal do Profissional
+              </Link>
             </li>
           </ul>
         </div>
