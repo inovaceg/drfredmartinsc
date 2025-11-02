@@ -1,17 +1,20 @@
--- Add name column to newsletter_subscriptions table if it doesn't exist
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='newsletter_subscriptions' AND column_name='name') THEN
-        ALTER TABLE public.newsletter_subscriptions ADD COLUMN name text;
-    END IF;
-END
-$$;
+-- Adicionando as colunas 'name' e 'whatsapp' à tabela 'newsletter_subscriptions'
+ALTER TABLE public.newsletter_subscriptions
+ADD COLUMN name text NULL,
+ADD COLUMN whatsapp text NULL;
 
--- Add whatsapp column to newsletter_subscriptions table if it doesn't exist
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='newsletter_subscriptions' AND column_name='whatsapp') THEN
-        ALTER TABLE public.newsletter_subscriptions ADD COLUMN whatsapp text;
-    END IF;
-END
-$$;
+-- Criando ou atualizando a política RLS para 'select' para incluir as novas colunas
+DROP POLICY IF EXISTS "Enable read access for all users" ON public.newsletter_subscriptions;
+
+CREATE POLICY "Enable read access for all users"
+ON public.newsletter_subscriptions
+FOR SELECT
+USING (true);
+
+-- Criando ou atualizando a política RLS para 'insert' para permitir a inserção das novas colunas
+DROP POLICY IF EXISTS "Allow authenticated users to insert" ON public.newsletter_subscriptions;
+
+CREATE POLICY "Allow authenticated users to insert"
+ON public.newsletter_subscriptions
+FOR INSERT
+WITH CHECK (true); -- Permitir que qualquer usuário autenticado insira, incluindo as novas colunas
