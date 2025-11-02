@@ -10,6 +10,7 @@ import { useLocation } from "react-router-dom"; // Import useLocation
 import ServicesSection from "@/components/ServicesSection";
 import TestimonialsSection from "@/components/TestimonialsSection";
 import BlogSection from "@/components/BlogSection";
+import AnnouncementBanner from "@/components/AnnouncementBanner"; // Importar o AnnouncementBanner
 
 export default function Index() {
   const location = useLocation();
@@ -25,6 +26,7 @@ export default function Index() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <AnnouncementBanner /> {/* Adicionado o banner aqui */}
       <HeroSection />
       <StorySection />
       <ServicesSection />

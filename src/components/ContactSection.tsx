@@ -85,14 +85,14 @@ export function ContactSection() {
   };
 
   return (
-    <section id="contact" className="py-12 md:py-24 lg:py-32 bg-muted">
+    <section id="contact" className="py-12 md:py-24 lg:py-32 bg-rest-blue text-white">
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex flex-col items-center justify-center space-y-4 text-center">
           <div className="space-y-2">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">
               Entre em Contato
             </h2>
-            <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+            <p className="max-w-[900px] text-white/80 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
               Tem alguma dúvida ou gostaria de agendar uma consulta? Preencha o
               formulário abaixo e entraremos em contato.
             </p>
@@ -108,7 +108,7 @@ export function ContactSection() {
                   <FormItem>
                     <FormLabel>Nome Completo</FormLabel>
                     <FormControl>
-                      <Input placeholder="Seu nome" {...field} />
+                      <Input placeholder="Seu nome" {...field} className="bg-white text-foreground placeholder:text-muted-foreground" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -121,7 +121,7 @@ export function ContactSection() {
                   <FormItem>
                     <FormLabel>WhatsApp</FormLabel>
                     <FormControl>
-                      <Input placeholder="(XX) XXXXX-XXXX" {...field} />
+                      <Input placeholder="(XX) XXXXX-XXXX" {...field} className="bg-white text-foreground placeholder:text-muted-foreground" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -139,7 +139,7 @@ export function ContactSection() {
                           <Button
                             variant={"outline"}
                             className={cn(
-                              "w-full pl-3 text-left font-normal",
+                              "w-full pl-3 text-left font-normal bg-white text-foreground hover:bg-white/90",
                               !field.value && "text-muted-foreground"
                             )}
                           >
@@ -176,7 +176,7 @@ export function ContactSection() {
                   <FormItem>
                     <FormLabel>CEP</FormLabel>
                     <FormControl>
-                      <Input placeholder="XXXXX-XXX" {...field} />
+                      <Input placeholder="XXXXX-XXX" {...field} className="bg-white text-foreground placeholder:text-muted-foreground" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -189,7 +189,7 @@ export function ContactSection() {
                   <FormItem>
                     <FormLabel>Estado</FormLabel>
                     <FormControl>
-                      <Input placeholder="Seu estado" {...field} />
+                      <Input placeholder="Seu estado" {...field} className="bg-white text-foreground placeholder:text-muted-foreground" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -202,7 +202,7 @@ export function ContactSection() {
                   <FormItem>
                     <FormLabel>Cidade</FormLabel>
                     <FormControl>
-                      <Input placeholder="Sua cidade" {...field} />
+                      <Input placeholder="Sua cidade" {...field} className="bg-white text-foreground placeholder:text-muted-foreground" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -215,7 +215,7 @@ export function ContactSection() {
                   <FormItem>
                     <FormLabel>Rua</FormLabel>
                     <FormControl>
-                      <Input placeholder="Sua rua" {...field} />
+                      <Input placeholder="Sua rua" {...field} className="bg-white text-foreground placeholder:text-muted-foreground" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -228,7 +228,7 @@ export function ContactSection() {
                   <FormItem>
                     <FormLabel>Bairro</FormLabel>
                     <FormControl>
-                      <Input placeholder="Seu bairro" {...field} />
+                      <Input placeholder="Seu bairro" {...field} className="bg-white text-foreground placeholder:text-muted-foreground" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -243,7 +243,7 @@ export function ContactSection() {
                     <FormControl>
                       <Textarea
                         placeholder="Sua mensagem..."
-                        className="min-h-[100px]"
+                        className="min-h-[100px] bg-white text-foreground placeholder:text-muted-foreground"
                         {...field}
                       />
                     </FormControl>
