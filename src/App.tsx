@@ -26,6 +26,8 @@ const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: true, // Re-fetch queries when window regains focus
       retry: 3, // Retry failed queries up to 3 times
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000), // Exponential backoff: 1s, 2s, 4s (max 5s)
+      refetchOnReconnect: true, // Re-fetch queries when network connection is re-established
     },
   },
 });

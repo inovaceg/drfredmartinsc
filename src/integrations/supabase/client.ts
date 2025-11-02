@@ -39,3 +39,9 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     console.error("Supabase Client Init: Unexpected error during initial auth connection test:", e.message);
   }
 })();
+
+// Adicionar listener para erros do Realtime
+supabase.realtime.on('error', (err) => {
+  console.error('[Supabase Realtime Error]', err);
+  // Você pode adicionar um toast ou outra notificação aqui se desejar
+});
