@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
-import { Menu, X, Instagram, LogIn, LogOut, MessageSquare, Wifi, WifiOff, CloudOff } from "lucide-react"; // Added Wifi, WifiOff, CloudOff
+import { Menu, X, Instagram, LogIn, LogOut, MessageSquare, Wifi, WifiOff, CloudOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -14,18 +14,18 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { useToast } from "@/hooks/use-toast";
-import { User } from "@supabase/supabase-js"; // Import User type
-import { Badge } from "@/components/ui/badge"; // Import Badge
+import { User } from "@supabase/supabase-js";
+import { Badge } from "@/components/ui/badge";
 
 const Navbar = () => {
-  const [user, setUser] = useState<User | null>(null); // Explicitly type user state
+  const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const navigate = useNavigate();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const { toast } = useToast();
-  const [isOnline, setIsOnline] = useState(navigator.onLine); // Track browser online status
-  const [isSupabaseConnected, setIsSupabaseConnected] = useState(true); // Track Supabase connection
-  const [lastSupabaseStatus, setLastSupabaseStatus] = useState(true); // To track changes for toast notifications
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isSupabaseConnected, setIsSupabaseConnected] = useState(true);
+  const [lastSupabaseStatus, setLastSupabaseStatus] = useState(true);
 
   useEffect(() => {
     const fetchUserRole = async (userId: string) => {
@@ -53,8 +53,8 @@ const Navbar = () => {
       }
     };
 
-    const handleAuthStateChange = async (event: string, session: any) => { // Use 'any' for session to match Supabase type
-      console.log("Navbar: Auth state change event:", event, "Sessão:", session); // ADDED LOG
+    const handleAuthStateChange = async (event: string, session: any) => {
+      console.log("Navbar: Auth state change event:", event, "Sessão:", session);
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) {
@@ -63,14 +63,12 @@ const Navbar = () => {
       } else {
         console.log("Navbar: Usuário deslogado.");
         setUserRole(null);
-        // Redireciona para a página de autenticação se o usuário for deslogado
         if (event === 'SIGNED_OUT') {
           navigate("/auth");
         }
       }
     };
 
-    // Initial session check
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       console.log("Navbar: Verificação inicial da sessão. Sessão:", session);
       const currentUser = session?.user ?? null;
@@ -87,9 +85,8 @@ const Navbar = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
     return () => subscription.unsubscribe();
-  }, [toast, navigate]); // Added navigate to dependency array
+  }, [toast, navigate]);
 
-  // New: Effect to monitor network status and Supabase connection
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -99,20 +96,19 @@ const Navbar = () => {
 
     const checkSupabaseConnection = async () => {
       let isDbConnected = false;
-      let isAuthServiceReachable = false; // Renamed for clarity
+      let isAuthServiceReachable = false;
       let dbErrorMessage = '';
       let authErrorMessage = '';
 
       const connectionTimeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Tempo limite de conexão excedido.")), 30000) // Increased to 30 seconds
+        setTimeout(() => reject(new Error("Tempo limite de conexão excedido.")), 30000)
       );
 
       try {
-        // Attempt a lightweight query to check database connectivity
         const { error: dbError } = await Promise.race([
           supabase.from('profiles').select('id').limit(1),
           connectionTimeout,
-        ]) as { data: any | null; error: any }; // Cast to handle Promise.race return type
+        ]) as { data: any | null; error: any };
 
         isDbConnected = !dbError;
         if (dbError) {
@@ -122,13 +118,12 @@ const Navbar = () => {
           console.log("Navbar: DB connection check successful.");
         }
 
-        // Attempt to get session to check auth service connectivity
         const { error: authError } = await Promise.race([
           supabase.auth.getSession(),
           connectionTimeout,
-        ]) as { data: { session: any | null }; error: any }; // Cast to handle Promise.race return type
+        ]) as { data: { session: any | null }; error: any };
 
-        isAuthServiceReachable = !authError; // Auth service is reachable if no error occurred
+        isAuthServiceReachable = !authError;
         if (authError) {
           authErrorMessage = authError.message;
           console.error("Navbar: Auth connection check failed:", authError.message);
@@ -136,7 +131,7 @@ const Navbar = () => {
           console.log("Navbar: Auth service reachable.");
         }
 
-        const currentStatus = isDbConnected && isAuthServiceReachable; // Both must be connected
+        const currentStatus = isDbConnected && isAuthServiceReachable;
         setIsSupabaseConnected(currentStatus);
 
         if (currentStatus !== lastSupabaseStatus) {
@@ -156,7 +151,7 @@ const Navbar = () => {
           setLastSupabaseStatus(currentStatus);
         }
         console.log(`Supabase Status Check: DB Connected: ${isDbConnected} (${dbErrorMessage}), Auth Service Reachable: ${isAuthServiceReachable} (${authErrorMessage}), Overall: ${currentStatus}`);
-      } catch (e: any) { // Captura qualquer erro inesperado aqui, incluindo timeouts
+      } catch (e: any) {
         console.error("Navbar: Unexpected error during Supabase connection check:", e);
         const currentStatus = false;
         setIsSupabaseConnected(currentStatus);
@@ -171,26 +166,24 @@ const Navbar = () => {
       }
     };
 
-    // Check immediately and then every 10 seconds
     checkSupabaseConnection();
-    const interval = setInterval(checkSupabaseConnection, 10000); // Check every 10 seconds
+    const interval = setInterval(checkSupabaseConnection, 10000);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       clearInterval(interval);
     };
-  }, [toast, lastSupabaseStatus]); // Added lastSupabaseStatus to dependency array
+  }, [toast, lastSupabaseStatus]);
 
   const handleNavigationAndScroll = useCallback((sectionId: string) => {
     console.log("handleNavigationAndScroll called for:", sectionId);
-    // Always navigate to the root path with the hash
     navigate(`/#${sectionId}`);
-    setIsDrawerOpen(false); // Close drawer regardless
+    setIsDrawerOpen(false);
   }, [navigate]);
 
   return (
-    <header className="sticky top-0 z-50 bg-card border-b border-border shadow-sm backdrop-blur-md">
+    <header className="sticky top-12 z-50 bg-card border-b border-border shadow-sm backdrop-blur-md"> {/* Alterado top-0 para top-12 */}
       <div className="container mx-auto flex items-center justify-between h-20 px-4">
         <div className="flex items-center space-x-3">
           <Link to="/">
@@ -279,7 +272,7 @@ const Navbar = () => {
                     title: "Sucesso",
                     description: "Você foi desconectado(a).",
                   });
-                  navigate("/auth"); // Redireciona para a página de autenticação após o logout
+                  navigate("/auth");
                 }
               }}
               variant="outline"
@@ -298,7 +291,6 @@ const Navbar = () => {
               Entrar
             </Button>
           )}
-          {/* New: Network Status Indicator */}
           {!isOnline ? (
             <Badge variant="destructive" className="flex items-center gap-1">
               <WifiOff className="h-3 w-3" /> Offline
@@ -315,7 +307,7 @@ const Navbar = () => {
         </nav>
 
         <div className="hidden md:block">
-          <Link to="/patient"> {/* Link para a página do paciente para agendamento */}
+          <Link to="/patient">
             <Button 
               className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-6"
             >
@@ -421,7 +413,7 @@ const Navbar = () => {
                           title: "Sucesso",
                           description: "Você foi desconectado(a).",
                         });
-                        navigate("/auth"); // Redireciona para a página de autenticação após o logout
+                        navigate("/auth");
                         setIsDrawerOpen(false);
                       }
                     }}
@@ -444,7 +436,7 @@ const Navbar = () => {
                     Entrar
                   </Button>
                 )}
-                <Link to="/patient"> {/* Link para a página do paciente para agendamento */}
+                <Link to="/patient">
                   <Button
                     className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full w-full mt-2 py-4 text-lg"
                     onClick={() => setIsDrawerOpen(false)}

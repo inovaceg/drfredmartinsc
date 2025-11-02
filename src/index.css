@@ -72,15 +72,14 @@
  
 @layer base {
   html {
-    scroll-behavior: smooth; /* Adicionado para rolagem suave */
+    scroll-behavior: smooth;
   }
   html, body {
-    height: 100%; /* Garante que ocupem a altura total */
-    overflow-y: scroll; /* Força a barra de rolagem vertical */
+    height: 100%;
+    overflow-y: scroll;
   }
   #root {
-    height: 100%; /* Garante que o #root ocupe a altura total */
-    /* Removido overflow-y: auto; do #root */
+    height: 100%;
   }
   body {
     @apply bg-background text-foreground;
@@ -88,18 +87,18 @@
 
   /* Adiciona scroll-margin-top para todas as seções com ID para compensar a navbar fixa */
   section[id] {
-    scroll-margin-top: 90px; /* Altura da navbar ajustada */
+    scroll-margin-top: 130px; /* Altura da navbar (80px) + banner (48px) + margem extra */
   }
 }
 
 /* Custom scrollbar hiding */
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .scrollbar-hide::-webkit-scrollbar {
-  display: none; /* Chrome, Safari and Opera */
+  display: none;
 }
 
 @layer utilities {

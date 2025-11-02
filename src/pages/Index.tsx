@@ -10,8 +10,8 @@ import { useLocation } from "react-router-dom";
 import ServicesSection from "@/components/ServicesSection";
 import TestimonialsSection from "@/components/TestimonialsSection";
 import BlogSection from "@/components/BlogSection";
-import AnnouncementBanner from "@/components/AnnouncementBanner";
-import Navbar from "@/components/Navbar"; // Importar o Navbar
+// import AnnouncementBanner from "@/components/AnnouncementBanner"; // Removido daqui
+import Navbar from "@/components/Navbar";
 
 export default function Index() {
   const location = useLocation();
@@ -27,8 +27,8 @@ export default function Index() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar /> {/* Adicionado o Navbar aqui */}
-      <AnnouncementBanner />
+      <Navbar />
+      {/* <AnnouncementBanner /> Removido daqui */}
       <HeroSection />
       <StorySection />
       <ServicesSection />
