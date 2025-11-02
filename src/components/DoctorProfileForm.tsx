@@ -43,6 +43,7 @@ const profileSchema = z.object({
   city: z.string().optional(),
   state: z.string().optional(),
   zip_code: z.string().optional(),
+  specialty: z.string().optional(), // Adicionado campo de especialidade
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -72,6 +73,7 @@ export function DoctorProfileForm({ userId, onProfileUpdated }: DoctorProfileFor
       city: "",
       state: "",
       zip_code: "",
+      specialty: "", // Valor padrão para especialidade
     },
   });
 
@@ -102,6 +104,7 @@ export function DoctorProfileForm({ userId, onProfileUpdated }: DoctorProfileFor
           city: data.city || "",
           state: data.state || "",
           zip_code: data.zip_code || "",
+          specialty: data.specialty || "", // Carrega a especialidade
         });
         // Se houver estado no perfil, buscar as cidades para preencher o Select
         if (data.state) {
@@ -205,6 +208,7 @@ export function DoctorProfileForm({ userId, onProfileUpdated }: DoctorProfileFor
         city: values.city || null,
         state: values.state || null,
         zip_code: values.zip_code || null,
+        specialty: values.specialty || null, // Salva a especialidade
         updated_at: new Date().toISOString(),
       })
       .eq('id', userId);
@@ -247,6 +251,20 @@ export function DoctorProfileForm({ userId, onProfileUpdated }: DoctorProfileFor
                 <FormLabel>Nome Completo</FormLabel>
                 <FormControl>
                   <Input placeholder="Seu nome completo" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="specialty"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Especialidade</FormLabel>
+                <FormControl>
+                  <Input placeholder="Ex: Psicanalista, Terapeuta, Sexólogo" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
