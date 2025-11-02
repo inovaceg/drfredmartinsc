@@ -2,15 +2,16 @@
 
 import HeroSection from "@/components/HeroSection";
 import { Footer } from "@/components/Footer";
-import StorySection from "@/components/StorySection"; // Reutilizando
-import FaqSection from "@/components/FaqSection"; // Corrected import
-import { ContactSection } from "@/components/ContactSection"; // Novo
-import { useEffect } from "react"; // Import useEffect
-import { useLocation } from "react-router-dom"; // Import useLocation
+import StorySection from "@/components/StorySection";
+import FaqSection from "@/components/FaqSection";
+import { ContactSection } from "@/components/ContactSection";
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import ServicesSection from "@/components/ServicesSection";
 import TestimonialsSection from "@/components/TestimonialsSection";
 import BlogSection from "@/components/BlogSection";
-import AnnouncementBanner from "@/components/AnnouncementBanner"; // Importar o AnnouncementBanner
+import AnnouncementBanner from "@/components/AnnouncementBanner";
+import Navbar from "@/components/Navbar"; // Importar o Navbar
 
 export default function Index() {
   const location = useLocation();
@@ -26,7 +27,8 @@ export default function Index() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <AnnouncementBanner /> {/* Adicionado o banner aqui */}
+      <Navbar /> {/* Adicionado o Navbar aqui */}
+      <AnnouncementBanner />
       <HeroSection />
       <StorySection />
       <ServicesSection />
