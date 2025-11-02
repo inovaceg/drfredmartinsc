@@ -1,253 +1,151 @@
-import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Instagram, Phone, Mail, Loader2 } from "lucide-react";
+import { Mail, Phone, User as UserIcon } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { formatPhone, unformatPhone } from "@/lib/format-phone"; // Importar formatPhone e unformatPhone
-import { Link, useNavigate } from "react-router-dom"; // Importar Link e useNavigate
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+
+const newsletterFormSchema = z.object({
+  name: z.string().min(1, { message: "Nome é obrigatório." }),
+  email: z.string().email({ message: "Por favor, insira um e-mail válido." }),
+  whatsapp: z.string().regex(/^\d{10,11}$/, { message: "WhatsApp inválido. Use apenas números (ex: 11987654321)." }).optional().or(z.literal('')),
+});
 
 const Footer = () => {
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState(""); // Novo estado para o nome
-  const [whatsapp, setWhatsapp] = useState(""); // Novo estado para o WhatsApp
-  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate(); // Inicializar useNavigate
 
-  const handleNewsletterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) {
+  const form = useForm<z.infer<typeof newsletterFormSchema>>({
+    resolver: zodResolver(newsletterFormSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      whatsapp: "",
+    },
+  });
+
+  const onSubmit = async (values: z.infer<typeof newsletterFormSchema>) => {
+    const { data, error } = await supabase
+      .from("newsletter_subscriptions")
+      .insert([{ name: values.name, email: values.email, whatsapp: values.whatsapp || null }]);
+
+    if (error) {
+      console.error("Erro ao assinar newsletter:", error);
       toast({
-        title: "Erro",
-        description: "Por favor, insira um e-mail válido.",
+        title: "Erro na Inscrição",
+        description: "Não foi possível assinar a newsletter. Tente novamente.",
         variant: "destructive",
       });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from('newsletter_subscriptions')
-        .insert({ 
-          email: email.trim(),
-          name: name.trim() || null, // Adiciona o nome, ou null se vazio
-          whatsapp: whatsapp.trim() ? unformatPhone(whatsapp.trim()) : null, // Adiciona o WhatsApp formatado, ou null se vazio
-        });
-
-      if (error) {
-        if (error.code === '23505') { // Unique violation code
-          toast({
-            title: "Erro",
-            description: "Este e-mail já está inscrito na newsletter.",
-            variant: "destructive",
-          });
-        } else {
-          throw error;
-        }
-      } else {
-        toast({
-          title: "Sucesso!",
-          description: "Obrigado por se inscrever na nossa newsletter!",
-        });
-        setEmail(""); // Limpa o campo de e-mail
-        setName(""); // Limpa o campo de nome
-        setWhatsapp(""); // Limpa o campo de WhatsApp
-      }
-    } catch (error: any) {
-      console.error("Erro ao inscrever na newsletter:", error);
+    } else {
       toast({
-        title: "Erro",
-        description: error.message || "Não foi possível inscrever-se na newsletter. Tente novamente.",
-        variant: "destructive",
+        title: "Sucesso!",
+        description: "Você se inscreveu na newsletter com sucesso.",
       });
-    } finally {
-      setLoading(false);
+      form.reset();
     }
-  };
-
-  const handleNavigationAndScroll = (sectionId: string) => {
-    console.log("Footer: handleNavigationAndScroll called for:", sectionId);
-    // Always navigate to the root path with the hash
-    navigate(`/#${sectionId}`);
   };
 
   return (
-    <footer className="bg-gradient-to-b from-slate-900 to-black border-t border-white/10">
-      <div className="container mx-auto px-4 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
-          <div>
-            <h3 className="text-xl font-bold mb-6 text-white tracking-tight">Dr. Frederick Parreira</h3>
-            <p className="text-white/70 mb-6">
-              Terapeuta, Psicanalista e Influenciador Digital. Transformando vidas com ciência, 
-              autenticidade e uma abordagem única em saúde mental.
-            </p>
-            <div className="flex space-x-4">
-              <a 
-                href="https://instagram.com/drfredmartinsjf" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="text-white/70 hover:text-white transition-colors" 
-                aria-label="Instagram"
-              >
-                <Instagram size={24} />
-              </a>
-            </div>
-          </div>
-          
-          <div>
-            <h3 className="text-xl font-bold mb-6 text-white tracking-tight">Navegação</h3>
-            <ul className="space-y-3">
-              <li>
-                <button 
-                  onClick={() => handleNavigationAndScroll("about")} 
-                  className="text-white/70 hover:text-white transition-opacity text-left w-full"
-                >
-                  Sobre
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => handleNavigationAndScroll("services")} 
-                  className="text-white/70 hover:text-white transition-opacity text-left w-full"
-                >
-                  Serviços
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => handleNavigationAndScroll("testimonials")} 
-                  className="text-white/70 hover:text-white transition-opacity text-left w-full"
-                >
-                  Depoimentos
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => handleNavigationAndScroll("blog")} 
-                  className="text-white/70 hover:text-white transition-opacity text-left w-full"
-                >
-                  Blog
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => handleNavigationAndScroll("faq")} 
-                  className="text-white/70 hover:text-white transition-opacity text-left w-full"
-                >
-                  FAQ
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => handleNavigationAndScroll("contact")} 
-                  className="text-white/70 hover:text-white transition-opacity text-left w-full"
-                >
-                  Contato
-                </button>
-              </li>
-              <li>
-                <Link 
-                  to="/privacy-policy" 
-                  className="text-white/70 hover:text-white transition-opacity"
-                >
-                  Política de Privacidade
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/terms-of-service" 
-                  className="text-white/70 hover:text-white transition-opacity"
-                >
-                  Termos de Uso
-                </Link>
-              </li>
-            </ul>
-          </div>
-          
-          <div>
-            <h3 className="text-xl font-bold mb-6 text-white tracking-tight">Contato</h3>
-            <ul className="space-y-3">
-              <li className="flex items-center gap-2 text-white/70">
-                <Phone size={16} />
-                <a 
-                  href="https://wa.me/553291931779" // Link do WhatsApp adicionado
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="hover:text-white transition-opacity"
-                >
-                  +55 32 9193-1779
-                </a>
-              </li>
-              <li className="flex items-center gap-2 text-white/70">
-                <Mail size={16} />
-                <a href="mailto:contato@drfredmartins.com.br" className="hover:text-white transition-opacity">
-                  contato@drfredmartins.com.br
-                </a>
-              </li>
-              <li className="flex items-center gap-2 text-white/70">
-                <Instagram size={16} />
-                <a 
-                  href="https://instagram.com/drfredmartinsjf" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="hover:text-white transition-opacity"
-                >
-                  @drfredmartinsjf
-                </a>
-              </li>
-            </ul>
-          </div>
-          
-          <div>
-            <h3 className="text-xl font-bold mb-6 text-white tracking-tight">Newsletter</h3>
-            <p className="text-white/70 mb-4">
-              Receba conteúdos exclusivos sobre saúde mental e desenvolvimento pessoal.
-            </p>
-            <form onSubmit={handleNewsletterSubmit} className="flex flex-col space-y-4">
-              <Input
-                type="text"
-                placeholder="Seu nome"
-                className="bg-white/5 border-white/10 placeholder:text-white/50 text-white"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={loading}
-              />
-              <Input
-                type="tel"
-                placeholder="Seu WhatsApp (opcional)"
-                className="bg-white/5 border-white/10 placeholder:text-white/50 text-white"
-                value={whatsapp}
-                onChange={(e) => setWhatsapp(formatPhone(e.target.value))}
-                maxLength={15} // Max length for formatted phone
-                disabled={loading}
-              />
-              <Input
-                type="email"
-                placeholder="Seu e-mail"
-                className="bg-white/5 border-white/10 placeholder:text-white/50 text-white"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-                required
-              />
-              <Button type="submit" variant="secondary" className="bg-white text-slate-900 hover:bg-white/90 rounded-full" disabled={loading}>
-                {loading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  "Inscrever-se"
-                )}
-              </Button>
-            </form>
-          </div>
-        </div>
-        
-        <div className="border-t border-white/10 mt-12 pt-8 text-center">
-          <p className="text-white/70">
-            &copy; {new Date().getFullYear()} Dr. Frederick Parreira. Todos os direitos reservados.
+    <footer className="bg-primary text-primary-foreground py-12">
+      <div className="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div>
+          <h3 className="text-xl font-bold mb-4">Clínica Médica</h3>
+          <p className="text-sm">
+            Cuidando da sua saúde com excelência e dedicação.
           </p>
         </div>
+        <div>
+          <h3 className="text-xl font-bold mb-4">Links Rápidos</h3>
+          <ul className="space-y-2">
+            <li>
+              <Link to="/" className="hover:underline">
+                Início
+              </Link>
+            </li>
+            <li>
+              <Link to="/about" className="hover:underline">
+                Sobre Nós
+              </Link>
+            </li>
+            <li>
+              <Link to="/services" className="hover:underline">
+                Serviços
+              </Link>
+            </li>
+            <li>
+              <Link to="/contact" className="hover:underline">
+                Contato
+              </Link>
+            </li>
+          </ul>
+        </div>
+        <div>
+          <h3 className="text-xl font-bold mb-4">Assine nossa Newsletter</h3>
+          <p className="text-sm mb-4">
+            Receba as últimas notícias e dicas de saúde diretamente na sua caixa de entrada.
+          </p>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="sr-only">Nome</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="Seu Nome" {...field} className="pl-10" />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="sr-only">Email</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input type="email" placeholder="Seu Email" {...field} className="pl-10" />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="whatsapp"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="sr-only">WhatsApp</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input type="tel" placeholder="Seu WhatsApp (opcional)" {...field} className="pl-10" />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? "Inscrevendo..." : "Inscrever-se"}
+              </Button>
+            </form>
+          </Form>
+        </div>
+      </div>
+      <div className="container mx-auto text-center text-sm mt-8 border-t border-primary-foreground/20 pt-8">
+        &copy; {new Date().getFullYear()} Clínica Médica. Todos os direitos reservados.
       </div>
     </footer>
   );
