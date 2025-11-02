@@ -54,7 +54,7 @@ export function Footer() {
   };
 
   return (
-    <footer className="bg-black/30 border-t border-white/10 backdrop-blur-md text-primary-foreground p-8"> {/* Alterado para bg-black/30 */}
+    <footer className="bg-black/70 border-t border-white/10 backdrop-blur-md text-primary-foreground p-8"> {/* Alterado para bg-black/70 */}
       <div className="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
         <div>
           <h3 className="text-xl font-bold mb-4">Sobre Nós</h3>
