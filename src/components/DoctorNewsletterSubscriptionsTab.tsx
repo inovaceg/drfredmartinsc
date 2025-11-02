@@ -32,6 +32,8 @@ export const DoctorNewsletterSubscriptionsTab: React.FC = () => {
         variant: "destructive",
       });
     } else {
+      // Adicionado console.log para depuração
+      console.log("Dados da newsletter recebidos do Supabase:", data);
       setSubscriptions(data || []);
     }
     setLoading(false);
@@ -66,24 +68,24 @@ export const DoctorNewsletterSubscriptionsTab: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead> {/* Adicionado */}
+                  <TableHead>Nome</TableHead>
+                  <TableHead>WhatsApp</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>WhatsApp</TableHead> {/* Adicionado */}
                   <TableHead className="text-right">Data de Inscrição</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {subscriptions.map((subscription) => (
                   <TableRow key={subscription.id}>
-                    <TableCell className="font-medium flex items-center gap-2"> {/* Adicionado */}
+                    <TableCell className="font-medium flex items-center gap-2">
                       <UserIcon className="h-4 w-4 text-muted-foreground" />
                       {subscription.name || 'Não Informado'}
                     </TableCell>
-                    <TableCell>{subscription.email}</TableCell>
-                    <TableCell className="flex items-center gap-2"> {/* Adicionado */}
+                    <TableCell className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-muted-foreground" />
                       {subscription.whatsapp ? formatPhone(subscription.whatsapp) : 'Não Informado'}
                     </TableCell>
+                    <TableCell>{subscription.email}</TableCell>
                     <TableCell className="text-right">
                       {subscription.created_at ? format(new Date(subscription.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }) : '-'}
                     </TableCell>
@@ -97,4 +99,3 @@ export const DoctorNewsletterSubscriptionsTab: React.FC = () => {
     </Card>
   );
 };
-// Comentário adicionado para forçar a recompilação.
