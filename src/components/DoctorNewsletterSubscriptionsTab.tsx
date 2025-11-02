@@ -33,7 +33,7 @@ export const DoctorNewsletterSubscriptionsTab: React.FC = () => {
       });
     } else {
       // Adicionado console.log para depuração
-      console.log("Dados da newsletter recebidos do Supabase:", data);
+      console.log("Dyad Debug: Dados da newsletter recebidos do Supabase:", data);
       setSubscriptions(data || []);
     }
     setLoading(false);
@@ -48,7 +48,7 @@ export const DoctorNewsletterSubscriptionsTab: React.FC = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Mail className="h-6 w-6 text-primary" />
-          Inscrições na Newsletter
+          Inscrições na Newsletter (DEBUG MODE ATIVO) {/* Texto temporário para depuração */}
         </CardTitle>
         <CardDescription>
           Visualize todos os e-mails inscritos para receber sua newsletter.
