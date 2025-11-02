@@ -373,6 +373,11 @@ const Doctor = () => {
   const createDefaultSlots = async () => {
     if (!user || !selectedDate) {
       console.log("Doctor.tsx: Skipping createDefaultSlots, user or selectedDate is missing.");
+      toast({
+        title: "Erro",
+        description: "Usuário não autenticado ou data não selecionada.",
+        variant: "destructive",
+      });
       return;
     }
     
@@ -432,8 +437,8 @@ const Doctor = () => {
       console.error("Doctor.tsx: Error creating slots:", error);
       console.error("Doctor.tsx: Supabase create slots error details:", error.message, error.details, error.hint, error.code);
       toast({
-        title: "Erro",
-        description: error.message,
+        title: "Erro ao criar horários", // Título mais específico
+        description: `Detalhes: ${error.message} (Código: ${error.code})`, // Detalhes do erro
         variant: "destructive",
       });
     } else {
@@ -455,7 +460,15 @@ const Doctor = () => {
   };
 
   const toggleSlotAvailability = async (slotId: string, currentStatus: boolean) => {
-    console.log(`Doctor.tsx: Toggling slot ${slotId} from ${currentStatus} to ${!currentStatus}`);
+    if (!user) {
+      toast({
+        title: "Erro",
+        description: "Usuário não autenticado.",
+        variant: "destructive",
+      });
+      return;
+    }
+    console.log(`Doctor.tsx: Toggling slot ${slotId} from ${currentStatus} to ${!currentStatus}. User ID: ${user.id}`);
     const { data, error } = await supabase
       .from('availability_slots')
       .update({ is_available: !currentStatus })
@@ -466,8 +479,8 @@ const Doctor = () => {
       console.error("Doctor.tsx: Error toggling slot availability:", error);
       console.error("Doctor.tsx: Supabase toggle slot error details:", error.message, error.details, error.hint, error.code);
       toast({
-        title: "Erro",
-        description: error.message,
+        title: "Erro ao atualizar horário", // Título mais específico
+        description: `Detalhes: ${error.message} (Código: ${error.code})`, // Detalhes do erro
         variant: "destructive",
       });
     } else {
@@ -513,8 +526,8 @@ const Doctor = () => {
       console.error("Doctor.tsx: Error deleting bulk slots:", error);
       console.error("Doctor.tsx: Supabase bulk delete slots error details:", error.message, error.details, error.hint, error.code);
       toast({
-        title: "Erro",
-        description: "Não foi possível excluir os horários selecionados.",
+        title: "Erro ao excluir horários", // Título mais específico
+        description: `Detalhes: ${error.message} (Código: ${error.code})`, // Detalhes do erro
         variant: "destructive",
       });
     } else {
@@ -549,8 +562,8 @@ const Doctor = () => {
       console.error("Doctor.tsx: Error bulk toggling availability:", error);
       console.error("Doctor.tsx: Supabase bulk toggle availability error details:", error.message, error.details, error.hint, error.code);
       toast({
-        title: "Erro",
-        description: error.message,
+        title: "Erro ao atualizar horários em massa", // Título mais específico
+        description: `Detalhes: ${error.message} (Código: ${error.code})`, // Detalhes do erro
         variant: "destructive",
       });
     } else {
@@ -628,7 +641,10 @@ const Doctor = () => {
 
   // New: handleBookSlotForPatient function as per user's request
   async function handleBookSlotForPatient() {
-    if (!user?.id || !selectedSlotForBooking || !selectedPatientForBookingId) return;
+    if (!user?.id || !selectedSlotForBooking || !selectedPatientForBookingId) {
+      toast.error("Por favor, selecione um paciente e um horário disponível para agendar.");
+      return;
+    }
     setIsBookingForPatient(true);
     try {
       // 1) cria a consulta
@@ -682,7 +698,7 @@ const Doctor = () => {
     } catch (e: any) {
       console.error("Error in handleBookSlotForPatient:", e);
       toast({
-        title: "Erro",
+        title: "Erro ao agendar consulta", // Título mais específico
         description: e.message || "Não foi possível agendar a consulta para o paciente. Tente novamente.",
         variant: "destructive",
       });
