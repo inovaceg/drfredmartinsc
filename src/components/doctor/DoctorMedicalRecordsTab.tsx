@@ -31,6 +31,223 @@ type Profile = Tables<'profiles'>;
 type Session = Tables<'sessions'>;
 type MedicalRecord = Tables<'medical_records'>;
 
+// New component for adding a therapy session
+interface AddTherapySessionDialogProps {
+  onSave: (formData: {
+    session_date: Date;
+    session_theme: string;
+    interventions_used: string;
+    notes: string;
+    homework: string;
+  }) => Promise<void>;
+  onClose: () => void;
+  open: boolean;
+  patientId: string;
+}
+
+const AddTherapySessionDialog: React.FC<AddTherapySessionDialogProps> = ({ onSave, onClose, open, patientId }) => {
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    session_date: new Date(),
+    session_theme: "",
+    interventions_used: "",
+    notes: "",
+    homework: "",
+  });
+
+  useEffect(() => {
+    if (!open) {
+      setFormData({
+        session_date: new Date(),
+        session_theme: "",
+        interventions_used: "",
+        notes: "",
+        homework: "",
+      });
+    }
+  }, [open]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await onSave(formData);
+      onClose();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Adicionar Nova Sessão de Terapia</DialogTitle>
+          <DialogDescription>
+            Registre uma nova sessão para o paciente.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="session_date">Data da Sessão *</Label>
+            <Input
+              id="session_date"
+              type="datetime-local"
+              value={format(formData.session_date, "yyyy-MM-dd'T'HH:mm")}
+              onChange={(e) => setFormData({ ...formData, session_date: new Date(e.target.value) })}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="session_theme">Tema da Sessão</Label>
+            <Input
+              id="session_theme"
+              value={formData.session_theme}
+              onChange={(e) => setFormData({ ...formData, session_theme: e.target.value })}
+              placeholder="Ex: Ansiedade, Relacionamento"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="interventions_used">Intervenções Utilizadas</Label>
+            <Textarea
+              id="interventions_used"
+              value={formData.interventions_used}
+              onChange={(e) => setFormData({ ...formData, interventions_used: e.target.value })}
+              placeholder="Técnicas e abordagens utilizadas..."
+              rows={3}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="notes">Notas sobre o Estado Emocional</Label>
+            <Textarea
+              id="notes"
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Observações sobre o paciente durante a sessão..."
+              rows={4}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="homework">Tarefas de Casa</Label>
+            <Textarea
+              id="homework"
+              value={formData.homework}
+              onChange={(e) => setFormData({ ...formData, homework: e.target.value })}
+              placeholder="Atividades ou reflexões recomendadas para o paciente..."
+              rows={3}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Adicionar Sessão
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// New component for adding a medical record
+interface AddMedicalRecordDialogProps {
+  onSave: (formData: {
+    diagnosis: string;
+    prescription: string;
+    notes: string;
+  }) => Promise<void>;
+  onClose: () => void;
+  open: boolean;
+  patientId: string;
+}
+
+const AddMedicalRecordDialog: React.FC<AddMedicalRecordDialogProps> = ({ onSave, onClose, open, patientId }) => {
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    diagnosis: "",
+    prescription: "",
+    notes: "",
+  });
+
+  useEffect(() => {
+    if (!open) {
+      setFormData({
+        diagnosis: "",
+        prescription: "",
+        notes: "",
+      });
+    }
+  }, [open]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await onSave(formData);
+      onClose();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Adicionar Novo Prontuário Médico</DialogTitle>
+          <DialogDescription>
+            Registre um novo prontuário para o paciente.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="diagnosis">Diagnóstico</Label>
+            <Input
+              id="diagnosis"
+              value={formData.diagnosis}
+              onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
+              placeholder="Ex: Transtorno de Ansiedade Generalizada"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="prescription">Prescrição</Label>
+            <Textarea
+              id="prescription"
+              value={formData.prescription}
+              onChange={(e) => setFormData({ ...formData, prescription: e.target.value })}
+              placeholder="Medicamentos, dosagem, frequência..."
+              rows={3}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="notes">Notas Médicas Gerais</Label>
+            <Textarea
+              id="notes"
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Observações gerais sobre o estado de saúde do paciente..."
+              rows={4}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Adicionar Prontuário
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+
 export function DoctorMedicalRecordsTab() {
   const { user } = useUser();
   const currentUserId = user?.id;
@@ -52,7 +269,7 @@ export function DoctorMedicalRecordsTab() {
     queryKey: ["patientsForDoctor", currentUserId],
     queryFn: async () => {
       if (!currentUserId) return [];
-      const { data, error } = await supabase.rpc("get_patients_for_doctor");
+      const { data, error } = await supabase.rpc("get_patients_for_doctor").returns<Profile[]>(); // Explicitly type RPC return
       if (error) throw error;
       return data || [];
     },
@@ -275,18 +492,15 @@ export function DoctorMedicalRecordsTab() {
                 <CardTitle className="text-lg font-semibold">
                   Sessões de Terapia
                 </CardTitle>
-                <Dialog open={isAddSessionDialogOpen} onOpenChange={setIsAddSessionDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm">
-                      <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Sessão
-                    </Button>
-                  </DialogTrigger>
-                  <EditTherapySessionDialog
-                    session={null}
-                    onSave={handleAddSession}
-                    onClose={() => setIsAddSessionDialogOpen(false)}
-                  />
-                </Dialog>
+                <AddTherapySessionDialog
+                  open={isAddSessionDialogOpen}
+                  onClose={() => setIsAddSessionDialogOpen(false)}
+                  onSave={handleAddSession}
+                  patientId={selectedPatientId}
+                />
+                <Button size="sm" onClick={() => setIsAddSessionDialogOpen(true)}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Sessão
+                </Button>
               </CardHeader>
               <CardContent className="space-y-4">
                 {isLoadingSessions ? (
@@ -306,7 +520,7 @@ export function DoctorMedicalRecordsTab() {
                             Sessão em: {format(parseISO(session.session_date), "dd/MM/yyyy", { locale: ptBR })}
                           </p>
                           <div className="flex space-x-2">
-                            <Button variant="ghost" size="icon" onClick={() => { setEditingSession(session); setIsAddSessionDialogOpen(true); }}>
+                            <Button variant="ghost" size="icon" onClick={() => { setEditingSession(session); }}>
                               <Edit className="h-4 w-4" />
                               <span className="sr-only">Editar Sessão</span>
                             </Button>
@@ -332,18 +546,15 @@ export function DoctorMedicalRecordsTab() {
                 <CardTitle className="text-lg font-semibold">
                   Prontuários Médicos
                 </CardTitle>
-                <Dialog open={isAddMedicalRecordDialogOpen} onOpenChange={setIsAddMedicalRecordDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm">
-                      <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Prontuário
-                    </Button>
-                  </DialogTrigger>
-                  <EditMedicalRecordDialog
-                    record={null}
-                    onSave={handleAddMedicalRecord}
-                    onClose={() => setIsAddMedicalRecordDialogOpen(false)}
-                  />
-                </Dialog>
+                <AddMedicalRecordDialog
+                  open={isAddMedicalRecordDialogOpen}
+                  onClose={() => setIsAddMedicalRecordDialogOpen(false)}
+                  onSave={handleAddMedicalRecord}
+                  patientId={selectedPatientId}
+                />
+                <Button size="sm" onClick={() => setIsAddMedicalRecordDialogOpen(true)}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Prontuário
+                </Button>
               </CardHeader>
               <CardContent className="space-y-4">
                 {isLoadingMedicalRecords ? (
@@ -363,7 +574,7 @@ export function DoctorMedicalRecordsTab() {
                             Registro em: {format(parseISO(record.created_at || ""), "dd/MM/yyyy", { locale: ptBR })}
                           </p>
                           <div className="flex space-x-2">
-                            <Button variant="ghost" size="icon" onClick={() => { setEditingMedicalRecord(record); setIsAddMedicalRecordDialogOpen(true); }}>
+                            <Button variant="ghost" size="icon" onClick={() => { setEditingMedicalRecord(record); }}>
                               <Edit className="h-4 w-4" />
                               <span className="sr-only">Editar Prontuário</span>
                             </Button>
@@ -390,14 +601,11 @@ export function DoctorMedicalRecordsTab() {
         {editingSession && (
           <EditTherapySessionDialog
             session={editingSession}
-            onSave={() => {
+            open={!!editingSession}
+            onOpenChange={() => setEditingSession(null)}
+            onSessionUpdated={() => {
               queryClient.invalidateQueries({ queryKey: ["patientSessions", selectedPatientId] });
               setEditingSession(null);
-              setIsAddSessionDialogOpen(false);
-            }}
-            onClose={() => {
-              setEditingSession(null);
-              setIsAddSessionDialogOpen(false);
             }}
           />
         )}
@@ -405,14 +613,11 @@ export function DoctorMedicalRecordsTab() {
         {editingMedicalRecord && (
           <EditMedicalRecordDialog
             record={editingMedicalRecord}
-            onSave={() => {
+            open={!!editingMedicalRecord}
+            onOpenChange={() => setEditingMedicalRecord(null)}
+            onRecordUpdated={() => {
               queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", selectedPatientId] });
               setEditingMedicalRecord(null);
-              setIsAddMedicalRecordDialogOpen(false);
-            }}
-            onClose={() => {
-              setEditingMedicalRecord(null);
-              setIsAddMedicalRecordDialogOpen(false);
             }}
           />
         )}

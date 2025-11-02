@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { ChatWindow } from "@/components/ChatWindow";
 import { VideoCallWindow } from "@/components/VideoCallWindow";
 import { Tables } from "@/integrations/supabase/types";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 type Profile = Tables<'profiles'>;
 type Appointment = Tables<'appointments'>;
@@ -142,20 +144,22 @@ export function OnlineConsultationTab({ isDoctorView }: OnlineConsultationTabPro
     );
   }
 
-  if (isChatOpen && selectedSession) {
+  if (isChatOpen && selectedSession && currentUserId) {
     const otherUserId = isDoctorView ? selectedSession.patient_id! : selectedSession.doctor_id!;
     return (
       <ChatWindow
+        currentUserId={currentUserId} // Pass currentUserId
         receiverId={otherUserId}
         appointmentId={selectedSession.appointment_id || undefined}
       />
     );
   }
 
-  if (isVideoCallOpen && selectedSession) {
+  if (isVideoCallOpen && selectedSession && currentUserId) {
     const otherUserId = isDoctorView ? selectedSession.patient_id! : selectedSession.doctor_id!;
     return (
       <VideoCallWindow
+        currentUserId={currentUserId} // Pass currentUserId
         sessionId={selectedSession.id}
         otherUserId={otherUserId}
         appointmentId={selectedSession.appointment_id || undefined}

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useUser } from "@/hooks/useUser";
+import { useUser } from "@/hooks/useUser"; // Import useUser
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Calendar as CalendarIcon, Trash2 } from "lucide-react";
@@ -20,7 +20,7 @@ interface AppointmentWithDoctor extends Appointment {
 }
 
 export function PatientAppointmentsTab() {
-  const { user } = useUser();
+  const { user } = useUser(); // Use the useUser hook
   const [appointments, setAppointments] = useState<AppointmentWithDoctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -44,7 +44,7 @@ export function PatientAppointmentsTab() {
       let doctorProfiles: Profile[] = [];
 
       if (doctorIds.length > 0) {
-        const { data: profilesData, error: profilesError } = await supabase.rpc('get_doctor_profiles_by_ids', { _ids: doctorIds });
+        const { data: profilesData, error: profilesError } = await supabase.rpc('get_doctor_profiles_by_ids', { _ids: doctorIds }).returns<Profile[]>(); // Explicitly type RPC return
         if (profilesError) {
           console.error("Error fetching doctor profiles:", profilesError.message);
         } else {

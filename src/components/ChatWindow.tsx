@@ -15,13 +15,12 @@ type Message = Tables<'patient_doctor_messages'> & { sender_name?: string };
 type Profile = Tables<'profiles'>;
 
 interface ChatWindowProps {
+  currentUserId: string; // Added currentUserId prop
   receiverId: string;
   appointmentId?: string;
 }
 
-export function ChatWindow({ receiverId, appointmentId }: ChatWindowProps) {
-  const { user } = useUser();
-  const currentUserId = user?.id;
+export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessageContent, setNewMessageContent] = useState("");
   const [loading, setLoading] = useState(true);
@@ -42,8 +41,7 @@ export function ChatWindow({ receiverId, appointmentId }: ChatWindowProps) {
         const { data: fetchedMessages, error: messagesError } = await supabase
           .from("patient_doctor_messages")
           .select("*")
-          .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
-          .or(`sender_id.eq.${receiverId},receiver_id.eq.${receiverId}`)
+          .or(`(sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}),(sender_id.eq.${receiverId},receiver_id.eq.${receiverId})`)
           .order("created_at", { ascending: true });
 
         if (messagesError) throw messagesError;

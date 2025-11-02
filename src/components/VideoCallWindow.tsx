@@ -12,6 +12,7 @@ import { Tables, Json } from "@/integrations/supabase/types"; // Import Json
 type VideoSession = Tables<'video_sessions'>;
 
 interface VideoCallWindowProps {
+  currentUserId: string; // Added currentUserId prop
   sessionId: string;
   otherUserId: string;
   appointmentId?: string;
@@ -27,15 +28,13 @@ const servers = {
 };
 
 export function VideoCallWindow({
+  currentUserId, // Destructure currentUserId
   sessionId,
   otherUserId,
   appointmentId,
   isDoctor,
   onClose,
 }: VideoCallWindowProps) {
-  const { user } = useUser();
-  const currentUserId = user?.id;
-
   const [loading, setLoading] = useState(true);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -220,7 +219,7 @@ export function VideoCallWindow({
       if (existingSession) {
         // Join existing session
         setCallStatus(existingSession.status || "connecting");
-        if (existingSession.offer && !existingSession.answer) {
+        if (existingSession.offer && !peerConnection.current?.remoteDescription) {
           // If there's an offer but no answer, this user should create an answer
           await createAnswer(sessionId, existingSession.offer as RTCSessionDescriptionInit);
         } else if (existingSession.answer) {
@@ -299,11 +298,12 @@ export function VideoCallWindow({
           }
 
           if (updatedSession.ice_candidates && Array.isArray(updatedSession.ice_candidates) && updatedSession.ice_candidates.length > 0) {
-            const currentCandidates = (peerConnection.current?.remoteDescription ? peerConnection.current.remoteDescription.iceCandidates : []) || [];
+            // Filter out candidates that are already added to avoid duplicates
+            const existingCandidates = peerConnection.current?.localDescription?.sdp?.match(/a=candidate:.*/g) || [];
             const newCandidates = (updatedSession.ice_candidates as RTCIceCandidateInit[]).filter(
               (candidate) =>
-                !currentCandidates.some(
-                  (c: RTCIceCandidate) => c.candidate === candidate.candidate
+                !existingCandidates.some(
+                  (c: string) => c.includes(candidate.candidate as string)
                 )
             );
             for (const candidate of newCandidates) {

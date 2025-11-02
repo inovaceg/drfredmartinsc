@@ -72,7 +72,7 @@ const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({ patientId, doct
           file_name: selectedFile.name,
           file_path: filePath, // Armazena o caminho completo no storage
           description: description,
-          uploaded_at: new Date().toISOString(),
+          created_at: new Date().toISOString(), // Use created_at instead of uploaded_at
           file_type: selectedFile.type,
           file_size: selectedFile.size,
         });

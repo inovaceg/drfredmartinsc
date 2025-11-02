@@ -104,6 +104,7 @@ export function PatientDocumentsPage() {
         file_type: file.type,
         description: description || null,
         file_size: file.size,
+        created_at: new Date().toISOString(), // Use created_at instead of uploaded_at
       });
 
       if (insertError) throw insertError;
