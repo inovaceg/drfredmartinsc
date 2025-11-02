@@ -520,7 +520,7 @@ const Doctor = () => {
       console.error("Doctor.tsx: Supabase bulk toggle availability error details:", error.message, error.details, error.hint, error.code);
       toast({
         title: "Erro",
-        description: "Não foi possível alterar a disponibilidade dos horários selecionados.",
+        description: error.message,
         variant: "destructive",
       });
     } else {
@@ -826,7 +826,7 @@ const Doctor = () => {
               <MessageSquare className="h-4 w-4 mr-2" />
               Consulta Online
             </TabsTrigger>
-            <TabsTrigger value="contact-forms" className="px-3 py-2 text-sm whitespace-nowrap"> {/* NOVA GUIA */}
+            <TabsTrigger value="contact-forms" className="px-3 py-2 text-sm whitespace-nowrap">
               <FileText className="h-4 w-4 mr-2" />
               Formulário Contato
             </TabsTrigger>
@@ -849,7 +849,7 @@ const Doctor = () => {
                   {activeTab === "patients" && "Meus Pacientes"}
                   {activeTab === "medical-records" && "Prontuários"}
                   {activeTab === "online-consultation" && "Consulta Online"}
-                  {activeTab === "contact-forms" && "Formulário Contato"} {/* NOVA GUIA */}
+                  {activeTab === "contact-forms" && "Formulário Contato"}
                   {activeTab === "newsletter-subscriptions" && "Newsletter"}
                 </Button>
               </DrawerTrigger>
@@ -912,7 +912,7 @@ const Doctor = () => {
                     <Button
                       variant="ghost"
                       className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
-                      onClick={() => handleTabChange("contact-forms")} {/* NOVA GUIA */}
+                      onClick={() => handleTabChange("contact-forms")}
                     >
                       <FileText className="h-4 w-4 mr-2" />
                       Formulário Contato
@@ -1334,12 +1334,12 @@ const Doctor = () => {
             {user && <DoctorOnlineConsultationTab currentUserId={user.id} />}
           </TabsContent>
 
-          <TabsContent value="contact-forms"> {/* NOVA GUIA PARA FORMULÁRIO DE CONTATO */}
+          <TabsContent value="contact-forms">
             <DoctorFormResponsesTab />
           </TabsContent>
 
           <TabsContent value="newsletter-subscriptions">
-            <DoctorNewsletterSubscriptionsTab /> {/* Componente correto para Newsletter */}
+            <DoctorNewsletterSubscriptionsTab />
           </TabsContent>
         </Tabs>
       </main>
