@@ -98,7 +98,11 @@ const Footer = () => {
                     <FormControl>
                       <div className="relative">
                         <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Seu Nome" {...field} className="pl-10" />
+                        <Input 
+                          placeholder="Seu Nome" 
+                          {...field} 
+                          className="pl-10 bg-primary-foreground text-primary" // Adicionado estilo
+                        />
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -114,7 +118,12 @@ const Footer = () => {
                     <FormControl>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input type="email" placeholder="Seu Email" {...field} className="pl-10" />
+                        <Input 
+                          type="email" 
+                          placeholder="Seu Email" 
+                          {...field} 
+                          className="pl-10 bg-primary-foreground text-primary" // Adicionado estilo
+                        />
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -130,7 +139,12 @@ const Footer = () => {
                     <FormControl>
                       <div className="relative">
                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input type="tel" placeholder="Seu WhatsApp (opcional)" {...field} className="pl-10" />
+                        <Input 
+                          type="tel" 
+                          placeholder="Seu WhatsApp (opcional)" 
+                          {...field} 
+                          className="pl-10 bg-primary-foreground text-primary" // Adicionado estilo
+                        />
                       </div>
                     </FormControl>
                     <FormMessage />
