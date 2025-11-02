@@ -20,14 +20,15 @@ import { CalendarIcon, Loader2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, formatDateToDisplay, parseDateFromInput } from "@/lib/utils"; // Importar funções de data
 import { ptBR } from "date-fns/locale";
-import { Textarea } from "@/components/ui/textarea"; // Importar Textarea
+import { Textarea } from "@/components/ui/textarea";
+import { formatPhone, unformatPhone } from "@/lib/format-phone"; // Importar funções de telefone
 
 const contactSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
-  whatsapp: z.string().min(1, "WhatsApp é obrigatório"),
-  date_of_birth: z.date().optional().nullable(),
+  whatsapp: z.string().min(1, "WhatsApp é obrigatório").transform(val => unformatPhone(val)), // Desformata para salvar no DB
+  date_of_birth: z.string().optional().nullable().refine(val => !val || parseDateFromInput(val) !== null, { message: "Formato de data inválido (DD/MM/AAAA)" }), // Valida formato dd/mm/aaaa
   zip_code: z.string().optional(),
   state: z.string().optional(),
   city: z.string().optional(),
@@ -38,6 +39,8 @@ const contactSchema = z.object({
 
 export function ContactSection() {
   const [loading, setLoading] = useState(false);
+  const [isFetchingCep, setIsFetchingCep] = useState(false); // Novo estado para o CEP
+
   const form = useForm<z.infer<typeof contactSchema>>({
     resolver: zodResolver(contactSchema),
     defaultValues: {
@@ -53,22 +56,67 @@ export function ContactSection() {
     },
   });
 
+  // Função para buscar CEP
+  const handleZipCodeLookup = async (cep: string) => {
+    const cleanedCep = cep.replace(/\D/g, '');
+    form.setValue("zip_code", cleanedCep); // Atualiza o campo CEP no formulário
+
+    if (cleanedCep.length === 8) {
+      setIsFetchingCep(true);
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cleanedCep}/json/`);
+        const data = await response.json();
+
+        if (data.erro) {
+          toast.error("CEP não encontrado. Verifique o CEP digitado e tente novamente.");
+          form.setValue("state", "");
+          form.setValue("city", "");
+          form.setValue("street", "");
+          form.setValue("neighborhood", "");
+        } else {
+          form.setValue("street", data.logradouro);
+          form.setValue("neighborhood", data.bairro);
+          form.setValue("city", data.localidade);
+          form.setValue("state", data.uf);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar CEP:", error);
+        toast.error("Não foi possível buscar o CEP. Tente novamente mais tarde.");
+        form.setValue("state", "");
+        form.setValue("city", "");
+        form.setValue("street", "");
+        form.setValue("neighborhood", "");
+      } finally {
+        setIsFetchingCep(false);
+      }
+    } else if (cleanedCep.length < 8) {
+      // Limpa os campos se o CEP estiver incompleto
+      form.setValue("state", "");
+      form.setValue("city", "");
+      form.setValue("street", "");
+      form.setValue("neighborhood", "");
+    }
+  };
+
   const onSubmit = async (formData: z.infer<typeof contactSchema>) => {
     setLoading(true);
     try {
+      // Converte a data de nascimento para o formato YYYY-MM-DD para o Supabase
+      const parsedDateOfBirth = formData.date_of_birth ? parseDateFromInput(formData.date_of_birth) : null;
+
       const { error } = await supabase
         .from('contact_submissions')
         .insert({
           name: formData.name,
-          whatsapp: formData.whatsapp,
-          date_of_birth: formData.date_of_birth ? formData.date_of_birth.toISOString() : null,
+          whatsapp: formData.whatsapp, // Já desformatado pelo transform no schema
+          date_of_birth: parsedDateOfBirth, // Salva no formato YYYY-MM-DD
           zip_code: formData.zip_code || null,
           state: formData.state || null,
           city: formData.city || null,
           street: formData.street || null,
           neighborhood: formData.neighborhood || null,
           content: formData.content,
-          is_read: false, // Default to unread
+          is_read: false,
         });
 
       if (error) {
@@ -121,7 +169,14 @@ export function ContactSection() {
                   <FormItem>
                     <FormLabel>WhatsApp</FormLabel>
                     <FormControl>
-                      <Input placeholder="(XX) XXXXX-XXXX" {...field} className="bg-white text-foreground placeholder:text-muted-foreground" />
+                      <Input
+                        type="tel"
+                        placeholder="(XX) XXXXX-XXXX"
+                        maxLength={15} // (99) 99999-9999
+                        {...field}
+                        onChange={(e) => field.onChange(formatPhone(e.target.value))} // Formata ao digitar
+                        className="bg-white text-foreground placeholder:text-muted-foreground"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -132,7 +187,7 @@ export function ContactSection() {
                 name="date_of_birth"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Data de Nascimento</FormLabel>
+                    <FormLabel>Data de Nascimento (DD/MM/AAAA)</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -144,7 +199,7 @@ export function ContactSection() {
                             )}
                           >
                             {field.value ? (
-                              format(field.value, "PPP", { locale: ptBR })
+                              field.value // Exibe a string dd/mm/aaaa diretamente
                             ) : (
                               <span>Selecione uma data</span>
                             )}
@@ -155,8 +210,14 @@ export function ContactSection() {
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
-                          selected={field.value || undefined}
-                          onSelect={field.onChange}
+                          selected={field.value ? parseDateFromInput(field.value) : undefined} // Converte string para Date para o Calendar
+                          onSelect={(date) => {
+                            if (date) {
+                              field.onChange(formatDateToDisplay(date.toISOString().split('T')[0])); // Formata Date para string dd/mm/aaaa
+                            } else {
+                              field.onChange(null);
+                            }
+                          }}
                           disabled={(date) =>
                             date > new Date() || date < new Date("1900-01-01")
                           }
@@ -176,8 +237,17 @@ export function ContactSection() {
                   <FormItem>
                     <FormLabel>CEP</FormLabel>
                     <FormControl>
-                      <Input placeholder="XXXXX-XXX" {...field} className="bg-white text-foreground placeholder:text-muted-foreground" />
+                      <Input
+                        placeholder="XXXXX-XXX"
+                        maxLength={9} // 99999-999
+                        {...field}
+                        onChange={(e) => handleZipCodeLookup(e.target.value)}
+                        onBlur={(e) => handleZipCodeLookup(e.target.value)}
+                        disabled={isFetchingCep}
+                        className="bg-white text-foreground placeholder:text-muted-foreground"
+                      />
                     </FormControl>
+                    {isFetchingCep && <p className="text-xs text-muted-foreground mt-1">Buscando CEP...</p>}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -189,7 +259,7 @@ export function ContactSection() {
                   <FormItem>
                     <FormLabel>Estado</FormLabel>
                     <FormControl>
-                      <Input placeholder="Seu estado" {...field} className="bg-white text-foreground placeholder:text-muted-foreground" />
+                      <Input placeholder="Seu estado" {...field} readOnly disabled={isFetchingCep} className="bg-white text-foreground placeholder:text-muted-foreground" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -202,7 +272,7 @@ export function ContactSection() {
                   <FormItem>
                     <FormLabel>Cidade</FormLabel>
                     <FormControl>
-                      <Input placeholder="Sua cidade" {...field} className="bg-white text-foreground placeholder:text-muted-foreground" />
+                      <Input placeholder="Sua cidade" {...field} readOnly disabled={isFetchingCep} className="bg-white text-foreground placeholder:text-muted-foreground" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -215,7 +285,7 @@ export function ContactSection() {
                   <FormItem>
                     <FormLabel>Rua</FormLabel>
                     <FormControl>
-                      <Input placeholder="Sua rua" {...field} className="bg-white text-foreground placeholder:text-muted-foreground" />
+                      <Input placeholder="Sua rua" {...field} readOnly disabled={isFetchingCep} className="bg-white text-foreground placeholder:text-muted-foreground" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -228,7 +298,7 @@ export function ContactSection() {
                   <FormItem>
                     <FormLabel>Bairro</FormLabel>
                     <FormControl>
-                      <Input placeholder="Seu bairro" {...field} className="bg-white text-foreground placeholder:text-muted-foreground" />
+                      <Input placeholder="Seu bairro" {...field} readOnly disabled={isFetchingCep} className="bg-white text-foreground placeholder:text-muted-foreground" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
