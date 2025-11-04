@@ -6,26 +6,27 @@ import { useUser } from "@/hooks/useUser";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Send } from "lucide-react";
+import { Loader2, Send, Paperclip, Mic, FileText, Play, Pause } from "lucide-react";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils"; // Importando cn
+import { ChatInputWithAttachments } from "@/components/ChatInputWithAttachments"; // Importar o novo componente
 
 type Message = Tables<'patient_doctor_messages'> & { sender_name?: string };
 type Profile = Tables<'profiles'>;
 
 interface ChatWindowProps {
-  currentUserId: string; // Added currentUserId prop
+  currentUserId: string;
   receiverId: string;
   appointmentId?: string;
 }
 
 export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessageContent, setNewMessageContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [receiverProfile, setReceiverProfile] = useState<Profile | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [playingAudio, setPlayingAudio] = useState<string | null>(null); // State to manage audio playback
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -41,7 +42,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
         const { data: fetchedMessages, error: messagesError } = await supabase
           .from("patient_doctor_messages")
           .select("*")
-          .or(`(sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}),(sender_id.eq.${receiverId},receiver_id.eq.${receiverId})`)
+          .or(`(sender_id.eq.${currentUserId},receiver_id.eq.${receiverId}),(sender_id.eq.${receiverId},receiver_id.eq.${currentUserId})`)
           .order("created_at", { ascending: true });
 
         if (messagesError) throw messagesError;
@@ -117,8 +118,8 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = async () => {
-    if (!newMessageContent.trim() || !currentUserId) return;
+  const handleSendMessage = async (content: string, fileUrl?: string, fileType?: string) => {
+    if (!content.trim() && !fileUrl || !currentUserId) return;
 
     try {
       const { data, error } = await supabase
@@ -127,8 +128,10 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
           sender_id: currentUserId,
           receiver_id: receiverId,
           appointment_id: appointmentId || null,
-          content: newMessageContent,
+          content: content.trim(),
           is_read: false,
+          file_url: fileUrl || null,
+          file_type: fileType || null,
         })
         .select()
         .single();
@@ -136,11 +139,54 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
       if (error) throw error;
 
       // The subscription will handle adding the message to the state
-      setNewMessageContent("");
     } catch (error: any) {
       console.error("Error sending message:", error.message);
       toast.error("Erro ao enviar mensagem: " + error.message);
     }
+  };
+
+  const renderMessageContent = (msg: Message) => {
+    if (msg.file_url && msg.file_type?.startsWith("image/")) {
+      return (
+        <a href={msg.file_url} target="_blank" rel="noopener noreferrer" className="block max-w-xs rounded-lg overflow-hidden">
+          <img src={msg.file_url} alt="Anexo de imagem" className="w-full h-auto object-cover" />
+          {msg.content && <p className="mt-2 text-sm">{msg.content}</p>}
+        </a>
+      );
+    } else if (msg.file_url && msg.file_type?.startsWith("audio/")) {
+      const isPlaying = playingAudio === msg.id;
+      return (
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              if (isPlaying) {
+                setPlayingAudio(null); // Stop playing
+              } else {
+                setPlayingAudio(msg.id); // Start playing this audio
+                const audio = new Audio(msg.file_url);
+                audio.onended = () => setPlayingAudio(null);
+                audio.play();
+              }
+            }}
+          >
+            {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+          </Button>
+          <span className="text-sm">Mensagem de Áudio</span>
+          {msg.content && <p className="mt-2 text-sm">{msg.content}</p>}
+        </div>
+      );
+    } else if (msg.file_url) {
+      return (
+        <a href={msg.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 text-blue-400 hover:underline">
+          <FileText className="h-5 w-5" />
+          <span className="text-sm">Anexo: {msg.file_url.split('/').pop()}</span>
+          {msg.content && <p className="mt-2 text-sm">{msg.content}</p>}
+        </a>
+      );
+    }
+    return <p>{msg.content}</p>;
   };
 
   if (loading) {
@@ -176,7 +222,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
               <p className="font-semibold text-sm mb-1">
                 {msg.sender_id === currentUserId ? "Você" : msg.sender_name}
               </p>
-              <p>{msg.content}</p>
+              {renderMessageContent(msg)}
               <span className="block text-xs text-right opacity-75 mt-1">
                 {new Date(msg.created_at || "").toLocaleTimeString([], {
                   hour: "2-digit",
@@ -189,22 +235,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
         <div ref={messagesEndRef} />
       </CardContent>
       <CardFooter className="border-t p-4">
-        <div className="flex w-full space-x-2">
-          <Input
-            placeholder="Digite sua mensagem..."
-            value={newMessageContent}
-            onChange={(e) => setNewMessageContent(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                handleSendMessage();
-              }
-            }}
-          />
-          <Button onClick={handleSendMessage} disabled={!newMessageContent.trim()}>
-            <Send className="h-4 w-4" />
-            <span className="sr-only">Enviar</span>
-          </Button>
-        </div>
+        <ChatInputWithAttachments onSendMessage={handleSendMessage} disabled={false} />
       </CardFooter>
     </Card>
   );
