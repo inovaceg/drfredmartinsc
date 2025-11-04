@@ -4,12 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@/hooks/useUser";
 import { toast } from "sonner";
-import { auth } from "@/integrations/firebase/client";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  sendPasswordResetEmail,
-} from "firebase/auth";
+import { supabase } from "@/integrations/supabase/client"; // Importar supabase
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,15 +31,23 @@ export function AuthPage() {
     setAuthLoading(true);
     try {
       if (isRegistering) {
-        await createUserWithEmailAndPassword(auth, email, password);
-        toast.success("Cadastro realizado com sucesso! Você está logado.");
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+        if (error) throw error;
+        toast.success("Cadastro realizado com sucesso! Verifique seu e-mail para confirmar.");
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
         toast.success("Login realizado com sucesso!");
       }
       navigate("/");
     } catch (error: any) {
-      console.error("Firebase Auth Error:", error.message);
+      console.error("Supabase Auth Error:", error.message);
       toast.error("Erro de autenticação: " + error.message);
     } finally {
       setAuthLoading(false);
@@ -58,10 +61,11 @@ export function AuthPage() {
     }
     setAuthLoading(true);
     try {
-      await sendPasswordResetEmail(auth, email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) throw error;
       toast.info("Um e-mail de redefinição de senha foi enviado para " + email);
     } catch (error: any) {
-      console.error("Firebase Password Reset Error:", error.message);
+      console.error("Supabase Password Reset Error:", error.message);
       toast.error("Erro ao redefinir senha: " + error.message);
     } finally {
       setAuthLoading(false);

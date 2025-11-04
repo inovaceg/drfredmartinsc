@@ -2,12 +2,13 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import ErrorBoundary from './components/ErrorBoundary.tsx';
-import { FirebaseAuthProvider } from './providers/FirebaseAuthProvider.tsx'; // Importar o provedor Firebase
+import { SessionContextProvider } from '@supabase/auth-helpers-react'; // Importar SessionContextProvider
+import { supabase } from './integrations/supabase/client.ts'; // Importar o cliente Supabase
 
 createRoot(document.getElementById("root")!).render(
     <ErrorBoundary>
-        <FirebaseAuthProvider> {/* Envolver o App com o provedor Firebase */}
+        <SessionContextProvider supabaseClient={supabase}> {/* Envolver o App com o provedor Supabase */}
             <App />
-        </FirebaseAuthProvider>
+        </SessionContextProvider>
     </ErrorBoundary>
 );

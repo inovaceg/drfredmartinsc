@@ -2,14 +2,14 @@
 
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useUser } from "@/hooks/useUser";
+import { useUser } from "@/hooks/useUser"; // Usar o hook useUser
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export function Owners() {
-  const { user, isLoading: isUserLoading } = useUser();
+  const { user, isLoading: isUserLoading } = useUser(); // Usar o hook useUser
   const navigate = useNavigate();
   const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(true);

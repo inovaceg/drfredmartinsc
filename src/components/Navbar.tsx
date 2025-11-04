@@ -4,8 +4,7 @@ import { Menu, X, Instagram, LogIn, LogOut, MessageSquare, Wifi, WifiOff, CloudO
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/hooks/useUser"; // Usar o novo hook useUser
-import { auth } from "@/integrations/firebase/client"; // Importar auth do Firebase
-import { signOut } from "firebase/auth"; // Importar signOut do Firebase
+import { supabase } from "@/integrations/supabase/client"; // Importar supabase
 import { Badge } from "@/components/ui/badge";
 import {
   Drawer,
@@ -19,41 +18,12 @@ import {
 } from "@/components/ui/drawer";
 
 const Navbar = () => {
-  const { user, isLoading: isUserLoading } = useUser(); // Usar o novo hook
+  const { user, isLoading: isUserLoading, profile } = useUser(); // Usar o novo hook
   const navigate = useNavigate();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const { toast } = useToast();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  // Por enquanto, vamos assumir que o Firebase está sempre conectado se o navegador estiver online.
-  // A verificação de conexão do Supabase será removida.
-  const [isFirebaseConnected, setIsFirebaseConnected] = useState(true); 
-
-  // A lógica de role do usuário precisará ser adaptada para o Firebase (Firestore)
-  // Por enquanto, vamos simular um role ou deixar como null
-  const [userRole, setUserRole] = useState<string | null>(null); 
-
-  useEffect(() => {
-    // Lógica para determinar o role do usuário no Firebase
-    // Isso exigirá que você tenha uma coleção de 'perfis' ou 'user_roles' no Firestore
-    // e que cada usuário tenha um documento associado com seu role.
-    // Por enquanto, vamos simular um role 'patient' se o usuário estiver logado.
-    if (user && !isUserLoading) {
-      // Exemplo de como você buscaria o role no Firestore (ainda não implementado)
-      // const fetchUserRole = async (userId: string) => {
-      //   const docRef = doc(db, "user_roles", userId);
-      //   const docSnap = await getDoc(docRef);
-      //   if (docSnap.exists()) {
-      //     setUserRole(docSnap.data().role);
-      //   } else {
-      //     setUserRole("patient"); // Default role if not found
-      //   }
-      // };
-      // fetchUserRole(user.uid);
-      setUserRole("patient"); // Simulação: todo usuário logado é paciente por enquanto
-    } else {
-      setUserRole(null);
-    }
-  }, [user, isUserLoading]);
+  const [isSupabaseConnected, setIsSupabaseConnected] = useState(true); // Estado para conexão Supabase
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -62,10 +32,16 @@ const Navbar = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // A verificação de conexão do Firebase é mais complexa e geralmente
-    // é tratada pelos próprios SDKs. Por enquanto, vamos ligar o status
-    // do Firebase ao status online do navegador.
-    setIsFirebaseConnected(navigator.onLine);
+    // Verificar a conexão com o Supabase
+    const checkSupabaseConnection = async () => {
+      try {
+        const { error } = await supabase.from('profiles').select('id').limit(1);
+        setIsSupabaseConnected(!error);
+      } catch (e) {
+        setIsSupabaseConnected(false);
+      }
+    };
+    checkSupabaseConnection(); // Verifica ao montar
 
     return () => {
       window.removeEventListener('online', handleOnline);
@@ -81,11 +57,12 @@ const Navbar = () => {
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
       toast.success("Você foi desconectado(a).");
       navigate("/auth");
     } catch (error: any) {
-      console.error("Firebase Logout Error:", error.message);
+      console.error("Supabase Logout Error:", error.message);
       toast.error("Erro ao sair: " + error.message);
     }
   };
@@ -144,7 +121,7 @@ const Navbar = () => {
           >
             Contato
           </Button>
-          {user && userRole === 'doctor' && (
+          {user && profile?.is_doctor && (
             <Button 
               onClick={() => navigate("/doctor")}
               variant="ghost"
@@ -153,7 +130,7 @@ const Navbar = () => {
               Portal do Profissional
             </Button>
           )}
-          {user && userRole === 'patient' && (
+          {user && !profile?.is_doctor && (
             <Button 
               onClick={() => navigate("/patient")}
               variant="ghost"
@@ -185,9 +162,9 @@ const Navbar = () => {
             <Badge variant="destructive" className="flex items-center gap-1">
               <WifiOff className="h-3 w-3" /> Offline
             </Badge>
-          ) : !isFirebaseConnected ? (
+          ) : !isSupabaseConnected ? (
             <Badge variant="secondary" className="flex items-center gap-1 bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
-              <CloudOff className="h-3 w-3" /> Firebase Offline
+              <CloudOff className="h-3 w-3" /> Supabase Offline
             </Badge>
           ) : (
             <Badge variant="secondary" className="flex items-center gap-1 bg-green-500/10 text-green-400 border-green-500/30">
@@ -261,7 +238,7 @@ const Navbar = () => {
                 >
                   Contato
                 </Link>
-                {user && userRole === 'doctor' && (
+                {user && profile?.is_doctor && (
                   <Button 
                     onClick={() => {
                       navigate("/doctor");
@@ -273,7 +250,7 @@ const Navbar = () => {
                     Portal do Profissional
                   </Button>
                 )}
-                {user && userRole === 'patient' && (
+                {user && !profile?.is_doctor && (
                   <Button 
                     onClick={() => {
                       navigate("/patient");

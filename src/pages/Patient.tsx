@@ -5,24 +5,24 @@ import Navbar from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useUser } from "@/hooks/useUser";
+import { useUser } from "@/hooks/useUser"; // Usar o hook useUser
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Button } from "lucide-react"; // Added Button import
+import { Loader2 } from "lucide-react";
 import { PatientProfileForm } from "@/components/PatientProfileForm";
 import { PatientScheduleTab } from "@/components/patient/PatientScheduleTab";
 import { PatientAppointmentsTab } from "@/components/patient/PatientAppointmentsTab";
 import { PatientMedicalRecordsTab } from "@/components/patient/PatientMedicalRecordsTab";
 import { OnlineConsultationTab } from "@/components/OnlineConsultationTab";
-import { PatientDocumentsPage } from "@/pages/PatientDocumentsPage"; // Named export
-import { WhatsappTranscriptionsPage } from "@/pages/WhatsappTranscriptionsPage"; // Named export
+import { PatientDocumentsPage } from "@/pages/PatientDocumentsPage";
+import { WhatsappTranscriptionsPage } from "@/pages/WhatsappTranscriptionsPage";
 import { Tables } from "@/integrations/supabase/types";
-import { Button as ShadcnButton } from "@/components/ui/button"; // Renamed import to avoid conflict
+import { Button as ShadcnButton } from "@/components/ui/button";
 
 type Profile = Tables<'profiles'>;
 
 export default function Patient() {
-  const { user, isLoading: isUserLoading } = useUser();
+  const { user, isLoading: isUserLoading } = useUser(); // Usar o hook useUser
   const navigate = useNavigate();
   const { toast } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -56,7 +56,7 @@ export default function Patient() {
         description: "Não foi possível carregar seu perfil: " + error.message,
         variant: "destructive",
       });
-      setProfile(null); // Garante que o perfil seja nulo em caso de erro
+      setProfile(null);
     } finally {
       setLoadingProfile(false);
       console.log("Patient.tsx: fetchProfile finalizado. setLoadingProfile(false).");
@@ -98,7 +98,7 @@ export default function Patient() {
         <p className="text-lg text-muted-foreground mb-6">
           Não foi possível carregar as informações do seu perfil. Por favor, tente novamente.
         </p>
-        <ShadcnButton onClick={() => navigate("/")}>Voltar para a Página Inicial</ShadcnButton> {/* Used ShadcnButton */}
+        <ShadcnButton onClick={() => navigate("/")}>Voltar para a Página Inicial</ShadcnButton>
       </div>
     );
   }
