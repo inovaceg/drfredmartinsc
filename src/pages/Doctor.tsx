@@ -141,7 +141,7 @@ const Doctor = () => {
     try {
       const { start, end } = getDatesForTimeframe(tf, customS, customE);
       const startIso = toUtcIso(start);
-      const endIso   = toUtcIso(end);
+      const endIso = toUtcIso(end);
       console.log("fetchOverview: Calculated date range (UTC ISO):", startIso, "to", endIso);
 
       // 1) slots do período
@@ -303,8 +303,8 @@ const Doctor = () => {
         fetchDoctorProfile(user.id);
         
         const todayStart = startOfDay(new Date());
-        const todayEnd = endOfDay(new Date());
-        getDoctorAvailabilitySlots(user.id, toUtcIso(todayStart), toUtcIso(endOfDayLocal)).then(result => {
+        const todayEnd = endOfDay(new Date()); // Correctly defined here
+        getDoctorAvailabilitySlots(user.id, toUtcIso(todayStart), toUtcIso(todayEnd)).then(result => { // Corrected variable name
           setSlots(result.slots);
           setIsLoadingScheduleSlots(false);
         });
@@ -1248,89 +1248,6 @@ const Doctor = () => {
                       </div>
                     </div>
                   ))
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="patients">
-            <Card>
-              <CardHeader>
-                <CardTitle>Meus Pacientes</CardTitle>
-                <CardDescription>Lista completa de pacientes com todos os dados</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {patients.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">
-                    Nenhum paciente encontrado
-                  </p>
-                ) : (
-                  <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-                    {patients.map((patient) => (
-                      <div key={patient.id} className="border rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-lg mb-3">{patient.full_name}</p>
-                            
-                            <div className="space-y-2 text-sm">
-                              <div className="flex items-start gap-2">
-                                <span className="font-medium text-muted-foreground flex-shrink-0">Data de Cadastro:</span>
-                                <span className="flex-grow">{patient.created_at ? format(new Date(patient.created_at), "dd/MM/yyyy", { locale: ptBR }) : '-'}</span>
-                              </div>
-                              
-                              {patient.birth_date && (
-                                <div className="flex items-start gap-2">
-                                  <span className="font-medium text-muted-foreground flex-shrink-0">Data de Nasc.:</span>
-                                  <span className="flex-grow">{formatDateToDisplay(patient.birth_date)}</span>
-                                </div>
-                              )}
-
-                              <div className="flex items-start gap-2">
-                                <span className="font-medium text-muted-foreground flex-shrink-0">WhatsApp:</span>
-                                <span className="flex-grow">{patient.whatsapp ? formatPhone(patient.whatsapp) : '-'}</span>
-                              </div>
-                              
-                              <div className="flex items-start gap-2">
-                                <span className="font-medium text-muted-foreground flex-shrink-0">Endereço:</span>
-                                <span className="flex-grow">
-                                  {[
-                                        patient.street && `${patient.street}${patient.street_number ? ', ' + patient.street_number : ''}`,
-                                        patient.neighborhood,
-                                        patient.city,
-                                        patient.state
-                                      ].filter(Boolean).join(' - ')}
-                                      {patient.zip_code && ` - CEP: ${patient.zip_code}`}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="flex gap-2 ml-4 flex-shrink-0">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedPatient(patient);
-                                setEditDialogOpen(true);
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="destructive" 
-                              size="sm" 
-                              onClick={() => {
-                                setPatientToDelete(patient);
-                                setIsDeleteDialogOpen(true);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 )}
               </CardContent>
             </Card>
