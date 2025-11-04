@@ -25,10 +25,31 @@ import { ptBR } from "date-fns/locale";
 import { Textarea } from "@/components/ui/textarea";
 import { formatPhone, unformatPhone } from "@/lib/format-phone"; // Importar funções de telefone
 
+// Input mask handler for date field (DD/MM/AAAA)
+const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>, fieldOnChange: (value: string) => void) => {
+  let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+  let formattedValue = '';
+
+  if (value.length > 0) {
+    formattedValue += value.substring(0, 2);
+    if (value.length > 2) {
+      formattedValue += '/' + value.substring(2, 4);
+    }
+    if (value.length > 4) {
+      formattedValue += '/' + value.substring(4, 8);
+    }
+  }
+  fieldOnChange(formattedValue);
+};
+
 const contactSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   whatsapp: z.string().min(1, "WhatsApp é obrigatório").transform(val => unformatPhone(val)), // Desformata para salvar no DB
-  date_of_birth: z.string().optional().nullable().refine(val => !val || parseDateFromInput(val) !== null, { message: "Formato de data inválido (DD/MM/AAAA)" }), // Valida formato dd/mm/aaaa
+  date_of_birth: z.string().optional().nullable().refine(val => {
+    if (!val) return true; // Allow empty or null
+    const parsed = parseDateFromInput(val); // This expects DD/MM/YYYY and returns YYYY-MM-DD or null
+    return parsed !== null;
+  }, { message: "Formato de data inválido (DD/MM/AAAA)" }), // Valida formato dd/mm/aaaa
   zip_code: z.string().optional(),
   state: z.string().optional(),
   city: z.string().optional(),
@@ -46,7 +67,7 @@ export function ContactSection() {
     defaultValues: {
       name: "",
       whatsapp: "",
-      date_of_birth: null,
+      date_of_birth: "", // Default to empty string for text input
       zip_code: "",
       state: "",
       city: "",
@@ -186,47 +207,18 @@ export function ContactSection() {
                 control={form.control}
                 name="date_of_birth"
                 render={({ field }) => (
-                  <FormItem className="flex flex-col">
+                  <FormItem>
                     <FormLabel>Data de Nascimento (DD/MM/AAAA)</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full pl-3 text-left font-normal bg-white text-foreground hover:bg-white/90",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              field.value // Exibe a string dd/mm/aaaa diretamente
-                            ) : (
-                              <span>Selecione uma data</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value ? parseDDMMYYYYToLocalDate(field.value) : undefined} // Usar a nova função
-                          onSelect={(date) => {
-                            if (date) {
-                              const isoString = format(date, "yyyy-MM-dd"); // Obter YYYY-MM-DD do objeto Date
-                              field.onChange(formatDateToDisplay(isoString)); // Formatar para dd/mm/yyyy para o campo
-                            } else {
-                              field.onChange(null);
-                            }
-                          }}
-                          disabled={(date) =>
-                            date > new Date() || date < new Date("1900-01-01")
-                          }
-                          initialFocus
-                          locale={ptBR}
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="DD/MM/AAAA"
+                        maxLength={10}
+                        {...field}
+                        onChange={(e) => handleDateInputChange(e, field.onChange)} // Use input mask handler
+                        className="bg-white text-foreground placeholder:text-muted-foreground"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
