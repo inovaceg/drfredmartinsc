@@ -28,7 +28,13 @@ export default function Patient() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
+  console.log("Patient.tsx: Componente Patient renderizado.");
+  console.log("Patient.tsx: isUserLoading:", isUserLoading, "loadingProfile:", loadingProfile);
+  console.log("Patient.tsx: user:", user ? user.id : "null");
+  console.log("Patient.tsx: profile:", profile ? profile.id : "null");
+
   const fetchProfile = async (userId: string) => {
+    console.log("Patient.tsx: fetchProfile iniciado para userId:", userId);
     setLoadingProfile(true);
     try {
       const { data, error } = await supabase
@@ -37,35 +43,46 @@ export default function Patient() {
         .eq('id', userId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Patient.tsx: Erro ao buscar perfil no Supabase:", error.message);
+        throw error;
+      }
       setProfile(data);
+      console.log("Patient.tsx: Perfil carregado com sucesso:", data);
     } catch (error: any) {
-      console.error("Error fetching profile:", error.message);
+      console.error("Patient.tsx: Erro no fetchProfile:", error.message);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar seu perfil.",
+        description: "Não foi possível carregar seu perfil: " + error.message,
         variant: "destructive",
       });
+      setProfile(null); // Garante que o perfil seja nulo em caso de erro
     } finally {
       setLoadingProfile(false);
+      console.log("Patient.tsx: fetchProfile finalizado. setLoadingProfile(false).");
     }
   };
 
   useEffect(() => {
+    console.log("Patient.tsx: useEffect (user/isUserLoading) disparado.");
     if (!isUserLoading && !user) {
+      console.log("Patient.tsx: Usuário não logado, redirecionando para /auth.");
       navigate("/auth");
     } else if (user) {
+      console.log("Patient.tsx: Usuário logado, chamando fetchProfile.");
       fetchProfile(user.id);
     }
   }, [user, isUserLoading, navigate, toast]);
 
   const handleProfileUpdated = () => {
+    console.log("Patient.tsx: handleProfileUpdated chamado.");
     if (user) {
       fetchProfile(user.id);
     }
   };
 
   if (isUserLoading || loadingProfile) {
+    console.log("Patient.tsx: Exibindo Loader2. isUserLoading:", isUserLoading, "loadingProfile:", loadingProfile);
     return (
       <div className="flex justify-center items-center min-h-screen">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -74,6 +91,7 @@ export default function Patient() {
   }
 
   if (!user || !profile) {
+    console.log("Patient.tsx: Usuário ou perfil não disponível após carregamento. user:", user ? user.id : "null", "profile:", profile ? profile.id : "null");
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
         <h1 className="text-3xl font-bold mb-4">Erro ao Carregar Perfil</h1>
@@ -85,6 +103,7 @@ export default function Patient() {
     );
   }
 
+  console.log("Patient.tsx: Renderizando conteúdo principal do paciente.");
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
