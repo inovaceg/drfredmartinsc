@@ -1,30 +1,65 @@
-import React from 'react';
-import { BookOpen } from "lucide-react";
+import React, { useEffect, useState } from 'react';
+import { BookOpen, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Tables } from "@/integrations/supabase/types";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+type BlogPost = Tables<'blog_posts'> & { author_profile?: { full_name: string } };
 
 const BlogSection = () => {
-  const blogPosts = [
-    {
-      id: 1,
-      title: "Como a Psicanálise Pode Ajudar na Ansiedade",
-      excerpt: "A ansiedade é um dos males do século, e a psicanálise oferece ferramentas profundas para entender suas raízes e desenvolver mecanismos de enfrentamento.",
-      date: "15 de Outubro de 2024",
-      link: "#"
-    },
-    {
-      id: 2,
-      title: "A Importância da Comunicação na Terapia de Casal",
-      excerpt: "A comunicação é a base de qualquer relacionamento saudável. Descubra como a terapia de casal pode transformar a forma como vocês se conectam.",
-      date: "10 de Outubro de 2024",
-      link: "#"
-    },
-    {
-      id: 3,
-      title: "Desvendando Mitos sobre a Sexualidade Humana",
-      excerpt: "A sexologia busca desmistificar tabus e promover uma vida sexual mais plena e saudável. Conheça os principais mitos e verdades.",
-      date: "05 de Outubro de 2024",
-      link: "#"
-    }
-  ];
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchBlogPosts = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data, error } = await supabase
+          .from('blog_posts')
+          .select(`
+            *,
+            author_profile:author_id(full_name)
+          `)
+          .eq('status', 'published')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        setBlogPosts(data || []);
+      } catch (err: any) {
+        console.error("Erro ao buscar posts do blog:", err.message);
+        setError("Não foi possível carregar os posts do blog.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBlogPosts();
+
+    // Setup real-time subscription for published posts
+    const channel = supabase
+      .channel("blog_posts_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "blog_posts",
+          filter: `status=eq.published`,
+        },
+        (payload) => {
+          fetchBlogPosts(); // Re-fetch posts on any change to published posts
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   return (
     <section id="blog" className="py-12 md:py-20 lg:py-24 bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900">
@@ -44,19 +79,40 @@ const BlogSection = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {blogPosts.map((post) => (
-            <div key={post.id} className="bg-white/10 border border-white/10 p-8 rounded-2xl backdrop-blur-md hover:border-blue-400/30 transition-all">
-              <BookOpen className="h-10 w-10 text-blue-400 mb-4" />
-              <h3 className="text-xl font-semibold mb-3 text-white tracking-tight">{post.title}</h3>
-              <p className="text-white/70 text-sm mb-4 line-clamp-3">{post.excerpt}</p>
-              <p className="text-white/60 text-xs mb-4">{post.date}</p>
-              <a href={post.link} className="text-blue-400 hover:underline font-medium">
-                Leia Mais &rarr;
-              </a>
-            </div>
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex justify-center p-8">
+            <Loader2 className="h-8 w-8 animate-spin text-white" />
+          </div>
+        ) : error ? (
+          <p className="text-red-400 text-center">{error}</p>
+        ) : blogPosts.length === 0 ? (
+          <p className="text-muted-foreground text-center py-4">
+            Nenhum post de blog publicado ainda.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {blogPosts.map((post) => (
+              <div key={post.id} className="bg-white/10 border border-white/10 p-8 rounded-2xl backdrop-blur-md hover:border-blue-400/30 transition-all">
+                {post.image_url && (
+                  <img src={post.image_url} alt={post.title} className="w-full h-48 object-cover rounded-lg mb-4" />
+                )}
+                <BookOpen className="h-10 w-10 text-blue-400 mb-4" />
+                <h3 className="text-xl font-semibold mb-3 text-white tracking-tight">{post.title}</h3>
+                <p className="text-white/70 text-sm mb-4 line-clamp-3">{post.excerpt || post.content}</p>
+                <p className="text-white/60 text-xs mb-2">
+                  Por: {post.author_profile?.full_name || 'Autor Desconhecido'}
+                </p>
+                <p className="text-white/60 text-xs mb-4">
+                  Publicado em: {format(new Date(post.created_at!), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                </p>
+                {/* Por enquanto, o link pode ser para uma página de detalhe futura ou apenas um placeholder */}
+                <a href={`/blog/${post.slug}`} className="text-blue-400 hover:underline font-medium">
+                  Leia Mais &rarr;
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

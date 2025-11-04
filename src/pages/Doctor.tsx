@@ -921,7 +921,7 @@ const Doctor = () => {
                   {activeTab === "patients" && "Meus Pacientes"}
                   {activeTab === "medical-records" && "Prontuários"}
                   {activeTab === "online-consultation" && "Consulta Online"}
-                  {activeTab === "blog-posts" && "Gerenciar Blog"} {/* Nova aba */}
+                  {activeTab === "blog-posts" && "Gerenciar Blog"} {/* Nova aba no Drawer */}
                   {activeTab === "contact-forms" && "Formulário Contato"}
                   {activeTab === "newsletter-subscriptions" && "Newsletter"}
                 </Button>
@@ -984,7 +984,7 @@ const Doctor = () => {
                     <Button
                       variant="ghost"
                       className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
-                      onClick={() => handleTabChange("blog-posts")} {/* Nova aba */}
+                      onClick={() => handleTabChange("blog-posts")} {/* Nova aba no Drawer */}
                     >
                       <ClipboardList className="h-4 w-4 mr-2" />
                       Gerenciar Blog
@@ -1394,7 +1394,7 @@ const Doctor = () => {
             {user && <DoctorOnlineConsultationTab isDoctorView={true} />}
           </TabsContent>
 
-          <TabsContent value="blog-posts"> {/* Nova aba */}
+          <TabsContent value="blog-posts"> {/* Nova TabsContent */}
             {user && <DoctorBlogPostsTab currentUserId={user.id} />}
           </TabsContent>
 
