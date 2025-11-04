@@ -15,7 +15,6 @@ import { PatientAppointmentsTab } from "@/components/patient/PatientAppointments
 import { PatientMedicalRecordsTab } from "@/components/patient/PatientMedicalRecordsTab";
 import { OnlineConsultationTab } from "@/components/OnlineConsultationTab";
 import { PatientDocumentsPage } from "@/pages/PatientDocumentsPage";
-import { WhatsappTranscriptionsPage } from "@/pages/WhatsappTranscriptionsPage";
 import { Tables } from "@/integrations/supabase/types";
 import { Button as ShadcnButton } from "@/components/ui/button";
 
@@ -118,7 +117,6 @@ export default function Patient() {
             <TabsTrigger value="medical-records" className="px-3 py-2 text-sm text-center">Prontuários</TabsTrigger>
             <TabsTrigger value="documents" className="px-3 py-2 text-sm text-center">Documentos</TabsTrigger>
             <TabsTrigger value="online-consultation" className="px-3 py-2 text-sm text-center">Consulta Online</TabsTrigger>
-            <TabsTrigger value="whatsapp-transcriptions" className="px-3 py-2 text-sm text-center">Transcrições WhatsApp</TabsTrigger>
           </TabsList>
           <TabsContent value="profile" className="mt-6">
             <PatientProfileForm profile={profile} onProfileUpdated={handleProfileUpdated} />
@@ -137,9 +135,6 @@ export default function Patient() {
           </TabsContent>
           <TabsContent value="online-consultation" className="mt-6">
             <OnlineConsultationTab isDoctorView={false} />
-          </TabsContent>
-          <TabsContent value="whatsapp-transcriptions" className="mt-6">
-            <WhatsappTranscriptionsPage />
           </TabsContent>
         </Tabs>
       </main>

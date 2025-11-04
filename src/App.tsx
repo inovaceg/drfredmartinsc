@@ -19,7 +19,6 @@ import Redirect from "./pages/Redirect";
 import { AuthPage } from "./pages/Auth";
 import Patient from "./pages/Patient";
 import Doctor from "./pages/Doctor";
-import { WhatsappTranscriptionsPage } from "./pages/WhatsappTranscriptionsPage";
 import AnnouncementBanner from "@/components/AnnouncementBanner"; // Importar o AnnouncementBanner
 
 const queryClient = new QueryClient({
@@ -75,7 +74,6 @@ const App = () => (
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/doctor" element={<Doctor />} />
             <Route path="/patient" element={<Patient />} />
-            <Route path="/whatsapp-transcriptions" element={<WhatsappTranscriptionsPage />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/terms-of-service" element={<TermsOfService />} />
             <Route path="/license-disclosure" element={<LicenseDisclosure />} />
