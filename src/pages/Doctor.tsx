@@ -124,16 +124,11 @@ const Doctor = () => {
 
     if (error) {
       console.error("Doctor.tsx: Erro ao buscar perfil do doutor:", error);
-      toast({
-        title: "Erro ao carregar perfil do doutor",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else if (data) {
-      console.log("Doctor.tsx: Perfil do doutor encontrado:", data);
-      setDoctorProfile(data);
+      throw error; // Propagate error
     }
-  }, [toast, setDoctorProfile]);
+    console.log("Doctor.tsx: Perfil do doutor encontrado:", data);
+    return data; // Return data
+  }, []);
 
   const fetchOverview = useCallback(async (doctorId: string, tf: Timeframe, customS?:Date, customE?:Date) => {
     setIsLoadingOverview(true);
@@ -242,12 +237,9 @@ const Doctor = () => {
 
     if (error) {
       console.error("Doctor.tsx: Error fetching appointments:", error);
-      toast({
-        title: "Erro",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else if (appts && appts.length > 0) {
+      throw error; // Propagate error
+    }
+    if (appts && appts.length > 0) {
       const withPatients = appts.map((a: any) => ({
         ...a,
         patient_profile: { 
@@ -263,17 +255,17 @@ const Doctor = () => {
         }
       }));
       console.log("Doctor.tsx: Appointments fetched:", withPatients);
-      setAppointments(withPatients);
+      return withPatients; // Return data
     } else {
       console.log("Doctor.tsx: No appointments found.");
-      setAppointments([]);
+      return []; // Return empty array
     }
-  }, [toast, setAppointments]);
+  }, []);
 
   const fetchPatients = useCallback(async (doctorId: string) => {
     if (!doctorId) {
       console.log("Doctor.tsx: Skipping fetchPatients, doctorId is missing.");
-      return;
+      return []; // Return empty array if no doctorId
     }
 
     console.log('Doctor.tsx: Fetching patients for doctor:', doctorId);
@@ -281,38 +273,62 @@ const Doctor = () => {
       .rpc('get_patients_for_doctor').returns<PatientProfile[]>();
     if (error) {
       console.error('Doctor.tsx: Error fetching patients:', error);
-      toast({
-        title: "Erro ao carregar pacientes",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      console.log('Doctor.tsx: Patients fetched:', patientsData);
-      setPatients(patientsData || []);
+      throw error; // Propagate error
     }
-  }, [toast, setPatients]);
+    console.log('Doctor.tsx: Patients fetched:', patientsData);
+    return patientsData || []; // Return data
+  }, []);
 
   useEffect(() => {
     console.log("Doctor.tsx: useEffect (user/isUserLoading/profile) disparado.");
-    if (!isUserLoading) {
-      if (!user || !profile?.is_doctor) {
-        console.log("Doctor.tsx: Usuário não logado ou não é doutor, redirecionando para /auth.");
-        navigate("/auth");
-      } else if (user) {
-        console.log("Doctor.tsx: Usuário logado e é doutor, buscando perfil e dados.");
-        fetchDoctorProfile(user.id);
-        
-        const todayStart = startOfDay(new Date());
-        const todayEnd = endOfDay(new Date()); // Correctly defined here
-        getDoctorAvailabilitySlots(user.id, toUtcIso(todayStart), toUtcIso(todayEnd)).then(result => { // Corrected variable name
-          setSlots(result.slots);
-          setIsLoadingScheduleSlots(false);
-        });
+    const loadInitialData = async () => {
+      if (!isUserLoading) {
+        if (!user || !profile?.is_doctor) {
+          console.log("Doctor.tsx: Usuário não logado ou não é doutor, redirecionando para /auth.");
+          navigate("/auth");
+          setLoading(false); // Ensure loading is false if redirecting
+          return;
+        } else if (user) {
+          setLoading(true); // Start loading for initial data
+          try {
+            const todayStart = startOfDay(new Date());
+            const todayEnd = endOfDay(new Date());
 
-        fetchAppointments();
-        fetchPatients(user.id);
+            const [
+              doctorProfileData,
+              availabilitySlotsResult,
+              appointmentsData,
+              patientsData
+            ] = await Promise.all([
+              fetchDoctorProfile(user.id),
+              getDoctorAvailabilitySlots(user.id, toUtcIso(todayStart), toUtcIso(todayEnd)),
+              fetchAppointments(),
+              fetchPatients(user.id)
+            ]);
+
+            setDoctorProfile(doctorProfileData);
+            setSlots(availabilitySlotsResult.slots);
+            setAppointments(appointmentsData);
+            setPatients(patientsData);
+            setIsLoadingScheduleSlots(false); // Specific to schedule tab
+            // No need to set isLoadingOverview here, as it's managed by its own useEffect
+          } catch (error) {
+            console.error("Doctor.tsx: Erro ao carregar dados iniciais:", error);
+            toast({
+              title: "Erro ao carregar dados iniciais",
+              description: (error as Error).message,
+              variant: "destructive",
+            });
+            // Potentially navigate to an error page or show a persistent error message
+          } finally {
+            setLoading(false); // All initial data fetches are complete
+            console.log("Doctor.tsx: Initial data load finished. setLoading(false).");
+          }
+        }
       }
-    }
+    };
+
+    loadInitialData();
   }, [user, isUserLoading, profile, navigate, fetchDoctorProfile, fetchAppointments, fetchPatients, toast]);
 
 
