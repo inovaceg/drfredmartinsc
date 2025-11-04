@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/hooks/useUser";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -65,6 +65,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(initialData?.image_url || null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null); // Ref para o input de arquivo
 
   const generateSlug = (title: string) => {
     return title
@@ -96,6 +97,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
       setSelectedImageFile(file);
       setImagePreviewUrl(URL.createObjectURL(file));
       form.clearErrors("image_url"); // Clear any URL validation errors
+      form.setValue("image_url", ""); // Clear manual URL if file is selected
     } else {
       setSelectedImageFile(null);
       if (!form.getValues("image_url")) { // Only clear preview if no manual URL is set
@@ -154,6 +156,9 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
     await onSave({ ...values, image_url: finalImageUrl });
     setSelectedImageFile(null); // Clear file input after save
     setImagePreviewUrl(finalImageUrl); // Update preview with final URL
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""; // Reset the file input element
+    }
   };
 
   return (
@@ -237,16 +242,27 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
         />
         <FormItem>
           <Label htmlFor="image_upload">Imagem do Post (Upload ou URL)</Label>
-          <div className="flex items-center space-x-2">
-            <Input
+          <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
+            <input
               id="image_upload"
               type="file"
               accept="image/*"
               onChange={handleFileChange}
-              className="flex-1"
+              className="hidden" // Esconde o input de arquivo nativo
+              ref={fileInputRef}
               disabled={isUploadingImage || isSaving}
             />
-            <span className="text-muted-foreground">ou</span>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()} // Clica no input escondido
+              disabled={isUploadingImage || isSaving}
+              className="w-full sm:w-auto flex-shrink-0"
+            >
+              <UploadCloud className="h-4 w-4 mr-2" />
+              {isUploadingImage ? "Carregando..." : "Escolher Arquivo"}
+            </Button>
+            <span className="text-muted-foreground hidden sm:block">ou</span>
             <FormField
               control={form.control}
               name="image_url"
@@ -259,8 +275,12 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
                       field.onChange(e);
                       setImagePreviewUrl(e.target.value || null); // Update preview if manual URL is entered
                       setSelectedImageFile(null); // Clear file input if manual URL is entered
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = ""; // Reset the file input element
+                      }
                     }}
                     disabled={isUploadingImage || isSaving}
+                    className="flex-1"
                   />
                 </FormControl>
               )}
@@ -280,6 +300,9 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
                   setImagePreviewUrl(null);
                   setSelectedImageFile(null);
                   form.setValue("image_url", "");
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = ""; // Reset the file input element
+                  }
                 }}
               >
                 <X className="h-4 w-4" />
