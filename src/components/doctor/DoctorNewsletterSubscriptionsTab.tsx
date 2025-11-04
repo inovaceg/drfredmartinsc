@@ -72,7 +72,8 @@ export function DoctorNewsletterSubscriptionsTab() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Inscrições na Newsletter (DEBUG MODE ATIVO)</CardTitle>
+        <CardTitle>Inscrições na Newsletter 
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
