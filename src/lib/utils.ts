@@ -10,10 +10,10 @@ export function cn(...inputs: ClassValue[]) {
 export const formatDateToDisplay = (dateString: string | null): string => {
   if (!dateString) return "";
   try {
-    // Ensure it's parsed as a local date at midnight to avoid timezone shifts
-    const date = new Date(dateString + 'T00:00:00'); 
+    // Use parseYYYYMMDDToLocalDate to ensure the Date object is created in local timezone
+    const date = parseYYYYMMDDToLocalDate(dateString); 
     
-    if (isNaN(date.getTime())) return "";
+    if (!date || isNaN(date.getTime())) return "";
     return format(date, "dd/MM/yyyy"); // Format for display
   } catch {
     return "";
