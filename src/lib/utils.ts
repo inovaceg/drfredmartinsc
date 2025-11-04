@@ -54,11 +54,19 @@ export const parseYYYYMMDDToLocalDate = (dateString: string | null): Date | null
   if (!dateString) return null;
   const parts = dateString.split('-').map(Number);
   if (parts.length === 3 && !parts.some(isNaN)) {
-    // Month is 0-indexed in JavaScript Date constructor
-    // Criar a data ao meio-dia local para evitar que o fuso horário a desloque para o dia anterior
-    const date = new Date(parts[0], parts[1] - 1, parts[2], 12); 
-    // Validate if the date components match (e.g., prevent Feb 30th)
-    if (date.getFullYear() === parts[0] && date.getMonth() === parts[1] - 1 && date.getDate() === parts[2]) {
+    const year = parts[0];
+    const month = parts[1] - 1; // Month is 0-indexed
+    const day = parts[2];
+
+    // Cria um novo objeto Date e define os componentes localmente
+    const date = new Date(); // Inicia com a data e hora atuais no fuso horário local
+    date.setFullYear(year);
+    date.setMonth(month);
+    date.setDate(day);
+    date.setHours(12, 0, 0, 0); // Define para meio-dia para evitar problemas de fuso horário
+
+    // Valida se os componentes da data correspondem (ex: evita 30 de fevereiro)
+    if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day) {
       return date;
     }
   }
