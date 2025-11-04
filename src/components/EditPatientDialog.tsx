@@ -12,18 +12,22 @@ import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { BRAZILIAN_STATES } from "@/lib/brazilian-states";
 import { formatPhone, unformatPhone } from "@/lib/format-phone";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDateToDisplay, parseDateFromInput, parseDDMMYYYYToLocalDate } from "@/lib/utils"; // Import parseDDMMYYYYToLocalDate
+import { Database } from "@/integrations/supabase/types";
+
+type PatientProfile = Database['public']['Tables']['profiles']['Row'];
 
 interface EditPatientDialogProps {
-  patient: any;
+  patientId: string | null; // Agora recebe apenas o ID do paciente
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onPatientUpdated: () => void;
+  onPatientUpdated: (patientId: string) => void; // Passa o ID do paciente atualizado
 }
 
-export function EditPatientDialog({ patient, open, onOpenChange, onPatientUpdated }: EditPatientDialogProps) {
+export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpdated }: EditPatientDialogProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "",
@@ -49,6 +53,22 @@ export function EditPatientDialog({ patient, open, onOpenChange, onPatientUpdate
   const [doctorNotes, setDoctorNotes] = useState("");
   const [existingNotes, setExistingNotes] = useState<any[]>([]);
   const [loadingNotes, setLoadingNotes] = useState(false);
+
+  // Query para buscar os detalhes do paciente
+  const { data: patient, isLoading: isLoadingPatient, isError: isErrorPatient } = useQuery<PatientProfile | null, Error>({
+    queryKey: ["patientProfile", patientId],
+    queryFn: async () => {
+      if (!patientId) return null;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', patientId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!patientId, // Só executa a query se o diálogo estiver aberto e tiver um patientId
+  });
 
   // Query para buscar a lista de doutores
   const { data: doctors, isLoading: isLoadingDoctors } = useQuery({
@@ -84,7 +104,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onPatientUpdate
       });
       fetchDoctorNotes();
     }
-  }, [patient, open]);
+  }, [patient, open]); // Depende do objeto patient carregado
 
   const handleZipCodeLookup = async (cep: string) => {
     const cleanedCep = cep.replace(/\D/g, '');
@@ -132,7 +152,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onPatientUpdate
     if (!patient) return;
     
     setLoadingNotes(true);
-    const { data } = await (supabase as any)
+    const { data } = await supabase
       .from('doctor_notes')
       .select('*')
       .eq('patient_id', patient.id)
@@ -163,9 +183,15 @@ export function EditPatientDialog({ patient, open, onOpenChange, onPatientUpdate
     e.preventDefault();
     setLoading(true);
 
+    if (!patientId) {
+      toast({ title: "Erro", description: "ID do paciente não fornecido.", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+
     try {
       // Parse birth_date from dd/mm/yyyy to yyyy-MM-dd for Supabase
-      const parsedBirthDate = parseDateFromInput(formData.birth_date);
+      const parsedBirthDate = formData.birth_date ? parseDateFromInput(formData.birth_date) : null;
 
       // Add validation feedback for birth_date
       if (formData.birth_date && !parsedBirthDate) {
@@ -179,7 +205,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onPatientUpdate
       }
 
       // Update profile
-      const { error: profileError } = await (supabase as any)
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({
           full_name: formData.full_name,
@@ -202,7 +228,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onPatientUpdate
           consent_date: formData.consent_status ? (formData.consent_date || new Date().toISOString()) : null,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', patient.id);
+        .eq('id', patientId);
 
       if (profileError) {
         console.error('Profile update error:', profileError);
@@ -212,10 +238,10 @@ export function EditPatientDialog({ patient, open, onOpenChange, onPatientUpdate
       // Add doctor note if there's text
       if (doctorNotes.trim()) {
         const user = await supabase.auth.getUser();
-        const { error: notesError } = await (supabase as any)
+        const { error: notesError } = await supabase
           .from('doctor_notes')
           .insert({
-            patient_id: patient.id,
+            patient_id: patientId,
             doctor_id: user.data.user?.id,
             notes: doctorNotes.trim(),
           });
@@ -231,7 +257,13 @@ export function EditPatientDialog({ patient, open, onOpenChange, onPatientUpdate
         description: "Dados do paciente atualizados com sucesso!",
       });
 
-      await onPatientUpdated();
+      // Invalida o cache do react-query para o paciente específico e a lista de pacientes
+      queryClient.invalidateQueries({ queryKey: ["patientProfile", patientId] });
+      queryClient.invalidateQueries({ queryKey: ["doctorPatients"] }); // Invalida a lista geral de pacientes
+      queryClient.invalidateQueries({ queryKey: ["patientSessions", patientId] }); // Invalida sessões
+      queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", patientId] }); // Invalida prontuários
+      
+      onPatientUpdated(patientId); // Notifica o pai com o ID do paciente atualizado
       
       onOpenChange(false);
       setDoctorNotes("");
@@ -246,6 +278,36 @@ export function EditPatientDialog({ patient, open, onOpenChange, onPatientUpdate
       setLoading(false);
     }
   };
+
+  if (isLoadingPatient) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="flex justify-center items-center h-48">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (isErrorPatient || !patient) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Erro ao Carregar Paciente</DialogTitle>
+            <DialogDescription>
+              Não foi possível carregar os dados do paciente. Por favor, tente novamente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button onClick={() => onOpenChange(false)}>Fechar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -100,7 +100,7 @@ const Doctor = () => {
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<PatientProfile[]>([]);
-  const [selectedPatient, setSelectedPatient] = useState<PatientProfile | null>(null);
+  const [selectedPatientIdToEdit, setSelectedPatientIdToEdit] = useState<string | null>(null); // Armazena apenas o ID
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedPatientForBookingId, setSelectedPatientForBookingId] = useState<string | null>(null);
@@ -447,7 +447,6 @@ const Doctor = () => {
       const startOfDayLocal = startOfDay(dateObj);
       const endOfDayLocal = endOfDay(dateObj);
       const scheduleSlots = await getDoctorAvailabilitySlots(user.id, toUtcIso(startOfDayLocal), toUtcIso(endOfDayLocal));
-      console.log("Doctor.tsx: Slots after creation and refresh:", scheduleSlots.slots);
       setSlots(scheduleSlots.slots);
       queryClient.invalidateQueries({ queryKey: ["availableDates", user.id] });
       fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate);
@@ -776,7 +775,7 @@ const Doctor = () => {
       queryClient.invalidateQueries({ queryKey: ["patientSessions", patientToDelete.id] });
       queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", patientToDelete.id] });
 
-      setSelectedPatient(null);
+      setSelectedPatientIdToEdit(null); // Limpa o ID do paciente em edição
       setPatientToDelete(null);
       setIsDeleteDialogOpen(false);
     } catch (error: any) {
@@ -785,7 +784,7 @@ const Doctor = () => {
     } finally {
       setIsDeleting(false);
     }
-  }, [patientToDelete, user, queryClient, toast, setSelectedPatient, setPatients, setPatientToDelete, setIsDeleteDialogOpen, setIsDeleting, fetchPatients]);
+  }, [patientToDelete, user, queryClient, toast, setSelectedPatientIdToEdit, setPatients, setPatientToDelete, setIsDeleteDialogOpen, setIsDeleting, fetchPatients]);
 
   const getDisplayDateRange = useCallback(() => {
     const { start, end } = getDatesForTimeframe(selectedTimeframe, customStartDate, customEndDate);
@@ -1346,7 +1345,7 @@ const Doctor = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              setSelectedPatient(patient);
+                              setSelectedPatientIdToEdit(patient.id); // Passa apenas o ID
                               setEditDialogOpen(true);
                             }}
                           >
@@ -1374,7 +1373,7 @@ const Doctor = () => {
           </TabsContent>
 
           <TabsContent value="medical-records">
-            {user && <DoctorMedicalRecordsTab currentUserId={user.id} setSelectedPatient={setSelectedPatient} />}
+            {user && <DoctorMedicalRecordsTab currentUserId={user.id} setSelectedPatient={setSelectedPatientIdToEdit} />}
           </TabsContent>
 
           <TabsContent value="online-consultation">
@@ -1393,15 +1392,18 @@ const Doctor = () => {
 
       <Footer />
       
-      {selectedPatient && (
+      {selectedPatientIdToEdit && ( // Renderiza o diálogo se houver um ID de paciente para editar
         <EditPatientDialog
-          patient={selectedPatient}
+          patientId={selectedPatientIdToEdit}
           open={editDialogOpen}
           onOpenChange={setEditDialogOpen}
-          onPatientUpdated={async () => {
-            console.log('onPatientUpdated called');
-            await fetchPatients(user!.id);
-            setSelectedPatient(null);
+          onPatientUpdated={async (updatedPatientId) => {
+            console.log('onPatientUpdated called for patient ID:', updatedPatientId);
+            // Invalida a query da lista de pacientes para que ela seja recarregada
+            queryClient.invalidateQueries({ queryKey: ["doctorPatients", user!.id] });
+            // Opcional: se você quiser garantir que a lista de pacientes seja atualizada imediatamente
+            // await fetchPatients(user!.id); 
+            setSelectedPatientIdToEdit(null); // Limpa o ID do paciente em edição
           }}
         />
       )}
