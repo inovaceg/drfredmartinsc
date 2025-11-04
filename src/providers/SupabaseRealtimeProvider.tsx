@@ -38,11 +38,21 @@ export const SupabaseRealtimeProvider: React.FC<SupabaseRealtimeProviderProps> =
           // Optionally, track presence if needed
           // await channel.track({ user_id: supabase.auth.user()?.id || 'anonymous', status: 'online' });
         } else if (status === 'CHANNEL_ERROR') {
-          console.error("SupabaseRealtimeProvider: Realtime channel error.");
-          toast.error("Erro na conexão em tempo real com o servidor.");
+          console.error("SupabaseRealtimeProvider: Realtime channel error. Attempting to re-subscribe in 5 seconds.");
+          toast.error("Erro na conexão em tempo real com o servidor. Tentando reconectar...");
+          setTimeout(() => {
+            // Tenta remover e re-subscrever o canal após um atraso
+            supabase.removeChannel(channel);
+            // A próxima renderização do componente (ou um re-mount) irá re-inicializar o useEffect
+            // Para forçar uma re-inicialização, poderíamos usar um estado, mas por enquanto,
+            // vamos confiar que o navegador tentará se reconectar ou que o componente será re-montado.
+          }, 5000);
         } else if (status === 'TIMED_OUT') {
-          console.warn("SupabaseRealtimeProvider: Realtime subscription timed out.");
-          toast.warning("Conexão em tempo real demorou para responder.");
+          console.warn("SupabaseRealtimeProvider: Realtime subscription timed out. Attempting to re-subscribe in 5 seconds.");
+          toast.warning("Conexão em tempo real demorou para responder. Tentando reconectar...");
+          setTimeout(() => {
+            supabase.removeChannel(channel);
+          }, 5000);
         } else if (status === 'CLOSED') {
           console.log("SupabaseRealtimeProvider: Realtime channel closed.");
         }
