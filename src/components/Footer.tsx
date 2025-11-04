@@ -123,7 +123,7 @@ export function Footer() {
                   <FormItem>
                     <FormLabel className="sr-only">Nome</FormLabel>
                     <FormControl>
-                      <Input placeholder="Seu nome" {...field} />
+                      <Input placeholder="Seu nome" {...field} className="bg-white text-foreground placeholder:text-muted-foreground" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -136,7 +136,7 @@ export function Footer() {
                   <FormItem>
                     <FormLabel className="sr-only">Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="Seu email" {...field} />
+                      <Input placeholder="Seu email" {...field} className="bg-white text-foreground placeholder:text-muted-foreground" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -149,7 +149,7 @@ export function Footer() {
                   <FormItem>
                     <FormLabel className="sr-only">WhatsApp (Opcional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Seu WhatsApp (opcional)" {...field} />
+                      <Input placeholder="Seu WhatsApp (opcional)" {...field} className="bg-white text-foreground placeholder:text-muted-foreground" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
