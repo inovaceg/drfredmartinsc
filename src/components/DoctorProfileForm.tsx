@@ -428,7 +428,7 @@ export function DoctorProfileForm({ userId, onProfileUpdated }: DoctorProfileFor
               name="neighborhood"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Bairro</Label>
+                  <FormLabel>Bairro</FormLabel> {/* Corrigido: </Label> para </FormLabel> */}
                   <FormControl>
                     <Input placeholder="Nome do bairro" {...field} disabled={isFetchingCep} />
                   </FormControl>
