@@ -13,7 +13,7 @@ import { Loader2 } from "lucide-react";
 import { BRAZILIAN_STATES } from "@/lib/brazilian-states";
 import { formatPhone, unformatPhone } from "@/lib/format-phone";
 import { useQuery } from "@tanstack/react-query";
-import { formatDateToDisplay, parseDateFromInput } from "@/lib/utils"; // Import from utils
+import { formatDateToDisplay, parseDateFromInput, parseDDMMYYYYToLocalDate } from "@/lib/utils"; // Import parseDDMMYYYYToLocalDate
 
 interface EditPatientDialogProps {
   patient: any;

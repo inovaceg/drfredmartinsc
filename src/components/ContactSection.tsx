@@ -20,7 +20,7 @@ import { CalendarIcon, Loader2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { cn, formatDateToDisplay, parseDateFromInput } from "@/lib/utils"; // Importar funções de data
+import { cn, formatDateToDisplay, parseDateFromInput, parseDDMMYYYYToLocalDate } from "@/lib/utils"; // Importar parseDDMMYYYYToLocalDate
 import { ptBR } from "date-fns/locale";
 import { Textarea } from "@/components/ui/textarea";
 import { formatPhone, unformatPhone } from "@/lib/format-phone"; // Importar funções de telefone
@@ -210,10 +210,11 @@ export function ContactSection() {
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
-                          selected={field.value ? parseDateFromInput(field.value) : undefined} // Converte string para Date para o Calendar
+                          selected={field.value ? parseDDMMYYYYToLocalDate(field.value) : undefined} // Usar a nova função
                           onSelect={(date) => {
                             if (date) {
-                              field.onChange(formatDateToDisplay(date.toISOString().split('T')[0])); // Formata Date para string dd/mm/aaaa
+                              const isoString = format(date, "yyyy-MM-dd"); // Obter YYYY-MM-DD do objeto Date
+                              field.onChange(formatDateToDisplay(isoString)); // Formatar para dd/mm/yyyy para o campo
                             } else {
                               field.onChange(null);
                             }

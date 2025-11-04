@@ -12,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Loader2, User as UserIcon } from "lucide-react";
 import { BRAZILIAN_STATES } from "@/lib/brazilian-states";
 import { formatPhone, unformatPhone } from "@/lib/format-phone";
-import { formatDateToDisplay, parseDateFromInput } from "@/lib/utils"; // Import from utils
+import { formatDateToDisplay, parseDateFromInput, parseDDMMYYYYToLocalDate } from "@/lib/utils"; // Import parseDDMMYYYYToLocalDate
 
 // Input mask handler for date field
 const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>, fieldOnChange: (value: string) => void) => {
@@ -428,7 +428,7 @@ export function DoctorProfileForm({ userId, onProfileUpdated }: DoctorProfileFor
               name="neighborhood"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Bairro</FormLabel>
+                  <FormLabel>Bairro</Label>
                   <FormControl>
                     <Input placeholder="Nome do bairro" {...field} disabled={isFetchingCep} />
                   </FormControl>

@@ -58,14 +58,27 @@ export const parseYYYYMMDDToLocalDate = (dateString: string | null): Date | null
     const month = parts[1] - 1; // Month is 0-indexed
     const day = parts[2];
 
-    // Cria um novo objeto Date e define os componentes localmente
-    const date = new Date(); // Inicia com a data e hora atuais no fuso horário local
-    date.setFullYear(year);
-    date.setMonth(month);
-    date.setDate(day);
-    date.setHours(12, 0, 0, 0); // Define para meio-dia para evitar problemas de fuso horário
+    // Cria um novo objeto Date no fuso horário local, definindo a hora para meio-dia
+    const date = new Date(year, month, day, 12); 
 
     // Valida se os componentes da data correspondem (ex: evita 30 de fevereiro)
+    if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day) {
+      return date;
+    }
+  }
+  return null;
+};
+
+// Nova função para parsear strings DD/MM/YYYY para objetos Date locais
+export const parseDDMMYYYYToLocalDate = (inputString: string | null): Date | null => {
+  if (!inputString) return null;
+  const parts = inputString.split('/').map(Number);
+  if (parts.length === 3 && !parts.some(isNaN)) {
+    const day = parts[0];
+    const month = parts[1] - 1; // Month is 0-indexed
+    const year = parts[2];
+    // Cria um novo objeto Date no fuso horário local, definindo a hora para meio-dia
+    const date = new Date(year, month, day, 12); 
     if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day) {
       return date;
     }
