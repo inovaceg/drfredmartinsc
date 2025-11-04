@@ -21,5 +21,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: { "x-my-custom-header": "my-app-name" },
+    // Aumenta o tempo limite para 30 segundos (30000 ms) para todas as requisições Supabase
+    fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(30000) }),
   },
 });
