@@ -20,6 +20,7 @@ import { DoctorMedicalRecordsTab } from "@/components/doctor/DoctorMedicalRecord
 import { DoctorOnlineConsultationTab } from "@/components/DoctorOnlineConsultationTab";
 import { DoctorFormResponsesTab } from "@/components/DoctorFormResponsesTab";
 import { DoctorNewsletterSubscriptionsTab } from "@/components/doctor/DoctorNewsletterSubscriptionsTab";
+import { DoctorBlogPostsTab } from "@/components/doctor/DoctorBlogPostsTab"; // Importar o novo componente
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -895,6 +896,10 @@ const Doctor = () => {
               <MessageSquare className="h-4 w-4 mr-2" />
               Consulta Online
             </TabsTrigger>
+            <TabsTrigger value="blog-posts" className="px-3 py-2 text-sm whitespace-nowrap"> {/* Nova aba */}
+              <ClipboardList className="h-4 w-4 mr-2" />
+              Gerenciar Blog
+            </TabsTrigger>
             <TabsTrigger value="contact-forms" className="px-3 py-2 text-sm whitespace-nowrap">
               <FileText className="h-4 w-4 mr-2" />
               Formulário Contato
@@ -916,6 +921,7 @@ const Doctor = () => {
                   {activeTab === "patients" && "Meus Pacientes"}
                   {activeTab === "medical-records" && "Prontuários"}
                   {activeTab === "online-consultation" && "Consulta Online"}
+                  {activeTab === "blog-posts" && "Gerenciar Blog"} {/* Nova aba */}
                   {activeTab === "contact-forms" && "Formulário Contato"}
                   {activeTab === "newsletter-subscriptions" && "Newsletter"}
                 </Button>
@@ -974,6 +980,14 @@ const Doctor = () => {
                     >
                       <MessageSquare className="h-4 w-4 mr-2" />
                       Consulta Online
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                      onClick={() => handleTabChange("blog-posts")} {/* Nova aba */}
+                    >
+                      <ClipboardList className="h-4 w-4 mr-2" />
+                      Gerenciar Blog
                     </Button>
                     <Button
                       variant="ghost"
@@ -1378,6 +1392,10 @@ const Doctor = () => {
 
           <TabsContent value="online-consultation">
             {user && <DoctorOnlineConsultationTab isDoctorView={true} />}
+          </TabsContent>
+
+          <TabsContent value="blog-posts"> {/* Nova aba */}
+            {user && <DoctorBlogPostsTab currentUserId={user.id} />}
           </TabsContent>
 
           <TabsContent value="contact-forms">

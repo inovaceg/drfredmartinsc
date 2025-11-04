@@ -1,0 +1,394 @@
+"use client";
+
+import React, { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useUser } from "@/hooks/useUser";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Loader2, PlusCircle, Edit, Trash2, BookOpen, Eye, EyeOff, Save, X } from "lucide-react";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Tables } from "@/integrations/supabase/types";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import * as z from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+
+type BlogPost = Tables<'blog_posts'>;
+
+const blogPostSchema = z.object({
+  title: z.string().min(1, "Título é obrigatório"),
+  slug: z.string().min(1, "Slug é obrigatório").regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug inválido (apenas letras minúsculas, números e hífens)"),
+  content: z.string().min(1, "Conteúdo é obrigatório"),
+  excerpt: z.string().optional().nullable(),
+  image_url: z.string().url("URL da imagem inválida").optional().nullable().or(z.literal("")),
+  status: z.enum(["draft", "published"], { message: "Status inválido" }),
+});
+
+type BlogPostFormValues = z.infer<typeof blogPostSchema>;
+
+interface BlogPostFormProps {
+  initialData?: BlogPost;
+  onSave: (data: BlogPostFormValues) => Promise<void>;
+  onCancel: () => void;
+  isSaving: boolean;
+}
+
+const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCancel, isSaving }) => {
+  const form = useForm<BlogPostFormValues>({
+    resolver: zodResolver(blogPostSchema),
+    defaultValues: {
+      title: initialData?.title || "",
+      slug: initialData?.slug || "",
+      content: initialData?.content || "",
+      excerpt: initialData?.excerpt || "",
+      image_url: initialData?.image_url || "",
+      status: initialData?.status || "draft",
+    },
+  });
+
+  const generateSlug = (title: string) => {
+    return title
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^\w\s-]/g, "")
+      .replace(/[\s_-]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  };
+
+  useEffect(() => {
+    if (initialData) {
+      form.reset({
+        title: initialData.title,
+        slug: initialData.slug,
+        content: initialData.content,
+        excerpt: initialData.excerpt,
+        image_url: initialData.image_url,
+        status: initialData.status as "draft" | "published",
+      });
+    }
+  }, [initialData, form]);
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSave)} className="space-y-4 py-4">
+        <FormField
+          control={form.control}
+          name="title"
+          render={({ field }) => (
+            <FormItem>
+              <Label htmlFor="title">Título *</Label>
+              <FormControl>
+                <Input
+                  id="title"
+                  placeholder="Título do seu post"
+                  {...field}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    if (!initialData) { // Only auto-generate slug for new posts
+                      form.setValue("slug", generateSlug(e.target.value));
+                    }
+                  }}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="slug"
+          render={({ field }) => (
+            <FormItem>
+              <Label htmlFor="slug">Slug (URL amigável) *</Label>
+              <FormControl>
+                <Input
+                  id="slug"
+                  placeholder="titulo-do-seu-post"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="excerpt"
+          render={({ field }) => (
+            <FormItem>
+              <Label htmlFor="excerpt">Resumo (para listagem)</Label>
+              <FormControl>
+                <Textarea
+                  id="excerpt"
+                  placeholder="Um breve resumo do conteúdo do post..."
+                  rows={2}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="content"
+          render={({ field }) => (
+            <FormItem>
+              <Label htmlFor="content">Conteúdo *</Label>
+              <FormControl>
+                <Textarea
+                  id="content"
+                  placeholder="Escreva o conteúdo do seu post aqui..."
+                  rows={10}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="image_url"
+          render={({ field }) => (
+            <FormItem>
+              <Label htmlFor="image_url">URL da Imagem (Opcional)</Label>
+              <FormControl>
+                <Input
+                  id="image_url"
+                  placeholder="https://exemplo.com/imagem.jpg"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="status"
+          render={({ field }) => (
+            <FormItem>
+              <Label htmlFor="status">Status *</Label>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger id="status">
+                    <SelectValue placeholder="Selecione o status" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="draft">Rascunho</SelectItem>
+                  <SelectItem value="published">Publicado</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="flex justify-end gap-2 pt-4">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isSaving}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={isSaving}>
+            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {initialData ? "Salvar Alterações" : "Criar Post"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+};
+
+export function DoctorBlogPostsTab({ currentUserId }: { currentUserId: string }) {
+  const queryClient = useQueryClient();
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const {
+    data: blogPosts,
+    isLoading,
+    isError,
+    error,
+  } = useQuery<BlogPost[], Error>({
+    queryKey: ["doctorBlogPosts", currentUserId],
+    queryFn: async () => {
+      if (!currentUserId) return [];
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .select('*')
+        .eq('author_id', currentUserId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!currentUserId,
+  });
+
+  const handleCreatePost = async (formData: BlogPostFormValues) => {
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('blog_posts')
+        .insert({
+          ...formData,
+          author_id: currentUserId,
+        });
+      if (error) throw error;
+      toast.success("Post criado com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["doctorBlogPosts", currentUserId] });
+      setIsFormDialogOpen(false);
+    } catch (error: any) {
+      console.error("Erro ao criar post:", error);
+      toast.error("Erro ao criar post: " + error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleUpdatePost = async (formData: BlogPostFormValues) => {
+    if (!editingPost) return;
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('blog_posts')
+        .update({
+          ...formData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', editingPost.id);
+      if (error) throw error;
+      toast.success("Post atualizado com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["doctorBlogPosts", currentUserId] });
+      setIsFormDialogOpen(false);
+      setEditingPost(null);
+    } catch (error: any) {
+      console.error("Erro ao atualizar post:", error);
+      toast.error("Erro ao atualizar post: " + error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    if (!confirm("Tem certeza que deseja excluir este post?")) return;
+    try {
+      const { error } = await supabase
+        .from('blog_posts')
+        .delete()
+        .eq('id', postId);
+      if (error) throw error;
+      toast.success("Post excluído com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["doctorBlogPosts", currentUserId] });
+    } catch (error: any) {
+      console.error("Erro ao excluir post:", error);
+      toast.error("Erro ao excluir post: " + error.message);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="p-4 text-red-500">
+        Erro ao carregar posts do blog: {error?.message}
+      </div>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="flex items-center gap-2">
+          <BookOpen className="h-6 w-6 text-primary" />
+          Gerenciar Posts do Blog
+        </CardTitle>
+        <Button onClick={() => { setEditingPost(null); setIsFormDialogOpen(true); }}>
+          <PlusCircle className="mr-2 h-4 w-4" /> Novo Post
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {blogPosts && blogPosts.length > 0 ? (
+          <div className="space-y-3">
+            {blogPosts.map((post) => (
+              <div key={post.id} className="border rounded-lg p-3 bg-background">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-medium text-lg">{post.title}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Status: {post.status === 'published' ? 'Publicado' : 'Rascunho'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Criado em: {format(new Date(post.created_at!), "dd/MM/yyyy", { locale: ptBR })}
+                    </p>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => { setEditingPost(post); setIsFormDialogOpen(true); }}
+                    >
+                      <Edit className="h-4 w-4" />
+                      <span className="sr-only">Editar Post</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeletePost(post.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <span className="sr-only">Excluir Post</span>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-center py-4">
+            Nenhum post de blog encontrado. Crie seu primeiro post!
+          </p>
+        )}
+      </CardContent>
+
+      <Dialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingPost ? "Editar Post do Blog" : "Criar Novo Post do Blog"}</DialogTitle>
+            <DialogDescription>
+              {editingPost ? "Edite os detalhes do seu post." : "Preencha os detalhes para criar um novo post."}
+            </DialogDescription>
+          </DialogHeader>
+          <BlogPostForm
+            initialData={editingPost || undefined}
+            onSave={editingPost ? handleUpdatePost : handleCreatePost}
+            onCancel={() => { setIsFormDialogOpen(false); setEditingPost(null); }}
+            isSaving={isSaving}
+          />
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}

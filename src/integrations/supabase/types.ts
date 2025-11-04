@@ -123,6 +123,53 @@ export type Database = {
           },
         ]
       }
+      blog_posts: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string | null
+          excerpt: string | null
+          id: string
+          image_url: string | null
+          slug: string
+          status: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string | null
+          excerpt?: string | null
+          id?: string
+          image_url?: string | null
+          slug: string
+          status?: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string | null
+          excerpt?: string | null
+          id?: string
+          image_url?: string | null
+          slug?: string
+          status?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_submissions: {
         Row: {
           city: string | null
@@ -439,6 +486,8 @@ export type Database = {
           appointment_id: string | null
           content: string
           created_at: string | null
+          file_type: string | null
+          file_url: string | null
           id: string
           is_read: boolean | null
           receiver_id: string
@@ -448,6 +497,8 @@ export type Database = {
           appointment_id?: string | null
           content: string
           created_at?: string | null
+          file_type?: string | null
+          file_url?: string | null
           id?: string
           is_read?: boolean | null
           receiver_id: string
@@ -457,6 +508,8 @@ export type Database = {
           appointment_id?: string | null
           content?: string
           created_at?: string | null
+          file_type?: string | null
+          file_url?: string | null
           id?: string
           is_read?: boolean | null
           receiver_id?: string
@@ -928,7 +981,7 @@ export type Tables<
     : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
   ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      PublicSchema["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
