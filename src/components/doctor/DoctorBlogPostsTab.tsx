@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/hooks/useUser";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, PlusCircle, Edit, Trash2, BookOpen, Eye, EyeOff, Save, X } from "lucide-react";
+import { Loader2, PlusCircle, Edit, Trash2, BookOpen, Eye, EyeOff, Save, X, UploadCloud, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -27,6 +27,7 @@ import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { v4 as uuidv4 } from 'uuid'; // Import uuid for unique filenames
 
 type BlogPost = Tables<'blog_posts'>;
 
@@ -61,6 +62,10 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
     },
   });
 
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(initialData?.image_url || null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
   const generateSlug = (title: string) => {
     return title
       .toLowerCase()
@@ -81,12 +86,79 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
         image_url: initialData.image_url,
         status: initialData.status as "draft" | "published",
       });
+      setImagePreviewUrl(initialData.image_url || null);
     }
   }, [initialData, form]);
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedImageFile(file);
+      setImagePreviewUrl(URL.createObjectURL(file));
+      form.clearErrors("image_url"); // Clear any URL validation errors
+    } else {
+      setSelectedImageFile(null);
+      if (!form.getValues("image_url")) { // Only clear preview if no manual URL is set
+        setImagePreviewUrl(null);
+      }
+    }
+  };
+
+  const uploadImageToSupabase = async (file: File) => {
+    setIsUploadingImage(true);
+    try {
+      const fileExtension = file.name.split('.').pop();
+      const fileName = `${uuidv4()}.${fileExtension}`;
+      const bucket = "blog_images";
+
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(data.path);
+
+      return publicUrlData.publicUrl;
+    } catch (error: any) {
+      console.error("Error uploading image:", error);
+      toast.error("Erro ao fazer upload da imagem: " + error.message);
+      return null;
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleSubmit = async (values: BlogPostFormValues) => {
+    let finalImageUrl = values.image_url;
+
+    if (selectedImageFile) {
+      const uploadedUrl = await uploadImageToSupabase(selectedImageFile);
+      if (uploadedUrl) {
+        finalImageUrl = uploadedUrl;
+      } else {
+        // If upload failed, prevent saving and show error
+        return;
+      }
+    } else if (values.image_url === "") {
+      finalImageUrl = null; // Ensure empty string becomes null for DB
+    }
+
+    await onSave({ ...values, image_url: finalImageUrl });
+    setSelectedImageFile(null); // Clear file input after save
+    setImagePreviewUrl(finalImageUrl); // Update preview with final URL
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSave)} className="space-y-4 py-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-4">
         <FormField
           control={form.control}
           name="title"
@@ -163,23 +235,58 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="image_url"
-          render={({ field }) => (
-            <FormItem>
-              <Label htmlFor="image_url">URL da Imagem (Opcional)</Label>
-              <FormControl>
-                <Input
-                  id="image_url"
-                  placeholder="https://exemplo.com/imagem.jpg"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+        <FormItem>
+          <Label htmlFor="image_upload">Imagem do Post (Upload ou URL)</Label>
+          <div className="flex items-center space-x-2">
+            <Input
+              id="image_upload"
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="flex-1"
+              disabled={isUploadingImage || isSaving}
+            />
+            <span className="text-muted-foreground">ou</span>
+            <FormField
+              control={form.control}
+              name="image_url"
+              render={({ field }) => (
+                <FormControl>
+                  <Input
+                    placeholder="Cole a URL da imagem aqui"
+                    {...field}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      setImagePreviewUrl(e.target.value || null); // Update preview if manual URL is entered
+                      setSelectedImageFile(null); // Clear file input if manual URL is entered
+                    }}
+                    disabled={isUploadingImage || isSaving}
+                  />
+                </FormControl>
+              )}
+            />
+          </div>
+          {form.formState.errors.image_url && (
+            <FormMessage>{form.formState.errors.image_url.message}</FormMessage>
           )}
-        />
+          {imagePreviewUrl && (
+            <div className="mt-4 relative w-full h-48 bg-muted rounded-md overflow-hidden flex items-center justify-center">
+              <img src={imagePreviewUrl} alt="Pré-visualização da imagem" className="object-contain h-full w-full" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 bg-background/50 hover:bg-background/70"
+                onClick={() => {
+                  setImagePreviewUrl(null);
+                  setSelectedImageFile(null);
+                  form.setValue("image_url", "");
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </FormItem>
         <FormField
           control={form.control}
           name="status"
@@ -202,12 +309,12 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
           )}
         />
         <div className="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isSaving}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isSaving || isUploadingImage}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={isSaving}>
-            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {initialData ? "Salvar Alterações" : "Criar Post"}
+          <Button type="submit" disabled={isSaving || isUploadingImage}>
+            {(isSaving || isUploadingImage) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isUploadingImage ? "Carregando Imagem..." : (initialData ? "Salvar Alterações" : "Criar Post")}
           </Button>
         </div>
       </form>
