@@ -1,101 +1,90 @@
-import React, { useState, useEffect, useCallback } from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { Database } from "@/integrations/supabase/types";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Mail, CalendarDays, Phone, User as UserIcon } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { formatPhone } from "@/lib/format-phone";
+import { Loader2 } from "lucide-react";
+import { DataTable } from "@/components/ui/data-table";
+import { ColumnDef } from "@tanstack/react-table";
+import { Tables } from "@/integrations/supabase/types"; // Import Tables
 
-type NewsletterSubscription = Database['public']['Tables']['newsletter_subscriptions']['Row'];
+// 1. Atualizar a interface para incluir 'name' e 'whatsapp'
+type NewsletterSubscription = Tables<'newsletter_subscriptions'>;
 
-export const DoctorNewsletterSubscriptionsTab: React.FC = () => {
-  const { toast } = useToast();
-  const [subscriptions, setSubscriptions] = useState<NewsletterSubscription[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+// 2. Definir as colunas da tabela, incluindo 'Nome' e 'WhatsApp'
+const columns: ColumnDef<NewsletterSubscription>[] = [
+  {
+    accessorKey: "name",
+    header: "Nome",
+  },
+  {
+    accessorKey: "email",
+    header: "Email",
+  },
+  {
+    accessorKey: "whatsapp",
+    header: "WhatsApp",
+  },
+  {
+    accessorKey: "created_at",
+    header: "Data de Inscrição",
+    cell: ({ row }) => {
+      const date = new Date(row.getValue("created_at"));
+      return date.toLocaleDateString("pt-BR");
+    },
+  },
+];
 
-  const fetchSubscriptions = useCallback(async () => {
-    setLoading(true);
-    // Seleção explícita das colunas para garantir que 'name' e 'whatsapp' sejam buscados
-    const { data, error } = await supabase
-      .from('newsletter_subscriptions')
-      .select('id, email, name, whatsapp, created_at')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Erro ao buscar inscrições da newsletter:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar as inscrições da newsletter.",
-        variant: "destructive",
-      });
-    } else {
-      // Adicionado console.log para depuração
-      console.log("Dyad Debug: Dados da newsletter recebidos do Supabase:", data);
-      setSubscriptions(data || []);
-    }
-    setLoading(false);
-  }, [toast]);
+export function DoctorNewsletterSubscriptionsTab() {
+  const [newsletterSubscriptions, setNewsletterSubscriptions] = useState<
+    NewsletterSubscription[]
+  >([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const fetchSubscriptions = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // 3. Atualizar a query do Supabase para selecionar 'name' e 'whatsapp'
+        const { data, error } = await supabase
+          .from("newsletter_subscriptions")
+          .select("id, email, name, whatsapp, created_at");
+
+        if (error) {
+          throw error;
+        }
+
+        setNewsletterSubscriptions(data || []);
+        console.log("Dyad Debug: Dados da newsletter recebidos do Supabase:", data);
+      } catch (err: any) {
+        console.error("Erro ao buscar inscrições na newsletter:", err.message);
+        setError("Erro ao carregar inscrições: " + err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchSubscriptions();
-  }, [fetchSubscriptions]);
+  }, []);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Mail className="h-6 w-6 text-primary" />
-          Inscrições na Newsletter (DEBUG MODE ATIVO) {/* Texto temporário para depuração */}
-        </CardTitle>
-        <CardDescription>
-          Visualize todos os e-mails inscritos para receber sua newsletter.
-        </CardDescription>
+        <CardTitle>Inscrições na Newsletter</CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
           <div className="flex justify-center p-8">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
-        ) : subscriptions.length === 0 ? (
-          <p className="text-muted-foreground text-center py-4">
-            Nenhuma inscrição na newsletter encontrada.
-          </p>
+        ) : error ? (
+          <div className="p-4 text-red-500">{error}</div>
         ) : (
-          <div className="max-h-[70vh] overflow-y-auto scrollbar-hide">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>WhatsApp</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead className="text-right">Data de Inscrição</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {subscriptions.map((subscription) => (
-                  <TableRow key={subscription.id}>
-                    <TableCell className="font-medium flex items-center gap-2">
-                      <UserIcon className="h-4 w-4 text-muted-foreground" />
-                      {subscription.name || 'Não Informado'}
-                    </TableCell>
-                    <TableCell className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      {subscription.whatsapp ? formatPhone(subscription.whatsapp) : 'Não Informado'}
-                    </TableCell>
-                    <TableCell>{subscription.email}</TableCell>
-                    <TableCell className="text-right">
-                      {subscription.created_at ? format(new Date(subscription.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }) : '-'}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <DataTable columns={columns} data={newsletterSubscriptions} />
         )}
       </CardContent>
     </Card>
   );
-};
+}
