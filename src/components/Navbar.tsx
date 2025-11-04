@@ -2,7 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Menu, X, Instagram, LogIn, LogOut, MessageSquare, Wifi, WifiOff, CloudOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/hooks/useUser"; // Usar o novo hook useUser
+import { auth } from "@/integrations/firebase/client"; // Importar auth do Firebase
+import { signOut } from "firebase/auth"; // Importar signOut do Firebase
+import { Badge } from "@/components/ui/badge";
 import {
   Drawer,
   DrawerClose,
@@ -13,79 +17,43 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import { useToast } from "@/hooks/use-toast";
-import { User } from "@supabase/supabase-js";
-import { Badge } from "@/components/ui/badge";
 
 const Navbar = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const { user, isLoading: isUserLoading } = useUser(); // Usar o novo hook
   const navigate = useNavigate();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const { toast } = useToast();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [isSupabaseConnected, setIsSupabaseConnected] = useState(true);
-  const [lastSupabaseStatus, setLastSupabaseStatus] = useState(true);
+  // Por enquanto, vamos assumir que o Firebase está sempre conectado se o navegador estiver online.
+  // A verificação de conexão do Supabase será removida.
+  const [isFirebaseConnected, setIsFirebaseConnected] = useState(true); 
+
+  // A lógica de role do usuário precisará ser adaptada para o Firebase (Firestore)
+  // Por enquanto, vamos simular um role ou deixar como null
+  const [userRole, setUserRole] = useState<string | null>(null); 
 
   useEffect(() => {
-    const fetchUserRole = async (userId: string) => {
-      console.log("Navbar: Tentando buscar a função (role) para o userId:", userId);
-      const { data, error } = await (supabase as any)
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
-      
-      if (error) {
-        console.error("Navbar: Erro ao buscar a função do usuário:", error);
-        toast({
-          title: "Erro ao carregar função do usuário",
-          description: error.message,
-          variant: "destructive",
-        });
-        setUserRole(null);
-      } else if (data) {
-        console.log("Navbar: Função do usuário encontrada:", data.role);
-        setUserRole(data.role);
-      } else {
-        console.log("Navbar: Nenhuma função encontrada para o usuário:", userId);
-        setUserRole(null);
-      }
-    };
-
-    const handleAuthStateChange = async (event: string, session: any) => {
-      console.log("Navbar: Auth state change event:", event, "Sessão:", session);
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      if (currentUser) {
-        console.log("Navbar: Usuário logado:", currentUser.id, currentUser.email);
-        await fetchUserRole(currentUser.id);
-      } else {
-        console.log("Navbar: Usuário deslogado.");
-        setUserRole(null);
-        if (event === 'SIGNED_OUT') {
-          navigate("/auth");
-        }
-      }
-    };
-
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log("Navbar: Verificação inicial da sessão. Sessão:", session);
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      if (currentUser) {
-        console.log("Navbar: Usuário logado inicialmente:", currentUser.id, currentUser.email);
-        await fetchUserRole(currentUser.id);
-      } else {
-        console.log("Navbar: Nenhum usuário logado inicialmente.");
-        setUserRole(null);
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
-
-    return () => subscription.unsubscribe();
-  }, [toast, navigate]);
+    // Lógica para determinar o role do usuário no Firebase
+    // Isso exigirá que você tenha uma coleção de 'perfis' ou 'user_roles' no Firestore
+    // e que cada usuário tenha um documento associado com seu role.
+    // Por enquanto, vamos simular um role 'patient' se o usuário estiver logado.
+    if (user && !isUserLoading) {
+      // Exemplo de como você buscaria o role no Firestore (ainda não implementado)
+      // const fetchUserRole = async (userId: string) => {
+      //   const docRef = doc(db, "user_roles", userId);
+      //   const docSnap = await getDoc(docRef);
+      //   if (docSnap.exists()) {
+      //     setUserRole(docSnap.data().role);
+      //   } else {
+      //     setUserRole("patient"); // Default role if not found
+      //   }
+      // };
+      // fetchUserRole(user.uid);
+      setUserRole("patient"); // Simulação: todo usuário logado é paciente por enquanto
+    } else {
+      setUserRole(null);
+    }
+  }, [user, isUserLoading]);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -94,87 +62,16 @@ const Navbar = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    const checkSupabaseConnection = async () => {
-      let isDbConnected = false;
-      let isAuthServiceReachable = false;
-      let dbErrorMessage = '';
-      let authErrorMessage = '';
-
-      const connectionTimeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Tempo limite de conexão excedido.")), 30000)
-      );
-
-      try {
-        const { error: dbError } = await Promise.race([
-          supabase.from('profiles').select('id').limit(1),
-          connectionTimeout,
-        ]) as { data: any | null; error: any };
-
-        isDbConnected = !dbError;
-        if (dbError) {
-          dbErrorMessage = dbError.message;
-          console.error("Navbar: DB connection check failed:", dbError.message);
-        } else {
-          console.log("Navbar: DB connection check successful.");
-        }
-
-        const { error: authError } = await Promise.race([
-          supabase.auth.getSession(),
-          connectionTimeout,
-        ]) as { data: { session: any | null }; error: any };
-
-        isAuthServiceReachable = !authError;
-        if (authError) {
-          authErrorMessage = authError.message;
-          console.error("Navbar: Auth connection check failed:", authError.message);
-        } else {
-          console.log("Navbar: Auth service reachable.");
-        }
-
-        const currentStatus = isDbConnected && isAuthServiceReachable;
-        setIsSupabaseConnected(currentStatus);
-
-        if (currentStatus !== lastSupabaseStatus) {
-          if (currentStatus) {
-            toast({
-              title: "Conexão Supabase Restabelecida",
-              description: "A conexão com o servidor foi restaurada.",
-              variant: "default",
-            });
-          } else {
-            toast({
-              title: "Conexão Supabase Perdida",
-              description: `Não foi possível conectar ao servidor. Detalhes: ${dbErrorMessage || authErrorMessage || 'Erro desconhecido'}. Algumas funcionalidades podem estar limitadas.`,
-              variant: "destructive",
-            });
-          }
-          setLastSupabaseStatus(currentStatus);
-        }
-        console.log(`Supabase Status Check: DB Connected: ${isDbConnected} (${dbErrorMessage}), Auth Service Reachable: ${isAuthServiceReachable} (${authErrorMessage}), Overall: ${currentStatus}`);
-      } catch (e: any) {
-        console.error("Navbar: Unexpected error during Supabase connection check:", e);
-        const currentStatus = false;
-        setIsSupabaseConnected(currentStatus);
-        if (currentStatus !== lastSupabaseStatus) {
-          toast({
-            title: "Conexão Supabase Perdida",
-            description: `Não foi possível conectar ao servidor. Detalhes: ${e.message || 'Erro desconhecido'}. Algumas funcionalidades podem estar limitadas.`,
-          variant: "destructive",
-          });
-          setLastSupabaseStatus(currentStatus);
-        }
-      }
-    };
-
-    checkSupabaseConnection();
-    const interval = setInterval(checkSupabaseConnection, 10000);
+    // A verificação de conexão do Firebase é mais complexa e geralmente
+    // é tratada pelos próprios SDKs. Por enquanto, vamos ligar o status
+    // do Firebase ao status online do navegador.
+    setIsFirebaseConnected(navigator.onLine);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      clearInterval(interval);
     };
-  }, [toast, lastSupabaseStatus]);
+  }, []);
 
   const handleNavigationAndScroll = useCallback((sectionId: string) => {
     console.log("handleNavigationAndScroll called for:", sectionId);
@@ -182,8 +79,19 @@ const Navbar = () => {
     setIsDrawerOpen(false);
   }, [navigate]);
 
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      toast.success("Você foi desconectado(a).");
+      navigate("/auth");
+    } catch (error: any) {
+      console.error("Firebase Logout Error:", error.message);
+      toast.error("Erro ao sair: " + error.message);
+    }
+  };
+
   return (
-    <header className="sticky top-12 z-50 bg-card border-b border-border shadow-sm backdrop-blur-md"> {/* Alterado top-0 para top-12 */}
+    <header className="sticky top-12 z-50 bg-card border-b border-border shadow-sm backdrop-blur-md">
       <div className="container mx-auto flex items-center justify-between h-20 px-4">
         <div className="flex items-center space-x-3">
           <Link to="/">
@@ -256,25 +164,7 @@ const Navbar = () => {
           )}
           {user ? (
             <Button 
-              onClick={async () => {
-                console.log("Navbar: Tentando deslogar...");
-                const { error } = await supabase.auth.signOut();
-                if (error) {
-                  console.error("Navbar: Erro ao deslogar:", error);
-                  toast({
-                    title: "Erro ao sair",
-                    description: error.message,
-                    variant: "destructive",
-                  });
-                } else {
-                  console.log("Navbar: Deslogado com sucesso. Redirecionando para /auth.");
-                  toast({
-                    title: "Sucesso",
-                    description: "Você foi desconectado(a).",
-                  });
-                  navigate("/auth");
-                }
-              }}
+              onClick={handleSignOut}
               variant="outline"
               className="flex items-center gap-2"
             >
@@ -295,9 +185,9 @@ const Navbar = () => {
             <Badge variant="destructive" className="flex items-center gap-1">
               <WifiOff className="h-3 w-3" /> Offline
             </Badge>
-          ) : !isSupabaseConnected ? (
+          ) : !isFirebaseConnected ? (
             <Badge variant="secondary" className="flex items-center gap-1 bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
-              <CloudOff className="h-3 w-3" /> Supabase Offline
+              <CloudOff className="h-3 w-3" /> Firebase Offline
             </Badge>
           ) : (
             <Badge variant="secondary" className="flex items-center gap-1 bg-green-500/10 text-green-400 border-green-500/30">
@@ -397,26 +287,7 @@ const Navbar = () => {
                 )}
                 {user ? (
                   <Button 
-                    onClick={async () => {
-                      console.log("Navbar (Drawer): Tentando deslogar...");
-                      const { error } = await supabase.auth.signOut();
-                      if (error) {
-                        console.error("Navbar (Drawer): Erro ao deslogar:", error);
-                        toast({
-                          title: "Erro ao sair",
-                          description: error.message,
-                          variant: "destructive",
-                        });
-                      } else {
-                        console.log("Navbar (Drawer): Deslogado com sucesso. Redirecionando para /auth.");
-                        toast({
-                          title: "Sucesso",
-                          description: "Você foi desconectado(a).",
-                        });
-                        navigate("/auth");
-                        setIsDrawerOpen(false);
-                      }
-                    }}
+                    onClick={handleSignOut}
                     variant="outline"
                     className="flex items-center gap-2 w-full mt-2"
                   >
