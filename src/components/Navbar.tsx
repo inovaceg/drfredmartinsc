@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Menu, X, Instagram, LogIn, LogOut, MessageSquare, Wifi, WifiOff, CloudOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner"; // Importar o toast do sonner diretamente
 import { useUser } from "@/hooks/useUser"; // Usar o novo hook useUser
 import { supabase } from "@/integrations/supabase/client"; // Importar supabase
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,7 @@ const Navbar = () => {
   const { user, isLoading: isUserLoading, profile } = useUser(); // Usar o novo hook
   const navigate = useNavigate();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const { toast } = useToast();
+  // Removido: const { toast } = useToast(); // Não é mais necessário, pois importamos o toast do sonner diretamente
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(true); // Estado para conexão Supabase
 
