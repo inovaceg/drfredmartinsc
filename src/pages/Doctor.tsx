@@ -110,6 +110,7 @@ const Doctor = () => {
   const [patientToDelete, setPatientToDelete] = useState<PatientProfile | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [initiatingCallForPatientId, setInitiatingCallForPatientId] = useState<string | null>(null); // Novo estado
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -798,6 +799,42 @@ const Doctor = () => {
     return "Período Selecionado";
   }, [selectedTimeframe, customStartDate, customEndDate]);
 
+  const handleInitiateVideoSession = async (patientId: string) => {
+    if (!user?.id) {
+      toast({ title: "Erro", description: "Você precisa estar logado para iniciar uma consulta.", variant: "destructive" });
+      return;
+    }
+    setInitiatingCallForPatientId(patientId);
+    try {
+      const newSessionId = crypto.randomUUID();
+      const { data, error } = await supabase
+        .from("video_sessions")
+        .insert({
+          id: newSessionId,
+          user_id: user.id, // O doutor é o usuário que inicia
+          doctor_id: user.id,
+          patient_id: patientId,
+          room_id: newSessionId,
+          status: "ringing", // Status inicial
+          ice_candidates: [],
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast.success(`Chamada iniciada para ${patients.find(p => p.id === patientId)?.full_name || 'o paciente'}!`);
+      // Mudar para a aba de consulta online
+      setActiveTab("online-consultation");
+      // A OnlineConsultationTab irá capturar a nova sessão via assinatura em tempo real
+    } catch (error: any) {
+      console.error("Error initiating video session:", error.message);
+      toast.error("Erro ao iniciar consulta online: " + error.message);
+    } finally {
+      setInitiatingCallForPatientId(null);
+    }
+  };
+
 
   console.log("Doctor component is rendering. User:", user?.id, "Loading:", loading);
 
@@ -969,9 +1006,10 @@ const Doctor = () => {
           <TabsContent value="profile">
             <Card>
               <CardContent className="p-6">
-                {user?.id && <DoctorProfileForm userId={user.id} onProfileUpdated={() => {
+                {user?.id && <DoctorProfileForm userId={user.id} onProfileUpdated={async () => {
                   console.log("Doctor profile updated!");
-                  fetchDoctorProfile(user.id);
+                  const updatedProfile = await fetchDoctorProfile(user.id);
+                  setDoctorProfile(updatedProfile);
                 }} />}
               </CardContent>
             </Card>
@@ -1264,6 +1302,72 @@ const Doctor = () => {
                       </div>
                     </div>
                   ))
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="patients">
+            <Card>
+              <CardHeader>
+                <CardTitle>Meus Pacientes</CardTitle>
+                <CardDescription>Gerencie os dados dos seus pacientes.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {patients.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">
+                    Nenhum paciente cadastrado.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4">
+                    {patients.map((patient) => (
+                      <Card key={patient.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between">
+                        <div>
+                          <p className="font-medium text-lg">{patient.full_name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {patient.whatsapp ? `WhatsApp: ${formatPhone(patient.whatsapp)}` : 'WhatsApp não informado'}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-3 sm:mt-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleInitiateVideoSession(patient.id)}
+                            disabled={initiatingCallForPatientId === patient.id}
+                          >
+                            {initiatingCallForPatientId === patient.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                              <Video className="h-4 w-4 mr-2" />
+                            )}
+                            Iniciar Consulta Online
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedPatient(patient);
+                              setEditDialogOpen(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Editar
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              setPatientToDelete(patient);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Excluir
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>
