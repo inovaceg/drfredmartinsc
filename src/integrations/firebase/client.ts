@@ -13,6 +13,11 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+// Adicionando logs explícitos para depuração da chave da API
+console.log("Dyad Debug: VITE_FIREBASE_API_KEY sendo usado (do .env):", firebaseConfig.apiKey ? firebaseConfig.apiKey.substring(0, 10) + '...' : 'Não carregado');
+console.log("Dyad Debug: firebaseConfig completo:", firebaseConfig);
+
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
