@@ -14,7 +14,6 @@ import { PatientScheduleTab } from "@/components/patient/PatientScheduleTab";
 import { PatientAppointmentsTab } from "@/components/patient/PatientAppointmentsTab";
 import { PatientMedicalRecordsTab } from "@/components/patient/PatientMedicalRecordsTab";
 import { OnlineConsultationTab } from "@/components/OnlineConsultationTab";
-import { PatientDocumentsPage } from "@/pages/PatientDocumentsPage";
 import { Tables } from "@/integrations/supabase/types";
 import { Button as ShadcnButton } from "@/components/ui/button";
 
@@ -115,7 +114,6 @@ export default function Patient() {
             <TabsTrigger value="schedule" className="px-3 py-2 text-sm text-center">Agendar Consulta</TabsTrigger>
             <TabsTrigger value="appointments" className="px-3 py-2 text-sm text-center">Meus Agendamentos</TabsTrigger>
             <TabsTrigger value="medical-records" className="px-3 py-2 text-sm text-center">Prontuários</TabsTrigger>
-            <TabsTrigger value="documents" className="px-3 py-2 text-sm text-center">Documentos</TabsTrigger>
             <TabsTrigger value="online-consultation" className="px-3 py-2 text-sm text-center">Consulta Online</TabsTrigger>
           </TabsList>
           <TabsContent value="profile" className="mt-6">
@@ -129,9 +127,6 @@ export default function Patient() {
           </TabsContent>
           <TabsContent value="medical-records" className="mt-6">
             <PatientMedicalRecordsTab />
-          </TabsContent>
-          <TabsContent value="documents" className="mt-6">
-            <PatientDocumentsPage />
           </TabsContent>
           <TabsContent value="online-consultation" className="mt-6">
             <OnlineConsultationTab isDoctorView={false} />
