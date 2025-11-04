@@ -55,7 +55,8 @@ export const parseYYYYMMDDToLocalDate = (dateString: string | null): Date | null
   const parts = dateString.split('-').map(Number);
   if (parts.length === 3 && !parts.some(isNaN)) {
     // Month is 0-indexed in JavaScript Date constructor
-    const date = new Date(parts[0], parts[1] - 1, parts[2]);
+    // Criar a data ao meio-dia local para evitar que o fuso horário a desloque para o dia anterior
+    const date = new Date(parts[0], parts[1] - 1, parts[2], 12); 
     // Validate if the date components match (e.g., prevent Feb 30th)
     if (date.getFullYear() === parts[0] && date.getMonth() === parts[1] - 1 && date.getDate() === parts[2]) {
       return date;
