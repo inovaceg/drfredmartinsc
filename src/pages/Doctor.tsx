@@ -643,7 +643,7 @@ const Doctor = () => {
 
   async function handleBookSlotForPatient() {
     if (!user?.id || !selectedSlotForBooking || !selectedPatientForBookingId) {
-      toast.error("Por favor, selecione um paciente e um horário disponível para agendar.");
+      toast({ title: "Erro", description: "Por favor, selecione um paciente e um horário disponível para agendar.", variant: "destructive" });
       return;
     }
     setIsBookingForPatient(true);
@@ -823,13 +823,13 @@ const Doctor = () => {
 
       if (error) throw error;
 
-      toast.success(`Chamada iniciada para ${patients.find(p => p.id === patientId)?.full_name || 'o paciente'}!`);
+      toast({ title: "Sucesso", description: `Chamada iniciada para ${patients.find(p => p.id === patientId)?.full_name || 'o paciente'}!` });
       // Mudar para a aba de consulta online
       setActiveTab("online-consultation");
       // A OnlineConsultationTab irá capturar a nova sessão via assinatura em tempo real
     } catch (error: any) {
       console.error("Error initiating video session:", error.message);
-      toast.error("Erro ao iniciar consulta online: " + error.message);
+      toast({ title: "Erro", description: "Erro ao iniciar consulta online: " + error.message, variant: "destructive" });
     } finally {
       setInitiatingCallForPatientId(null);
     }
