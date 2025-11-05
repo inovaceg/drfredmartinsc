@@ -126,11 +126,16 @@ const BlogPostPage = () => {
               />
             )}
 
+            {post.category && (
+              <p className="text-sm text-muted-foreground mb-2">
+                <BookOpen className="h-4 w-4 mr-2 inline-block" />
+                {post.category}
+              </p>
+            )}
             <h1 className="text-4xl md:text-5xl font-bold text-red-500 mb-4 leading-tight">
               {post.title}
             </h1>
             <div className="flex items-center text-muted-foreground text-sm mb-8">
-              <BookOpen className="h-4 w-4 mr-2" />
               <span>
                 Por {post.author_profile?.full_name || 'Autor Desconhecido'} em{' '}
                 {format(new Date(post.created_at!), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}

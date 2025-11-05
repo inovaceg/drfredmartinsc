@@ -38,6 +38,7 @@ const blogPostSchema = z.object({
   excerpt: z.string().optional().nullable(),
   image_url: z.string().url("URL da imagem inválida").optional().nullable().or(z.literal("")),
   status: z.enum(["draft", "published"], { message: "Status inválido" }),
+  category: z.string().optional().nullable(), // Novo campo de categoria
 });
 
 type BlogPostFormValues = z.infer<typeof blogPostSchema>;
@@ -59,6 +60,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
       excerpt: initialData?.excerpt || "",
       image_url: initialData?.image_url || "",
       status: initialData?.status || "draft",
+      category: initialData?.category || "", // Valor padrão para categoria
     },
   });
 
@@ -87,6 +89,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
         excerpt: initialData.excerpt,
         image_url: initialData.image_url,
         status: initialData.status as "draft" | "published",
+        category: initialData.category || "", // Resetar categoria
       });
       setImagePreviewUrl(initialData.image_url || null);
     } else {
@@ -98,6 +101,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
         excerpt: "",
         image_url: "",
         status: "draft",
+        category: "", // Limpar categoria
       });
       setImagePreviewUrl(null);
       setSelectedImageFile(null);
@@ -221,6 +225,23 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
                 <Input
                   id="slug"
                   placeholder="titulo-do-seu-post"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="category" // Novo campo de categoria
+          render={({ field }) => (
+            <FormItem>
+              <Label htmlFor="category">Categoria</Label>
+              <FormControl>
+                <Input
+                  id="category"
+                  placeholder="Ex: Saúde Mental, Relacionamentos"
                   {...field}
                 />
               </FormControl>
@@ -505,6 +526,7 @@ export function DoctorBlogPostsTab({ currentUserId }: { currentUserId: string })
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="font-medium text-lg">{post.title}</p>
+                    {post.category && <p className="text-sm text-muted-foreground">Categoria: {post.category}</p>} {/* Exibe a categoria */}
                     <p className="text-sm text-muted-foreground">
                       Status: {post.status === 'published' ? 'Publicado' : 'Rascunho'}
                     </p>

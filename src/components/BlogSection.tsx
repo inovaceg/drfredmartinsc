@@ -97,7 +97,7 @@ const BlogSection = () => {
                   <img src={post.image_url} alt={post.title} className="w-full h-48 object-cover rounded-lg mb-4" />
                 )}
                 {/* Campo de texto fino acima do título */}
-                <p className="text-xs text-gray-600 mb-1">Categoria do Post</p>
+                <p className="text-xs text-gray-600 mb-1">{post.category || "Categoria do Post"}</p>
                 <h3 className="text-xl font-semibold mb-2 text-red-500 tracking-tight">{post.title}</h3>
                 {/* Meta-informações combinadas */}
                 <p className="text-sm text-muted-foreground mb-4">
