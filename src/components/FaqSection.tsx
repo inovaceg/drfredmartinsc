@@ -15,7 +15,7 @@ const FaqSection = () => {
     },
     {
       question: "Qual a duração de uma sessão?",
-      answer: "Geralmente, as sessões têm duração de 50 minutos, mas isso pode ser ajustado conforme a necessidade e o tipo de terapia, sempre em comum acordo com o paciente."
+      answer: "Geralmente, as sessões têm duração de 45 minutos, mas isso pode ser ajustado conforme a necessidade e o tipo de terapia, sempre em comum acordo com o paciente."
     },
     {
       question: "Os dados e conversas são confidenciais?",
