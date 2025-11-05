@@ -97,7 +97,7 @@ const BlogSection = () => {
                   <img src={post.image_url} alt={post.title} className="w-full h-48 object-cover rounded-lg mb-4" />
                 )}
                 <BookOpen className="h-10 w-10 text-primary mb-4" />
-                <h3 className="text-xl font-semibold mb-3 text-foreground tracking-tight">{post.title}</h3>
+                <h3 className="text-xl font-semibold mb-3 text-destructive tracking-tight">{post.title}</h3>
                 <p className="text-muted-foreground text-sm mb-4 line-clamp-3">{post.excerpt || post.content}</p>
                 <p className="text-muted-foreground text-xs mb-2">
                   Por: {post.author_profile?.full_name || 'Autor Desconhecido'}
