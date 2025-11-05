@@ -308,7 +308,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
               <FormControl>
                 <Textarea
                   id="content"
-                  placeholder="Escreva o conteúdo do seu post aqui. Você pode colar imagens diretamente ou usar Markdown: ![Texto Alternativo](URL_DA_IMAGEM)"
+                  placeholder="Escreva o conteúdo do seu post aqui. Use **dois asteriscos** para negrito, ou cole imagens diretamente: ![Texto Alternativo](URL_DA_IMAGEM)"
                   rows={10}
                   {...field}
                   ref={(e) => {
