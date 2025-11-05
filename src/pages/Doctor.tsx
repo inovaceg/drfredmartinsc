@@ -52,6 +52,7 @@ import { DeletePatientAlertDialog } from "@/components/doctor/DeletePatientAlert
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useUser } from "@/hooks/useUser"; // Importar useUser do Supabase
+import ErrorBoundary from "@/components/ErrorBoundary"; // Importar ErrorBoundary
 
 // Importar as novas funções de data e queries
 import { getDatesForTimeframe, toUtcIso } from "@/lib/dates";
@@ -171,7 +172,7 @@ const Doctor = () => {
 
       // Fetch patient profiles separately
       const patientIds = [...new Set(apptsData.map(a => a.patient_id))];
-      let patientProfiles: Profile[] = [];
+      let patientProfiles: PatientProfile[] = [];
       if (patientIds.length > 0) {
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
@@ -818,558 +819,558 @@ const Doctor = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Portal do Profissional</h1>
-            <p className="text-muted-foreground mt-2">
-              Bem-vindo(a), {doctorProfile?.full_name || user?.email}
-            </p>
-          </div>
-          <Button variant="outline" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
-          </Button>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-          <TabsList className="hidden md:flex w-full bg-muted p-1 rounded-lg border space-x-1">
-            <TabsTrigger value="profile" className="px-3 py-2 text-sm whitespace-nowrap">
-              <UserIcon className="h-4 w-4 mr-2" />
-              Meu Perfil
-            </TabsTrigger>
-            <TabsTrigger value="schedule" className="px-3 py-2 text-sm whitespace-nowrap">
-              <CalendarIcon className="h-4 w-4 mr-2" />
-              Gerenciar Agenda
-            </TabsTrigger>
-            <TabsTrigger value="appointments" className="px-3 py-2 text-sm whitespace-nowrap">
-              <Clock className="h-4 w-4 mr-2" />
-              Agenda Consultas
-            </TabsTrigger>
-            <TabsTrigger value="patients" className="px-3 py-2 text-sm whitespace-nowrap">
-              <Users className="h-4 w-4 mr-2" />
-              Meus Pacientes
-            </TabsTrigger>
-            <TabsTrigger value="medical-records" className="px-3 py-2 text-sm whitespace-nowrap">
-              <BookOpen className="h-4 w-4 mr-2" />
-              Prontuários
-            </TabsTrigger>
-            <TabsTrigger value="online-consultation" className="px-3 py-2 text-sm whitespace-nowrap">
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Consulta Online
-            </TabsTrigger>
-            <TabsTrigger value="blog-posts" className="px-3 py-2 text-sm whitespace-nowrap">
-              <ClipboardList className="h-4 w-4 mr-2" />
-              Gerenciar Blog
-            </TabsTrigger>
-            <TabsTrigger value="contact-forms" className="px-3 py-2 text-sm whitespace-nowrap">
-              <FileText className="h-4 w-4 mr-2" />
-              Formulário Contato
-            </TabsTrigger>
-            <TabsTrigger value="newsletter-subscriptions" className="px-3 py-2 text-sm whitespace-nowrap">
-              <Mail className="h-4 w-4 mr-2" />
-              Newsletter
-            </TabsTrigger>
-          </TabsList>
-
-          <div className="md:hidden mb-4">
-            <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-              <DrawerTrigger asChild>
-                <Button variant="outline" className="w-full justify-start">
-                  <Menu className="h-4 w-4 mr-2" />
-                  {activeTab === "profile" && "Meu Perfil"}
-                  {activeTab === "schedule" && "Gerenciar Agenda"}
-                  {activeTab === "appointments" && "Agenda Consultas"}
-                  {activeTab === "patients" && "Meus Pacientes"}
-                  {activeTab === "medical-records" && "Prontuários"}
-                  {activeTab === "online-consultation" && "Consulta Online"}
-                  {activeTab === "blog-posts" && "Gerenciar Blog"}
-                  {activeTab === "contact-forms" && "Formulário Contato"}
-                  {activeTab === "newsletter-subscriptions" && "Newsletter"}
-                </Button>
-              </DrawerTrigger>
-              <DrawerContent className="h-[80vh] rounded-t-[10px] flex flex-col">
-                <DrawerHeader className="text-left">
-                  <DrawerTitle>Navegação do Portal</DrawerTitle>
-                  <DrawerDescription>Selecione uma opção abaixo</DrawerDescription>
-                </DrawerHeader>
-                <div className="p-4 flex-1 overflow-y-auto">
-                  <div className="flex flex-col space-y-1">
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
-                      onClick={() => handleTabChange("profile")}
-                    >
-                      <UserIcon className="h-4 w-4 mr-2" />
-                      Meu Perfil
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
-                      onClick={() => handleTabChange("schedule")}
-                    >
-                      <CalendarIcon className="h-4 w-4 mr-2" />
-                      Gerenciar Agenda
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
-                      onClick={() => handleTabChange("appointments")}
-                    >
-                      <Clock className="h-4 w-4 mr-2" />
-                      Agenda Consultas
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
-                      onClick={() => handleTabChange("patients")}
-                    >
-                      <Users className="h-4 w-4 mr-2" />
-                      Meus Pacientes
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
-                      onClick={() => handleTabChange("medical-records")}
-                    >
-                      <BookOpen className="h-4 w-4 mr-2" />
-                      Prontuários
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
-                      onClick={() => handleTabChange("online-consultation")}
-                    >
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Consulta Online
-                    </Button>
-                    {/* Nova aba no Drawer */}
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
-                      onClick={() => handleTabChange("blog-posts")}
-                    >
-                      <ClipboardList className="h-4 w-4 mr-2" />
-                      Gerenciar Blog
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
-                      onClick={() => handleTabChange("contact-forms")}
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Formulário Contato
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
-                      onClick={() => handleTabChange("newsletter-subscriptions")}
-                    >
-                      <Mail className="h-4 w-4 mr-2" />
-                      Newsletter
-                    </Button>
-                  </div>
-                </div>
-                <DrawerFooter>
-                  <DrawerClose asChild>
-                    <Button variant="outline">Fechar</Button>
-                  </DrawerClose>
-                </DrawerFooter>
-              </DrawerContent>
-            </Drawer>
+      <ErrorBoundary> {/* Adicionado ErrorBoundary aqui */}
+        <main className="flex-1 container mx-auto px-4 py-8">
+          <div className="mb-8 flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold">Portal do Profissional</h1>
+              <p className="text-muted-foreground mt-2">
+                Bem-vindo(a), {doctorProfile?.full_name || user?.email}
+              </p>
+            </div>
+            <Button variant="outline" onClick={handleSignOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sair
+            </Button>
           </div>
 
-          <TabsContent value="profile">
-            <Card>
-              <CardContent className="p-6">
-                {user?.id && <DoctorProfileForm userId={user.id} onProfileUpdated={async () => {
-                  const updatedProfile = await fetchDoctorProfile(user.id);
-                  setDoctorProfile(updatedProfile);
-                }} />}
-              </CardContent>
-            </Card>
-          </TabsContent>
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
+            <TabsList className="hidden md:flex w-full bg-muted p-1 rounded-lg border space-x-1">
+              <TabsTrigger value="profile" className="px-3 py-2 text-sm whitespace-nowrap">
+                <UserIcon className="h-4 w-4 mr-2" />
+                Meu Perfil
+              </TabsTrigger>
+              <TabsTrigger value="schedule" className="px-3 py-2 text-sm whitespace-nowrap">
+                <CalendarIcon className="h-4 w-4 mr-2" />
+                Gerenciar Agenda
+              </TabsTrigger>
+              <TabsTrigger value="appointments" className="px-3 py-2 text-sm whitespace-nowrap">
+                <Clock className="h-4 w-4 mr-2" />
+                Agenda Consultas
+              </TabsTrigger>
+              <TabsTrigger value="patients" className="px-3 py-2 text-sm whitespace-nowrap">
+                <Users className="h-4 w-4 mr-2" />
+                Meus Pacientes
+              </TabsTrigger>
+              <TabsTrigger value="medical-records" className="px-3 py-2 text-sm whitespace-nowrap">
+                <BookOpen className="h-4 w-4 mr-2" />
+                Prontuários
+              </TabsTrigger>
+              <TabsTrigger value="online-consultation" className="px-3 py-2 text-sm whitespace-nowrap">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Consulta Online
+              </TabsTrigger>
+              <TabsTrigger value="blog-posts" className="px-3 py-2 text-sm whitespace-nowrap">
+                <ClipboardList className="h-4 w-4 mr-2" />
+                Gerenciar Blog
+              </TabsTrigger>
+              <TabsTrigger value="contact-forms" className="px-3 py-2 text-sm whitespace-nowrap">
+                <FileText className="h-4 w-4 mr-2" />
+                Formulário Contato
+              </TabsTrigger>
+              <TabsTrigger value="newsletter-subscriptions" className="px-3 py-2 text-sm whitespace-nowrap">
+                <Mail className="h-4 w-4 mr-2" />
+                Newsletter
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="schedule">
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Selecione uma Data</CardTitle>
-                  <CardDescription>Escolha o dia para gerenciar sua agenda</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate ? createLocalDateFromISOString(selectedDate) : undefined}
-                    onSelect={(date) => {
-                      if (date) {
-                        const year = date.getFullYear();
-                        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-                        const day = date.getDate().toString().padStart(2, '0');
-                        const iso = `${year}-${month}-${day}`;
-                        setSelectedDate(iso);
-                        setSelectedSlotIds([]);
-                        setSelectedSlotForBooking(null);
-                      } else {
-                        setSelectedDate(undefined);
-                        setSelectedSlotIds([]);
-                        setSelectedSlotForBooking(null);
-                      }
-                    }}
-                    locale={ptBR}
-                    className="rounded-md border"
-                  />
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>
-                    Horários para {selectedDate ? format(createLocalDateFromISOString(selectedDate), "dd 'de' MMMM", { locale: ptBR }) : ""}
-                  </CardTitle>
-                  <CardDescription>
-                    {isLoadingScheduleSlots ? "Carregando horários..." : (slots.length > 0 ? "Selecione horários para ações em massa" : "Nenhum horário cadastrado")}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {isLoadingScheduleSlots ? (
-                    <div className="flex justify-center p-8">
-                      <Loader2 className="h-8 w-8 animate-spin" />
+            <div className="md:hidden mb-4">
+              <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+                <DrawerTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start">
+                    <Menu className="h-4 w-4 mr-2" />
+                    {activeTab === "profile" && "Meu Perfil"}
+                    {activeTab === "schedule" && "Gerenciar Agenda"}
+                    {activeTab === "appointments" && "Agenda Consultas"}
+                    {activeTab === "patients" && "Meus Pacientes"}
+                    {activeTab === "medical-records" && "Prontuários"}
+                    {activeTab === "online-consultation" && "Consulta Online"}
+                    {activeTab === "blog-posts" && "Gerenciar Blog"}
+                    {activeTab === "contact-forms" && "Formulário Contato"}
+                    {activeTab === "newsletter-subscriptions" && "Newsletter"}
+                  </Button>
+                </DrawerTrigger>
+                <DrawerContent className="h-[80vh] rounded-t-[10px] flex flex-col">
+                  <DrawerHeader className="text-left">
+                    <DrawerTitle>Navegação do Portal</DrawerTitle>
+                    <DrawerDescription>Selecione uma opção abaixo</DrawerDescription>
+                  </DrawerHeader>
+                  <div className="p-4 flex-1 overflow-y-auto">
+                    <div className="flex flex-col space-y-1">
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                        onClick={() => handleTabChange("profile")}
+                      >
+                        <UserIcon className="h-4 w-4 mr-2" />
+                        Meu Perfil
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                        onClick={() => handleTabChange("schedule")}
+                      >
+                        <CalendarIcon className="h-4 w-4 mr-2" />
+                        Gerenciar Agenda
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                        onClick={() => handleTabChange("appointments")}
+                      >
+                        <Clock className="h-4 w-4 mr-2" />
+                        Agenda Consultas
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                        onClick={() => handleTabChange("patients")}
+                      >
+                        <Users className="h-4 w-4 mr-2" />
+                        Meus Pacientes
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                        onClick={() => handleTabChange("medical-records")}
+                      >
+                        <BookOpen className="h-4 w-4 mr-2" />
+                        Prontuários
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                        onClick={() => handleTabChange("online-consultation")}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Consulta Online
+                      </Button>
+                      {/* Nova aba no Drawer */}
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                        onClick={() => handleTabChange("blog-posts")}
+                      >
+                        <ClipboardList className="h-4 w-4 mr-2" />
+                        Gerenciar Blog
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                        onClick={() => handleTabChange("contact-forms")}
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Formulário Contato
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start px-4 py-3 text-base whitespace-nowrap text-left"
+                        onClick={() => handleTabChange("newsletter-subscriptions")}
+                      >
+                        <Mail className="h-4 w-4 mr-2" />
+                        Newsletter
+                      </Button>
                     </div>
-                  ) : (
-                    <>
-                      {slots.length > 0 && (
-                        <div className="flex items-center justify-between pb-2 border-b">
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id="select-all-slots"
-                              checked={selectedSlotIds.length === slots.length && slots.length > 0}
-                              onCheckedChange={(checked) => handleSelectAllSlots(checked as boolean)}
-                            />
-                            <Label htmlFor="select-all-slots">Selecionar Todos</Label>
-                          </div>
-                          {selectedSlotIds.length > 0 && (
-                            <div className="flex gap-2">
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={handleBulkDeleteSlots}
-                                disabled={isLoadingScheduleSlots}
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Excluir ({selectedSlotIds.length})
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleBulkToggleAvailability(true)}
-                                disabled={isLoadingScheduleSlots}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                Disponibilizar ({selectedSlotIds.length})
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleBulkToggleAvailability(false)}
-                                disabled={isLoadingScheduleSlots}
-                              >
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Indisponibilizar ({selectedSlotIds.length})
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {slots.length > 0 ? (
-                        <div className="space-y-2 max-h-96 overflow-y-auto">
-                          {slots.map((slot) => (
-                            <div
-                              key={slot.id}
-                              className="flex items-center justify-between p-3 border rounded-lg"
-                            >
-                              <div className="flex items-center space-x-2">
-                                <Checkbox
-                                  id={`slot-${slot.id}`}
-                                  checked={selectedSlotIds.includes(slot.id)}
-                                  onCheckedChange={(checked) => handleSelectSlot(slot.id, checked as boolean)}
-                                />
-                                <Label htmlFor={`slot-${slot.id}`} className="font-medium">
-                                  {format(new Date(slot.start_time), "HH:mm")} - {format(new Date(slot.end_time), "HH:mm")}
-                                </Label>
-                              </div>
-                              <Button
-                                variant={slot.is_available ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => toggleSlotAvailability(slot.id, slot.is_available)}
-                              >
-                                {slot.is_available ? "Disponível" : "Indisponível"}
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-8">
-                          <p className="text-muted-foreground mb-4">
-                            Nenhum horário cadastrado para esta data
-                          </p>
-                          <Button onClick={createDefaultSlots} disabled={isLoadingScheduleSlots}>
-                            Gerar Horários Padrão (8:15-20:00, 45min)
-                          </Button>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+                  </div>
+                  <DrawerFooter>
+                    <DrawerClose asChild>
+                      <Button variant="outline">Fechar</Button>
+                    </DrawerClose>
+                  </DrawerFooter>
+                </DrawerContent>
+              </Drawer>
             </div>
 
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Agendar Horário para Paciente</CardTitle>
-                <CardDescription>Selecione um paciente e um horário disponível para agendar uma consulta.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="patient-for-booking-select">Paciente</Label>
-                  <Select
-                    onValueChange={setSelectedPatientForBookingId}
-                    value={selectedPatientForBookingId || ""}
-                    disabled={!patients || patients.length === 0}
-                  >
-                    <SelectTrigger id="patient-for-booking-select">
-                      <SelectValue placeholder={!patients || patients.length === 0 ? "Nenhum paciente encontrado" : "Selecione um paciente"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {patients?.map((patient) => (
-                        <SelectItem key={patient.id} value={patient.id}>
-                          {patient.full_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+            <TabsContent value="profile">
+              <Card>
+                <CardContent className="p-6">
+                  {user?.id && <DoctorProfileForm userId={user.id} onProfileUpdated={async () => {
+                    const updatedProfile = await fetchDoctorProfile(user.id);
+                    setDoctorProfile(updatedProfile);
+                  }} />}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="slot-for-booking-select">Horário Disponível</Label>
-                  <Select
-                    onValueChange={(value) => {
-                      const [slotId, startTime, endTime] = value.split("|");
-                      setSelectedSlotForBooking({ id: slotId, start_time: startTime, end_time: endTime });
-                    }}
-                    value={selectedSlotForBooking ? `${selectedSlotForBooking.id}|${selectedSlotForBooking.start_time}|${selectedSlotForBooking.end_time}` : ""}
-                    disabled={!selectedDate || isLoadingScheduleSlots || !slots || slots.filter(s => s.is_available).length === 0}
-                  >
-                    <SelectTrigger id="slot-for-booking-select">
-                      <SelectValue placeholder={isLoadingScheduleSlots ? "Carregando horários..." : (slots.filter(s => s.is_available).length === 0 ? "Nenhum horário disponível" : "Selecione um horário")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {slots.filter(s => s.is_available).map((slot) => (
-                        <SelectItem
-                          key={slot.id}
-                          value={`${slot.id}|${slot.start_time}|${slot.end_time}`}
-                        >
-                          {format(new Date(slot.start_time), "HH:mm", { locale: ptBR })} - {format(new Date(slot.end_time), "HH:mm", { locale: ptBR })}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+            <TabsContent value="schedule">
+              <div className="grid gap-6 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Selecione uma Data</CardTitle>
+                    <CardDescription>Escolha o dia para gerenciar sua agenda</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate ? createLocalDateFromISOString(selectedDate) : undefined}
+                      onSelect={(date) => {
+                        if (date) {
+                          const year = date.getFullYear();
+                          const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                          const day = date.getDate().toString().padStart(2, '0');
+                          const iso = `${year}-${month}-${day}`;
+                          setSelectedDate(iso);
+                          setSelectedSlotIds([]);
+                          setSelectedSlotForBooking(null);
+                        } else {
+                          setSelectedDate(undefined);
+                          setSelectedSlotIds([]);
+                          setSelectedSlotForBooking(null);
+                        }
+                      }}
+                      locale={ptBR}
+                      className="rounded-md border"
+                    />
+                  </CardContent>
+                </Card>
 
-                <Button
-                  onClick={handleBookSlotForPatient}
-                  disabled={!selectedPatientForBookingId || !selectedSlotForBooking || isBookingForPatient}
-                  className="w-full"
-                >
-                  {isBookingForPatient ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Agendando...
-                    </>
-                  ) : (
-                    "Agendar Consulta para Paciente"
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="appointments">
-            <Card>
-              <CardHeader>
-                <CardTitle>Agenda Consultas</CardTitle>
-                <CardDescription>Gerencie suas consultas</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {appointments.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">
-                    Nenhuma consulta agendada
-                  </p>
-                ) : (
-                  appointments.map((apt) => (
-                    <div key={apt.id} className="border rounded-lg p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <p className="font-medium text-lg">
-                            {apt.patient_profile?.full_name || 'Paciente Desconhecido'}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {format(new Date(apt.start_time), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
-                          </p>
-                        </div>
-                        <Badge variant={
-                          apt.status === 'confirmed' ? 'default' :
-                          apt.status === 'pending' ? 'secondary' :
-                          apt.status === 'completed' ? 'outline' : 'destructive'
-                        }>
-                          {apt.status === 'pending' ? 'Pendente' : 
-                           apt.status === 'confirmed' ? 'Confirmada' : 
-                           apt.status === 'completed' ? 'Concluída' : 'Cancelada'}
-                        </Badge>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      Horários para {selectedDate ? format(createLocalDateFromISOString(selectedDate), "dd 'de' MMMM", { locale: ptBR }) : ""}
+                    </CardTitle>
+                    <CardDescription>
+                      {isLoadingScheduleSlots ? "Carregando horários..." : (slots.length > 0 ? "Selecione horários para ações em massa" : "Nenhum horário cadastrado")}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {isLoadingScheduleSlots ? (
+                      <div className="flex justify-center p-8">
+                        <Loader2 className="h-8 w-8 animate-spin" />
                       </div>
-                      
-                      <div className="space-y-2 text-sm text-muted-foreground mb-4">
-                        {apt.patient_profile?.whatsapp && (
-                          <p className="flex items-center gap-2">
-                            <Phone className="h-4 w-4 text-primary" />
-                            WhatsApp: <a href={`https://wa.me/${apt.patient_profile.whatsapp}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                              {formatPhone(apt.patient_profile.whatsapp)}
-                            </a>
-                          </p>
-                        )}
-                        {(apt.patient_profile?.street || apt.patient_profile?.city) && (
-                          <p className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-primary" />
-                            Endereço: {[
-                              apt.patient_profile.street && `${apt.patient_profile.street}${apt.patient_profile.street_number ? ', ' + apt.patient_profile.street_number : ''}`,
-                              apt.patient_profile.neighborhood,
-                              apt.patient_profile.city,
-                              apt.patient_profile.state
-                            ].filter(Boolean).join(' - ')}
-                            {apt.patient_profile.zip_code && ` - CEP: ${apt.patient_profile.zip_code}`}
-                          </p>
-                        )}
-                      </div>
-
-                      {apt.notes && (
-                        <p className="text-sm mb-3">
-                          <span className="font-medium">Observações:</span> {apt.notes}
-                        </p>
-                      )}
-                      <div className="flex gap-2">
-                        {apt.status === 'pending' && (
-                          <Button size="sm" onClick={() => updateAppointmentStatus(apt.id, 'confirmed')}>
-                            Confirmar
-                          </Button>
-                        )}
-                        {apt.status === 'confirmed' && (
-                          <Button size="sm" onClick={() => updateAppointmentStatus(apt.id, 'completed')}>
-                            Concluir
-                          </Button>
-                        )}
-                        {(apt.status === 'pending' || apt.status === 'confirmed') && (
-                          <Button size="sm" variant="outline" onClick={() => updateAppointmentStatus(apt.id, 'cancelled')}>
-                            Cancelar
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="patients">
-            <Card>
-              <CardHeader>
-                <CardTitle>Meus Pacientes</CardTitle>
-                <CardDescription>Gerencie os dados dos seus pacientes.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {patients.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">
-                    Nenhum paciente cadastrado.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-1 gap-4">
-                    {patients.map((patient) => (
-                      <Card key={patient.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between">
-                        <div>
-                          <p className="font-medium text-lg">{patient.full_name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {patient.whatsapp ? `WhatsApp: ${formatPhone(patient.whatsapp)}` : 'WhatsApp não informado'}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap gap-2 mt-3 sm:mt-0">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleInitiateVideoSession(patient.id)}
-                            disabled={initiatingCallForPatientId === patient.id}
-                          >
-                            {initiatingCallForPatientId === patient.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            ) : (
-                              <Video className="h-4 w-4 mr-2" />
+                    ) : (
+                      <>
+                        {slots.length > 0 && (
+                          <div className="flex items-center justify-between pb-2 border-b">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="select-all-slots"
+                                checked={selectedSlotIds.length === slots.length && slots.length > 0}
+                                onCheckedChange={(checked) => handleSelectAllSlots(checked as boolean)}
+                              />
+                              <Label htmlFor="select-all-slots">Selecionar Todos</Label>
+                            </div>
+                            {selectedSlotIds.length > 0 && (
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={handleBulkDeleteSlots}
+                                  disabled={isLoadingScheduleSlots}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Excluir ({selectedSlotIds.length})
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleBulkToggleAvailability(true)}
+                                  disabled={isLoadingScheduleSlots}
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Disponibilizar ({selectedSlotIds.length})
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleBulkToggleAvailability(false)}
+                                  disabled={isLoadingScheduleSlots}
+                                >
+                                  <XCircle className="h-4 w-4 mr-2" />
+                                  Indisponibilizar ({selectedSlotIds.length})
+                                </Button>
+                              </div>
                             )}
-                            Iniciar Consulta Online
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedPatientIdToEdit(patient.id); // Passa apenas o ID
-                              setEditDialogOpen(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Editar
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => {
-                              setPatientToDelete(patient);
-                              setIsDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Excluir
-                          </Button>
-                        </div>
-                      </Card>
-                    ))}
+                          </div>
+                        )}
+
+                        {slots.length > 0 ? (
+                          <div className="space-y-2 max-h-96 overflow-y-auto">
+                            {slots.map((slot) => (
+                              <div
+                                key={slot.id}
+                                className="flex items-center justify-between p-3 border rounded-lg"
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`slot-${slot.id}`}
+                                    checked={selectedSlotIds.includes(slot.id)}
+                                    onCheckedChange={(checked) => handleSelectSlot(slot.id, checked as boolean)}
+                                  />
+                                  <Label htmlFor={`slot-${slot.id}`} className="font-medium">
+                                    {format(new Date(slot.start_time), "HH:mm")} - {format(new Date(slot.end_time), "HH:mm")}
+                                  </Label>
+                                </div>
+                                <Button
+                                  variant={slot.is_available ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => toggleSlotAvailability(slot.id, slot.is_available)}
+                                >
+                                  {slot.is_available ? "Disponível" : "Indisponível"}
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8">
+                            <p className="text-muted-foreground mb-4">
+                              Nenhum horário cadastrado para esta data
+                            </p>
+                            <Button onClick={createDefaultSlots} disabled={isLoadingScheduleSlots}>
+                              Gerar Horários Padrão (8:15-20:00, 45min)
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>Agendar Horário para Paciente</CardTitle>
+                  <CardDescription>Selecione um paciente e um horário disponível para agendar uma consulta.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="patient-for-booking-select">Paciente</Label>
+                    <Select
+                      onValueChange={setSelectedPatientForBookingId}
+                      value={selectedPatientForBookingId || ""}
+                      disabled={!patients || patients.length === 0}
+                    >
+                      <SelectTrigger id="patient-for-booking-select">
+                        <SelectValue placeholder={!patients || patients.length === 0 ? "Nenhum paciente encontrado" : "Selecione um paciente"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {patients?.map((patient) => (
+                          <SelectItem key={patient.id} value={patient.id}>
+                            {patient.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          <TabsContent value="medical-records">
-            {user && <DoctorMedicalRecordsTab currentUserId={user.id} setSelectedPatient={setSelectedPatientIdToEdit} />}
-          </TabsContent>
+                  <div className="grid gap-2">
+                    <Label htmlFor="slot-for-booking-select">Horário Disponível</Label>
+                    <Select
+                      onValueChange={(value) => {
+                        const [slotId, startTime, endTime] = value.split("|");
+                        setSelectedSlotForBooking({ id: slotId, start_time: startTime, end_time: endTime });
+                      }}
+                      value={selectedSlotForBooking ? `${selectedSlotForBooking.id}|${selectedSlotForBooking.start_time}|${selectedSlotForBooking.end_time}` : ""}
+                      disabled={!selectedDate || isLoadingScheduleSlots || !slots || slots.filter(s => s.is_available).length === 0}
+                    >
+                      <SelectTrigger id="slot-for-booking-select">
+                        <SelectValue placeholder={isLoadingScheduleSlots ? "Carregando horários..." : (slots.filter(s => s.is_available).length === 0 ? "Nenhum horário disponível" : "Selecione um horário")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {slots.filter(s => s.is_available).map((slot) => (
+                          <SelectItem
+                            key={slot.id}
+                            value={`${slot.id}|${slot.start_time}|${slot.end_time}`}
+                          >
+                            {format(new Date(slot.start_time), "HH:mm", { locale: ptBR })} - {format(new Date(slot.end_time), "HH:mm", { locale: ptBR })}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-          <TabsContent value="online-consultation">
-            {user && <DoctorOnlineConsultationTab isDoctorView={true} />}
-          </TabsContent>
+                  <Button
+                    onClick={handleBookSlotForPatient}
+                    disabled={!selectedPatientForBookingId || !selectedSlotForBooking || isBookingForPatient}
+                    className="w-full"
+                  >
+                    {isBookingForPatient ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Agendando...
+                      </>
+                    ) : (
+                      "Agendar Consulta para Paciente"
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          <TabsContent value="blog-posts">
-            {user && <DoctorBlogPostsTab currentUserId={user.id} />}
-          </TabsContent>
+            <TabsContent value="appointments">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Agenda Consultas</CardTitle>
+                  <CardDescription>Gerencie suas consultas</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {appointments.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">
+                      Nenhuma consulta agendada
+                    </p>
+                  ) : (
+                    appointments.map((apt) => (
+                      <div key={apt.id} className="border rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <p className="font-medium text-lg">
+                              {apt.patient_profile?.full_name || 'Paciente Desconhecido'}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {format(new Date(apt.start_time), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                            </p>
+                          </div>
+                          <Badge variant={
+                            apt.status === 'confirmed' ? 'default' :
+                            apt.status === 'pending' ? 'secondary' :
+                            apt.status === 'completed' ? 'outline' : 'destructive'
+                          }>
+                            {apt.status === 'pending' ? 'Pendente' : 
+                            apt.status === 'confirmed' ? 'Confirmada' : 
+                            apt.status === 'completed' ? 'Concluída' : 'Cancelada'}
+                          </Badge>
+                        </div>
+                        
+                        <div className="space-y-2 text-sm text-muted-foreground mb-4">
+                          {apt.patient_profile?.whatsapp && (
+                            <p className="flex items-center gap-2">
+                              <Phone className="h-4 w-4 text-primary" />
+                              WhatsApp: <a href={`https://wa.me/${apt.patient_profile.whatsapp}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                                {formatPhone(apt.patient_profile.whatsapp)}
+                              </a>
+                            </p>
+                          )}
+                          {(apt.patient_profile?.street || apt.patient_profile?.city) && (
+                            <p className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 text-primary" />
+                              Endereço: {[
+                                apt.patient_profile.street && `${apt.patient_profile.street}${apt.patient_profile.street_number ? ', ' + apt.patient_profile.street_number : ''}`,
+                                apt.patient_profile.neighborhood,
+                                apt.patient_profile.city,
+                                apt.patient_profile.state
+                              ].filter(Boolean).join(' - ')}
+                              {apt.patient_profile.zip_code && ` - CEP: ${apt.patient_profile.zip_code}`}
+                            </p>
+                          )}
+                        </div>
 
-          <TabsContent value="contact-forms">
-            <DoctorFormResponsesTab />
-          </TabsContent>
+                        {apt.notes && (
+                          <p className="text-sm mb-3">
+                            <span className="font-medium">Observações:</span> {apt.notes}
+                          </p>
+                        )}
+                        <div className="flex gap-2">
+                          {apt.status === 'pending' && (
+                            <Button size="sm" onClick={() => updateAppointmentStatus(apt.id, 'confirmed')}>
+                              Confirmar
+                            </Button>
+                          )}
+                          {apt.status === 'confirmed' && (
+                            <Button size="sm" onClick={() => updateAppointmentStatus(apt.id, 'completed')}>
+                              Concluir
+                            </Button>
+                          )}
+                          {(apt.status === 'pending' || apt.status === 'confirmed') && (
+                            <Button size="sm" variant="outline" onClick={() => updateAppointmentStatus(apt.id, 'cancelled')}>
+                              Cancelar
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          <TabsContent value="newsletter-subscriptions">
-            <DoctorNewsletterSubscriptionsTab />
-          </TabsContent>
-        </Tabs>
-      </main>
+            <TabsContent value="patients">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Meus Pacientes</CardTitle>
+                  <CardDescription>Gerencie os dados dos seus pacientes.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {patients.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">
+                      Nenhum paciente cadastrado.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                      {patients.map((patient) => (
+                        <Card key={patient.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between">
+                          <div>
+                            <p className="font-medium text-lg">{patient.full_name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {patient.whatsapp ? `WhatsApp: ${formatPhone(patient.whatsapp)}` : 'WhatsApp não informado'}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2 mt-3 sm:mt-0">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleInitiateVideoSession(patient.id)}
+                              disabled={initiatingCallForPatientId === patient.id}
+                            >
+                              {initiatingCallForPatientId === patient.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              ) : (
+                                <Video className="h-4 w-4 mr-2" />
+                              )}
+                              Iniciar Consulta Online
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedPatientIdToEdit(patient.id); // Passa apenas o ID
+                                setEditDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Editar
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                setPatientToDelete(patient);
+                                setIsDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Excluir
+                            </Button>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
+            <TabsContent value="medical-records">
+              {user && <DoctorMedicalRecordsTab currentUserId={user.id} setSelectedPatient={setSelectedPatientIdToEdit} />}
+            </TabsContent>
+
+            <TabsContent value="online-consultation">
+              {user && <DoctorOnlineConsultationTab isDoctorView={true} />}
+            </TabsContent>
+
+            <TabsContent value="blog-posts">
+              {user && <DoctorBlogPostsTab currentUserId={user.id} />}
+            </TabsContent>
+
+            <TabsContent value="contact-forms">
+              <DoctorFormResponsesTab />
+            </TabsContent>
+
+            <TabsContent value="newsletter-subscriptions">
+              <DoctorNewsletterSubscriptionsTab />
+            </TabsContent>
+          </Tabs>
+        </main>
+      </ErrorBoundary>
       <Footer />
       
       {selectedPatientIdToEdit && ( // Renderiza o diálogo se houver um ID de paciente para editar

@@ -16,6 +16,7 @@ import { PatientMedicalRecordsTab } from "@/components/patient/PatientMedicalRec
 import { OnlineConsultationTab } from "@/components/OnlineConsultationTab";
 import { Tables } from "@/integrations/supabase/types";
 import { Button as ShadcnButton } from "@/components/ui/button";
+import ErrorBoundary from "@/components/ErrorBoundary"; // Importar ErrorBoundary
 
 type Profile = Tables<'profiles'>;
 
@@ -105,34 +106,36 @@ export default function Patient() {
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      <main className="flex-1 container mx-auto px-4 py-8 md:py-12">
-        <h1 className="text-4xl font-bold text-center mb-8">Área do Paciente</h1>
+      <ErrorBoundary> {/* Adicionado ErrorBoundary aqui */}
+        <main className="flex-1 container mx-auto px-4 py-8 md:py-12">
+          <h1 className="text-4xl font-bold text-center mb-8">Área do Paciente</h1>
 
-        <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="flex flex-wrap justify-center w-full bg-muted p-1 rounded-lg border gap-1">
-            <TabsTrigger value="profile" className="px-3 py-2 text-sm text-center">Meu Perfil</TabsTrigger>
-            <TabsTrigger value="schedule" className="px-3 py-2 text-sm text-center">Agendar Consulta</TabsTrigger>
-            <TabsTrigger value="appointments" className="px-3 py-2 text-sm text-center">Meus Agendamentos</TabsTrigger>
-            <TabsTrigger value="medical-records" className="px-3 py-2 text-sm text-center">Prontuários</TabsTrigger>
-            <TabsTrigger value="online-consultation" className="px-3 py-2 text-sm text-center">Consulta Online</TabsTrigger>
-          </TabsList>
-          <TabsContent value="profile" className="mt-6">
-            <PatientProfileForm profile={profile} onProfileUpdated={handleProfileUpdated} />
-          </TabsContent>
-          <TabsContent value="schedule" className="mt-6">
-            <PatientScheduleTab />
-          </TabsContent>
-          <TabsContent value="appointments" className="mt-6">
-            <PatientAppointmentsTab />
-          </TabsContent>
-          <TabsContent value="medical-records" className="mt-6">
-            <PatientMedicalRecordsTab />
-          </TabsContent>
-          <TabsContent value="online-consultation" className="mt-6">
-            <OnlineConsultationTab isDoctorView={false} />
-          </TabsContent>
-        </Tabs>
-      </main>
+          <Tabs defaultValue="profile" className="w-full">
+            <TabsList className="flex flex-wrap justify-center w-full bg-muted p-1 rounded-lg border gap-1">
+              <TabsTrigger value="profile" className="px-3 py-2 text-sm text-center">Meu Perfil</TabsTrigger>
+              <TabsTrigger value="schedule" className="px-3 py-2 text-sm text-center">Agendar Consulta</TabsTrigger>
+              <TabsTrigger value="appointments" className="px-3 py-2 text-sm text-center">Meus Agendamentos</TabsTrigger>
+              <TabsTrigger value="medical-records" className="px-3 py-2 text-sm text-center">Prontuários</TabsTrigger>
+              <TabsTrigger value="online-consultation" className="px-3 py-2 text-sm text-center">Consulta Online</TabsTrigger>
+            </TabsList>
+            <TabsContent value="profile" className="mt-6">
+              <PatientProfileForm profile={profile} onProfileUpdated={handleProfileUpdated} />
+            </TabsContent>
+            <TabsContent value="schedule" className="mt-6">
+              <PatientScheduleTab />
+            </TabsContent>
+            <TabsContent value="appointments" className="mt-6">
+              <PatientAppointmentsTab />
+            </TabsContent>
+            <TabsContent value="medical-records" className="mt-6">
+              <PatientMedicalRecordsTab />
+            </TabsContent>
+            <TabsContent value="online-consultation" className="mt-6">
+              <OnlineConsultationTab isDoctorView={false} />
+            </TabsContent>
+          </Tabs>
+        </main>
+      </ErrorBoundary>
       <Footer />
     </div>
   );
