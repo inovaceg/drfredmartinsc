@@ -276,7 +276,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
               <FormControl>
                 <Textarea
                   id="content"
-                  placeholder="Escreva o conteúdo do seu post aqui..."
+                  placeholder="Escreva o conteúdo do seu post aqui. Você pode usar Markdown para formatar texto e inserir imagens: ![Texto Alternativo](URL_DA_IMAGEM)"
                   rows={10}
                   {...field}
                 />
@@ -286,7 +286,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
           )}
         />
         <FormItem>
-          <Label htmlFor="image_upload">Imagem do Post (Upload ou URL)</Label>
+          <Label htmlFor="image_upload">Imagem de Capa (Opcional)</Label> {/* Renomeado */}
           <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
             <input
               id="image_upload"

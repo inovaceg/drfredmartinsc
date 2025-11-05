@@ -11,6 +11,8 @@ import Navbar from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import ReactMarkdown from 'react-markdown'; // Importar ReactMarkdown
+import remarkGfm from 'remark-gfm'; // Importar remarkGfm para suporte a tabelas, etc.
 
 type BlogPost = Tables<'blog_posts'> & { author_profile?: { full_name: string } };
 
@@ -143,8 +145,8 @@ const BlogPostPage = () => {
             </div>
 
             <div className="prose max-w-none text-foreground leading-relaxed space-y-6">
-              <p className="text-lg italic">{post.excerpt}</p>
-              <div dangerouslySetInnerHTML={{ __html: post.content }} />
+              {/* Renderizar conteúdo Markdown */}
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
             </div>
           </Card>
         </div>
