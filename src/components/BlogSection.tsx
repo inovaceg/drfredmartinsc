@@ -92,21 +92,21 @@ const BlogSection = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {blogPosts.map((post) => (
-              <div key={post.id} className="bg-white/10 border border-white/10 p-8 rounded-2xl backdrop-blur-md hover:border-blue-400/30 transition-all">
+              <div key={post.id} className="bg-card border border-border p-8 rounded-2xl transition-all hover:shadow-md">
                 {post.image_url && (
                   <img src={post.image_url} alt={post.title} className="w-full h-48 object-cover rounded-lg mb-4" />
                 )}
-                <BookOpen className="h-10 w-10 text-blue-400 mb-4" />
-                <h3 className="text-xl font-semibold mb-3 text-white tracking-tight">{post.title}</h3>
-                <p className="text-white/70 text-sm mb-4 line-clamp-3">{post.excerpt || post.content}</p>
-                <p className="text-white/60 text-xs mb-2">
+                <BookOpen className="h-10 w-10 text-primary mb-4" />
+                <h3 className="text-xl font-semibold mb-3 text-foreground tracking-tight">{post.title}</h3>
+                <p className="text-muted-foreground text-sm mb-4 line-clamp-3">{post.excerpt || post.content}</p>
+                <p className="text-muted-foreground text-xs mb-2">
                   Por: {post.author_profile?.full_name || 'Autor Desconhecido'}
                 </p>
-                <p className="text-white/60 text-xs mb-4">
+                <p className="text-muted-foreground text-xs mb-4">
                   Publicado em: {format(new Date(post.created_at!), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                 </p>
                 {/* Por enquanto, o link pode ser para uma página de detalhe futura ou apenas um placeholder */}
-                <a href={`/blog/${post.slug}`} className="text-blue-400 hover:underline font-medium">
+                <a href={`/blog/${post.slug}`} className="text-primary hover:underline font-medium">
                   Leia Mais &rarr;
                 </a>
               </div>
