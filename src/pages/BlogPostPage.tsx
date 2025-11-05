@@ -132,7 +132,7 @@ const BlogPostPage = () => {
                 {post.category}
               </p>
             )}
-            <h1 className="text-4xl md:text-5xl font-bold text-red-500 mb-4 leading-tight">
+            <h1 className="text-4xl md:text-5xl font-bold text-red-700 mb-4 leading-tight">
               {post.title}
             </h1>
             <div className="flex items-center text-muted-foreground text-sm mb-8">

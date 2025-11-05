@@ -98,7 +98,7 @@ const BlogSection = () => {
                 )}
                 {/* Campo de texto fino acima do título */}
                 <p className="text-xs text-gray-600 mb-1">{post.category || "Categoria do Post"}</p>
-                <h3 className="text-xl font-semibold mb-2 text-red-500 tracking-tight">{post.title}</h3>
+                <h3 className="text-xl font-semibold mb-2 text-red-700 tracking-tight">{post.title}</h3>
                 {/* Meta-informações combinadas */}
                 <p className="text-sm text-muted-foreground mb-4">
                   Por: {post.author_profile?.full_name || 'Autor Desconhecido'} —{' '}
