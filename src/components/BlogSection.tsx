@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import ReactMarkdown from 'react-markdown'; // Importar ReactMarkdown
+import remarkGfm from 'remark-gfm'; // Importar remarkGfm
 
 type BlogPost = Tables<'blog_posts'> & { author_profile?: { full_name: string } };
 
@@ -104,7 +106,12 @@ const BlogSection = () => {
                   Por: {post.author_profile?.full_name || 'Autor Desconhecido'} —{' '}
                   {format(new Date(post.created_at!), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                 </p>
-                <p className="text-muted-foreground text-sm mb-4 line-clamp-3">{post.excerpt || post.content}</p>
+                {/* Renderizar o excerpt ou conteúdo com ReactMarkdown */}
+                <div className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {post.excerpt || post.content}
+                  </ReactMarkdown>
+                </div>
                 <a href={`/blog/${post.slug}`} className="text-blue-700 hover:underline font-medium">
                   Leia Mais &rarr;
                 </a>
