@@ -28,6 +28,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { v4 as uuidv4 } from 'uuid'; // Import uuid for unique filenames
+import TurndownService from 'turndown'; // Import TurndownService
 
 type BlogPost = Tables<'blog_posts'>;
 
@@ -168,6 +169,9 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
     const items = event.clipboardData?.items;
     if (!items) return;
 
+    let handled = false;
+
+    // Try to handle image files first
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       if (item.type.startsWith('image/') && item.kind === 'file') {
@@ -188,9 +192,32 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
 
             form.setValue("content", newContent, { shouldValidate: true });
             toast.success("Imagem inserida no post!");
+            handled = true;
           }
-          return; // Only handle one image per paste for simplicity
+          return; // Only handle one image file per paste for simplicity
         }
+      }
+    }
+
+    // If no image file was handled, try to handle HTML content
+    if (!handled) {
+      const html = event.clipboardData.getData('text/html');
+      if (html) {
+        event.preventDefault(); // Prevent default paste behavior
+        const turndownService = new TurndownService();
+        const markdown = turndownService.turndown(html);
+
+        const currentContent = form.getValues("content");
+        const cursorPosition = contentTextareaRef.current?.selectionStart || currentContent.length;
+
+        const newContent =
+          currentContent.substring(0, cursorPosition) +
+          markdown +
+          currentContent.substring(cursorPosition);
+
+        form.setValue("content", newContent, { shouldValidate: true });
+        toast.success("Conteúdo formatado colado com sucesso!");
+        handled = true;
       }
     }
   };
@@ -308,7 +335,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
               <FormControl>
                 <Textarea
                   id="content"
-                  placeholder="Escreva o conteúdo do seu post aqui. Use **dois asteriscos** para negrito, ou cole imagens diretamente: ![Texto Alternativo](URL_DA_IMAGEM)"
+                  placeholder="Escreva o conteúdo do seu post aqui. Cole texto formatado (negrito, itálico) diretamente ou imagens."
                   rows={10}
                   {...field}
                   ref={(e) => {
