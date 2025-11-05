@@ -2,17 +2,17 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useUser } from "@/hooks/useUser";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Mic, MicOff, Video, VideoOff, PhoneOff } from "lucide-react";
 import { toast } from "sonner";
-import { Tables, Json } from "@/integrations/supabase/types"; // Import Json
+import { Tables, Json } from "@/integrations/supabase/types";
+import { connect, LocalVideoTrack, LocalAudioTrack, RemoteVideoTrack, RemoteAudioTrack, Room, Participant } from 'twilio-video'; // Import Twilio Video
 
 type VideoSession = Tables<'video_sessions'>;
 
 interface VideoCallWindowProps {
-  currentUserId: string; // Added currentUserId prop
+  currentUserId: string;
   sessionId: string;
   otherUserId: string;
   appointmentId?: string;
@@ -20,15 +20,8 @@ interface VideoCallWindowProps {
   onClose: () => void;
 }
 
-const servers = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-  ],
-};
-
 export function VideoCallWindow({
-  currentUserId, // Destructure currentUserId
+  currentUserId,
   sessionId,
   otherUserId,
   appointmentId,
@@ -44,33 +37,12 @@ export function VideoCallWindow({
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const peerConnection = useRef<RTCPeerConnection | null>(null);
-
-  const timeoutPromise = new Promise<any>((_, reject) => // Explicitly type Promise.race return
-    setTimeout(() => reject(new Error("Operation timed out")), 10000)
-  );
-
-  const getMediaDevices = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-      setLocalStream(stream);
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
-      return stream;
-    } catch (error) {
-      console.error("Error accessing media devices:", error);
-      toast.error("Não foi possível acessar câmera/microfone. Verifique as permissões.");
-      return null;
-    }
-  }, []);
+  const activeRoom = useRef<Room | null>(null); // Twilio Room object
 
   const handleEndCall = useCallback(async () => {
-    if (peerConnection.current) {
-      peerConnection.current.close();
+    if (activeRoom.current) {
+      activeRoom.current.disconnect();
+      activeRoom.current = null;
     }
     if (localStream) {
       localStream.getTracks().forEach((track) => track.stop());
@@ -81,259 +53,169 @@ export function VideoCallWindow({
     onClose();
 
     try {
-      const { error } = await Promise.race([
-        supabase
-          .from("video_sessions")
-          .update({ status: "ended", ended_at: new Date().toISOString() })
-          .eq("id", sessionId),
-        timeoutPromise,
-      ]);
+      const { error } = await supabase
+        .from("video_sessions")
+        .update({ status: "ended", ended_at: new Date().toISOString() })
+        .eq("id", sessionId);
       if (error) throw error;
       toast.info("Chamada encerrada.");
     } catch (error: any) {
       console.error("Error updating session status to ended:", error.message);
       toast.error("Erro ao finalizar a sessão: " + error.message);
     }
-  }, [localStream, sessionId, onClose, timeoutPromise]);
+  }, [localStream, sessionId, onClose]);
 
-  const setupPeerConnection = useCallback(async (stream: MediaStream) => {
-    peerConnection.current = new RTCPeerConnection(servers);
-
-    stream.getTracks().forEach((track) => {
-      peerConnection.current?.addTrack(track, stream);
-    });
-
-    peerConnection.current.ontrack = (event) => {
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = event.streams[0];
-        setRemoteStream(event.streams[0]);
-      }
-    };
-
-    peerConnection.current.onicecandidate = async (event) => {
-      if (event.candidate) {
-        try {
-          const { data: sessionData, error: fetchError } = await Promise.race([
-            supabase
-              .from("video_sessions")
-              .select("ice_candidates")
-              .eq("id", sessionId)
-              .single(),
-            timeoutPromise,
-          ]);
-
-          if (fetchError) throw fetchError;
-
-          const currentCandidates = (sessionData?.ice_candidates || []) as RTCIceCandidateInit[];
-          const updatedCandidates = [...currentCandidates, event.candidate.toJSON()];
-
-          const { error: updateError } = await Promise.race([
-            supabase
-              .from("video_sessions")
-              .update({ ice_candidates: updatedCandidates as Json })
-              .eq("id", sessionId),
-            timeoutPromise,
-          ]);
-
-          if (updateError) throw updateError;
-        } catch (error: any) {
-          console.error("Error adding ICE candidate:", error.message);
-          toast.error("Erro ao trocar informações de conexão: " + error.message);
+  const attachParticipantTracks = (participant: Participant, container: HTMLVideoElement) => {
+    participant.tracks.forEach(publication => {
+      if (publication.isSubscribed) {
+        const track = publication.track;
+        if (track) {
+          container.appendChild(track.attach());
         }
       }
-    };
-  }, [sessionId, timeoutPromise]);
+    });
+  };
 
-  const createOffer = useCallback(async () => {
-    if (!peerConnection.current) return;
-    const offer = await peerConnection.current.createOffer();
-    await peerConnection.current.setLocalDescription(offer);
-
-    try {
-      const { error } = await Promise.race([
-        supabase
-          .from("video_sessions")
-          .update({ offer: peerConnection.current.localDescription as unknown as Json }) // Fixed: Added unknown as Json
-          .eq("id", sessionId),
-        timeoutPromise,
-      ]);
-      if (error) throw error;
-      setCallStatus("ringing");
-      toast.info("Chamando o outro participante...");
-    } catch (error: any) {
-      console.error("Error creating offer:", error.message);
-      toast.error("Erro ao iniciar a chamada: " + error.message);
-      handleEndCall();
-    }
-  }, [sessionId, handleEndCall, timeoutPromise]);
-
-  const createAnswer = useCallback(async (incomingSessionId: string, offer: RTCSessionDescriptionInit) => {
-    if (!peerConnection.current) return;
-    await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
-    const answer = await peerConnection.current.createAnswer();
-    await peerConnection.current.setLocalDescription(answer);
-
-    try {
-      const { error } = await Promise.race([
-        supabase
-          .from("video_sessions")
-          .update({ answer: peerConnection.current?.localDescription as unknown as Json, status: "active", started_at: new Date().toISOString() }) // Fixed: Added unknown as Json
-          .eq("id", incomingSessionId),
-        timeoutPromise,
-      ]);
-      if (error) throw error;
-      setCallStatus("active");
-      toast.success("Chamada conectada!");
-    } catch (error: any) {
-      console.error("Error creating answer:", error.message);
-      toast.error("Erro ao aceitar a chamada: " + error.message);
-      handleEndCall();
-    }
-  }, [handleEndCall, timeoutPromise]);
+  const detachParticipantTracks = (participant: Participant) => {
+    participant.tracks.forEach(publication => {
+      if (publication.isSubscribed) {
+        const track = publication.track;
+        if (track) {
+          track.detach().forEach(element => element.remove());
+        }
+      }
+    });
+  };
 
   useEffect(() => {
-    const initCall = async () => {
+    const startTwilioCall = async () => {
       setLoading(true);
-      const stream = await getMediaDevices();
-      if (!stream) {
-        setLoading(false);
-        onClose();
-        return;
-      }
-      await setupPeerConnection(stream);
+      try {
+        // 1. Get Twilio Token from Edge Function
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-twilio-token`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabase.auth.session()?.access_token}`, // Use Supabase session token
+          },
+          body: JSON.stringify({ identity: currentUserId, roomName: sessionId }),
+        });
 
-      // Check if this is an existing session or a new one
-      const { data: existingSession, error: fetchError } = await Promise.race([
-        supabase.from("video_sessions").select("*").eq("id", sessionId).single(),
-        timeoutPromise,
-      ]);
-
-      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 means no rows found
-        console.error("Error fetching existing session:", fetchError.message);
-        toast.error("Erro ao buscar sessão existente: " + fetchError.message);
-        setLoading(false);
-        handleEndCall();
-        return;
-      }
-
-      if (existingSession) {
-        // Join existing session
-        setCallStatus(existingSession.status || "connecting");
-        if (existingSession.offer && !peerConnection.current?.remoteDescription) {
-          // If there's an offer but no answer, this user should create an answer
-          await peerConnection.current?.setRemoteDescription(new RTCSessionDescription(existingSession.offer as unknown as RTCSessionDescriptionInit)); // Fixed: Added unknown as RTCSessionDescriptionInit
-        } else if (existingSession.answer) {
-          // If there's an answer, set remote description
-          await peerConnection.current?.setRemoteDescription(new RTCSessionDescription(existingSession.answer as unknown as RTCSessionDescriptionInit)); // Fixed: Added unknown as RTCSessionDescriptionInit
-          setCallStatus("active");
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to get Twilio token');
         }
-        // Add ICE candidates
-        const candidates = (existingSession.ice_candidates || []) as RTCIceCandidateInit[];
-        for (const candidate of candidates) {
-          await peerConnection.current?.addIceCandidate(new RTCIceCandidate(candidate));
-        }
-      } else {
-        // Create new session (only if current user is the initiator, e.g., doctor)
-        if (isDoctor) {
-          const newSessionId = crypto.randomUUID(); // Generate a new UUID for the session
-          const { error } = await Promise.race([
-            supabase.from("video_sessions").insert({
-              id: newSessionId,
-              user_id: currentUserId!,
-              patient_id: isDoctor ? otherUserId : currentUserId!,
-              doctor_id: isDoctor ? currentUserId! : otherUserId,
-              room_id: newSessionId, // Use session ID as room ID
-              status: "ringing",
-              appointment_id: appointmentId || null,
-              ice_candidates: [],
-            }),
-            timeoutPromise,
-          ]);
-          if (error) throw error;
-          // Update sessionId state to the newly created one
-          // This is a bit tricky as sessionId is a prop. For simplicity, we'll assume the parent component will re-render with the new sessionId or handle it.
-          // For now, we'll just use the newSessionId for subsequent operations.
-          // If the parent needs to know, it should pass a callback.
-          // For this example, we'll just use the newSessionId for subsequent operations.
-          // If the parent component is not re-rendering with the new sessionId, this will cause issues.
-          // A better approach would be to manage session creation in the parent and pass the final sessionId.
-          // For now, let's assume sessionId is always valid and passed correctly.
-          await createOffer();
-        } else {
-          toast.error("Nenhuma sessão ativa encontrada para participar.");
+
+        const { token } = await response.json();
+
+        // 2. Connect to Twilio Room
+        const room = await connect(token, {
+          name: sessionId,
+          audio: true,
+          video: { width: 640 },
+        });
+        activeRoom.current = room;
+        setCallStatus("active");
+        toast.success("Conectado à sala de vídeo!");
+
+        // 3. Attach local participant's tracks
+        room.localParticipant.tracks.forEach(publication => {
+          if (publication.track) {
+            if (localVideoRef.current) {
+              localVideoRef.current.srcObject = new MediaStream([publication.track.mediaStreamTrack]);
+            }
+            setLocalStream(new MediaStream([publication.track.mediaStreamTrack]));
+          }
+        });
+
+        // 4. Handle remote participants
+        room.participants.forEach(participant => {
+          console.log(`Participant "${participant.identity}" connected`);
+          if (remoteVideoRef.current) {
+            attachParticipantTracks(participant, remoteVideoRef.current);
+            setRemoteStream(new MediaStream()); // Indicate remote stream is present
+          }
+        });
+
+        room.on('participantConnected', participant => {
+          console.log(`Participant "${participant.identity}" connected`);
+          participant.on('trackSubscribed', track => {
+            if (remoteVideoRef.current) {
+              remoteVideoRef.current.appendChild(track.attach());
+              setRemoteStream(new MediaStream([track.mediaStreamTrack]));
+            }
+          });
+          participant.on('trackUnsubscribed', track => {
+            track.detach().forEach(element => element.remove());
+            setRemoteStream(null); // Or re-evaluate if other tracks exist
+          });
+        });
+
+        room.on('participantDisconnected', participant => {
+          console.log(`Participant "${participant.identity}" disconnected`);
+          detachParticipantTracks(participant);
+          setRemoteStream(null); // Clear remote stream when participant leaves
+        });
+
+        room.on('disconnected', (room, error) => {
+          if (error) {
+            console.error('Twilio Room disconnected with error:', error);
+            toast.error("Conexão de vídeo perdida: " + error.message);
+          } else {
+            console.log('Twilio Room disconnected gracefully.');
+          }
           handleEndCall();
-          return;
+        });
+
+        // Update Supabase with Twilio Room SID
+        if (room.sid) {
+          await supabase
+            .from("video_sessions")
+            .update({ twilio_room_sid: room.sid, status: "active", started_at: new Date().toISOString() })
+            .eq("id", sessionId);
         }
+
+      } catch (error: any) {
+        console.error("Error starting Twilio call:", error.message);
+        toast.error("Erro ao iniciar a chamada de vídeo: " + error.message);
+        handleEndCall();
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    initCall();
+    startTwilioCall();
 
-    const channel = supabase
-      .channel(`video_session_${sessionId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "video_sessions",
-          filter: `id=eq.${sessionId}`,
-        },
-        async (payload) => {
-          const updatedSession = payload.new as VideoSession;
-          setCallStatus(updatedSession.status || "connecting");
-
-          if (updatedSession.offer && !peerConnection.current?.remoteDescription) {
-            await peerConnection.current?.setRemoteDescription(new RTCSessionDescription(updatedSession.offer as unknown as RTCSessionDescriptionInit)); // Fixed: Added unknown as RTCSessionDescriptionInit
-            if (!isDoctor) { // Only patient should create answer if doctor initiated
-              await createAnswer(sessionId, updatedSession.offer as unknown as RTCSessionDescriptionInit); // Fixed: Added unknown as RTCSessionDescriptionInit
-            }
-          }
-
-          if (updatedSession.answer && !peerConnection.current?.currentRemoteDescription) {
-            await peerConnection.current?.setRemoteDescription(new RTCSessionDescription(updatedSession.answer as unknown as RTCSessionDescriptionInit)); // Fixed: Added unknown as RTCSessionDescriptionInit
-            setCallStatus("active");
-            toast.success("Chamada conectada!");
-          }
-
-          if (updatedSession.ice_candidates && Array.isArray(updatedSession.ice_candidates) && updatedSession.ice_candidates.length > 0) {
-            // Filter out candidates that are already added to avoid duplicates
-            const existingCandidates = peerConnection.current?.localDescription?.sdp?.match(/a=candidate:.*/g) || [];
-            const newCandidates = (updatedSession.ice_candidates as RTCIceCandidateInit[]).filter(
-              (candidate) =>
-                !existingCandidates.some(
-                  (c: string) => c.includes(candidate.candidate as string)
-                )
-            );
-            for (const candidate of newCandidates) {
-              await peerConnection.current?.addIceCandidate(new RTCIceCandidate(candidate));
-            }
-          }
-
-          if (updatedSession.status === "ended") {
-            handleEndCall();
-          }
-        }
-      )
-      .subscribe();
-
+    // Cleanup on unmount
     return () => {
-      supabase.removeChannel(channel);
-      handleEndCall(); // Ensure call is ended on unmount
+      if (activeRoom.current) {
+        activeRoom.current.disconnect();
+        activeRoom.current = null;
+      }
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
     };
-  }, [sessionId, isDoctor, appointmentId, currentUserId, getMediaDevices, setupPeerConnection, createOffer, createAnswer, handleEndCall, onClose, timeoutPromise]);
+  }, [currentUserId, sessionId, appointmentId, isDoctor, handleEndCall]);
 
   const toggleMute = () => {
-    if (localStream) {
-      localStream.getAudioTracks().forEach((track) => (track.enabled = !track.enabled));
+    if (activeRoom.current) {
+      if (isMuted) {
+        activeRoom.current.localParticipant.audioTracks.forEach(publication => publication.track?.enable());
+      } else {
+        activeRoom.current.localParticipant.audioTracks.forEach(publication => publication.track?.disable());
+      }
       setIsMuted(!isMuted);
     }
   };
 
   const toggleVideo = () => {
-    if (localStream) {
-      localStream.getVideoTracks().forEach((track) => (track.enabled = !track.enabled));
+    if (activeRoom.current) {
+      if (isVideoOff) {
+        activeRoom.current.localParticipant.videoTracks.forEach(publication => publication.track?.enable());
+      } else {
+        activeRoom.current.localParticipant.videoTracks.forEach(publication => publication.track?.disable());
+      }
       setIsVideoOff(!isVideoOff);
     }
   };

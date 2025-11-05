@@ -1,0 +1,10 @@
+{
+  "name": "generate-twilio-token",
+  "version": "1.0.0",
+  "description": "Supabase Edge Function to generate Twilio Access Tokens",
+  "main": "index.ts",
+  "type": "module",
+  "dependencies": {
+    "twilio": "^5.2.0"
+  }
+}

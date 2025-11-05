@@ -744,6 +744,7 @@ export type Database = {
           room_id: string
           started_at: string | null
           status: string
+          twilio_room_sid: string | null
           user_id: string
         }
         Insert: {
@@ -759,6 +760,7 @@ export type Database = {
           room_id: string
           started_at?: string | null
           status?: string
+          twilio_room_sid?: string | null
           user_id: string
         }
         Update: {
@@ -774,6 +776,7 @@ export type Database = {
           room_id?: string
           started_at?: string | null
           status?: string
+          twilio_room_sid?: string | null
           user_id?: string
         }
         Relationships: [
