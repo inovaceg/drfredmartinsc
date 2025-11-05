@@ -20,4 +20,7 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    include: ['twilio-video'], // Adiciona twilio-video para pré-empacotamento
+  },
 }));
