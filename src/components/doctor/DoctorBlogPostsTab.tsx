@@ -68,6 +68,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(initialData?.image_url || null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null); // Ref para o input de arquivo
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null); // Ref para o textarea do conteúdo
 
   const generateSlug = (title: string) => {
     return title
@@ -160,6 +161,37 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
     } finally {
       setIsUploadingImage(false);
       console.log("BlogPostForm: Image upload finished.");
+    }
+  };
+
+  const handlePaste = async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/') && item.kind === 'file') {
+        event.preventDefault(); // Prevent default paste behavior
+        const file = item.getAsFile();
+        if (file) {
+          toast.info("Detectamos uma imagem! Fazendo upload...");
+          const uploadedUrl = await uploadImageToSupabase(file);
+          if (uploadedUrl) {
+            const markdownImage = `\n\n![Imagem Colada](${uploadedUrl})\n\n`;
+            const currentContent = form.getValues("content");
+            const cursorPosition = contentTextareaRef.current?.selectionStart || currentContent.length;
+
+            const newContent =
+              currentContent.substring(0, cursorPosition) +
+              markdownImage +
+              currentContent.substring(cursorPosition);
+
+            form.setValue("content", newContent, { shouldValidate: true });
+            toast.success("Imagem inserida no post!");
+          }
+          return; // Only handle one image per paste for simplicity
+        }
+      }
     }
   };
 
@@ -276,9 +308,14 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
               <FormControl>
                 <Textarea
                   id="content"
-                  placeholder="Escreva o conteúdo do seu post aqui. Você pode usar Markdown para formatar texto e inserir imagens: ![Texto Alternativo](URL_DA_IMAGEM)"
+                  placeholder="Escreva o conteúdo do seu post aqui. Você pode colar imagens diretamente ou usar Markdown: ![Texto Alternativo](URL_DA_IMAGEM)"
                   rows={10}
                   {...field}
+                  ref={(e) => {
+                    field.ref(e); // react-hook-form's ref
+                    contentTextareaRef.current = e; // my ref
+                  }}
+                  onPaste={handlePaste} // New handler for pasting images
                 />
               </FormControl>
               <FormMessage />

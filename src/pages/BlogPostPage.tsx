@@ -145,8 +145,17 @@ const BlogPostPage = () => {
             </div>
 
             <div className="prose max-w-none text-foreground leading-relaxed space-y-6">
-              {/* Renderizar conteúdo Markdown */}
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
+              {/* Renderizar conteúdo Markdown com custom renderer para imagens */}
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  img: ({ node, ...props }) => (
+                    <img {...props} className="mx-auto block max-w-full h-auto" />
+                  ),
+                }}
+              >
+                {post.content}
+              </ReactMarkdown>
             </div>
           </Card>
         </div>
