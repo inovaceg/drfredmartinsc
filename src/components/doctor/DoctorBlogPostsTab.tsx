@@ -78,6 +78,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
   };
 
   useEffect(() => {
+    console.log("BlogPostForm: useEffect (initialData) triggered. initialData:", initialData?.id);
     if (initialData) {
       form.reset({
         title: initialData.title,
@@ -88,6 +89,21 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
         status: initialData.status as "draft" | "published",
       });
       setImagePreviewUrl(initialData.image_url || null);
+    } else {
+      // If initialData is null/undefined, it means we are creating a new post or clearing the form
+      form.reset({
+        title: "",
+        slug: "",
+        content: "",
+        excerpt: "",
+        image_url: "",
+        status: "draft",
+      });
+      setImagePreviewUrl(null);
+      setSelectedImageFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   }, [initialData, form]);
 
@@ -98,16 +114,19 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
       setImagePreviewUrl(URL.createObjectURL(file));
       form.clearErrors("image_url"); // Clear any URL validation errors
       form.setValue("image_url", ""); // Clear manual URL if file is selected
+      console.log("BlogPostForm: File selected for upload:", file.name);
     } else {
       setSelectedImageFile(null);
       if (!form.getValues("image_url")) { // Only clear preview if no manual URL is set
         setImagePreviewUrl(null);
       }
+      console.log("BlogPostForm: File selection cleared.");
     }
   };
 
   const uploadImageToSupabase = async (file: File) => {
     setIsUploadingImage(true);
+    console.log("BlogPostForm: Starting image upload for file:", file.name);
     try {
       const fileExtension = file.name.split('.').pop();
       const fileName = `${uuidv4()}.${fileExtension}`;
@@ -128,17 +147,20 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
         .from(bucket)
         .getPublicUrl(data.path);
 
+      console.log("BlogPostForm: Image uploaded successfully. Public URL:", publicUrlData.publicUrl);
       return publicUrlData.publicUrl;
     } catch (error: any) {
-      console.error("Error uploading image:", error);
+      console.error("BlogPostForm: Error uploading image:", error);
       toast.error("Erro ao fazer upload da imagem: " + error.message);
       return null;
     } finally {
       setIsUploadingImage(false);
+      console.log("BlogPostForm: Image upload finished.");
     }
   };
 
   const handleSubmit = async (values: BlogPostFormValues) => {
+    console.log("BlogPostForm: handleSubmit triggered. Values:", values);
     let finalImageUrl = values.image_url;
 
     if (selectedImageFile) {
@@ -146,6 +168,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
       if (uploadedUrl) {
         finalImageUrl = uploadedUrl;
       } else {
+        console.log("BlogPostForm: Image upload failed, preventing form submission.");
         // If upload failed, prevent saving and show error
         return;
       }
@@ -159,6 +182,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
     if (fileInputRef.current) {
       fileInputRef.current.value = ""; // Reset the file input element
     }
+    console.log("BlogPostForm: Form submission logic completed.");
   };
 
   return (
@@ -293,6 +317,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
             <div className="mt-4 relative w-full h-48 bg-muted rounded-md overflow-hidden flex items-center justify-center">
               <img src={imagePreviewUrl} alt="Pré-visualização da imagem" className="object-contain h-full w-full" />
               <Button
+                type="button" // Changed to type="button"
                 variant="ghost"
                 size="icon"
                 className="absolute top-2 right-2 bg-background/50 hover:bg-background/70"
@@ -303,6 +328,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
                   if (fileInputRef.current) {
                     fileInputRef.current.value = ""; // Reset the file input element
                   }
+                  console.log("BlogPostForm: Image preview cleared.");
                 }}
               >
                 <X className="h-4 w-4" />
@@ -351,6 +377,8 @@ export function DoctorBlogPostsTab({ currentUserId }: { currentUserId: string })
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  console.log("DoctorBlogPostsTab: Rendered. isFormDialogOpen:", isFormDialogOpen, "editingPost:", editingPost?.id);
+
   const {
     data: blogPosts,
     isLoading,
@@ -373,6 +401,7 @@ export function DoctorBlogPostsTab({ currentUserId }: { currentUserId: string })
 
   const handleCreatePost = async (formData: BlogPostFormValues) => {
     setIsSaving(true);
+    console.log("DoctorBlogPostsTab: handleCreatePost called.");
     try {
       const { error } = await supabase
         .from('blog_posts')
@@ -384,8 +413,9 @@ export function DoctorBlogPostsTab({ currentUserId }: { currentUserId: string })
       toast.success("Post criado com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["doctorBlogPosts", currentUserId] });
       setIsFormDialogOpen(false);
+      console.log("DoctorBlogPostsTab: Post created, dialog closed.");
     } catch (error: any) {
-      console.error("Erro ao criar post:", error);
+      console.error("DoctorBlogPostsTab: Erro ao criar post:", error);
       toast.error("Erro ao criar post: " + error.message);
     } finally {
       setIsSaving(false);
@@ -395,6 +425,7 @@ export function DoctorBlogPostsTab({ currentUserId }: { currentUserId: string })
   const handleUpdatePost = async (formData: BlogPostFormValues) => {
     if (!editingPost) return;
     setIsSaving(true);
+    console.log("DoctorBlogPostsTab: handleUpdatePost called for post ID:", editingPost.id);
     try {
       const { error } = await supabase
         .from('blog_posts')
@@ -408,8 +439,9 @@ export function DoctorBlogPostsTab({ currentUserId }: { currentUserId: string })
       queryClient.invalidateQueries({ queryKey: ["doctorBlogPosts", currentUserId] });
       setIsFormDialogOpen(false);
       setEditingPost(null);
+      console.log("DoctorBlogPostsTab: Post updated, dialog closed.");
     } catch (error: any) {
-      console.error("Erro ao atualizar post:", error);
+      console.error("DoctorBlogPostsTab: Erro ao atualizar post:", error);
       toast.error("Erro ao atualizar post: " + error.message);
     } finally {
       setIsSaving(false);
@@ -418,6 +450,7 @@ export function DoctorBlogPostsTab({ currentUserId }: { currentUserId: string })
 
   const handleDeletePost = async (postId: string) => {
     if (!confirm("Tem certeza que deseja excluir este post?")) return;
+    console.log("DoctorBlogPostsTab: handleDeletePost called for post ID:", postId);
     try {
       const { error } = await supabase
         .from('blog_posts')
@@ -426,8 +459,9 @@ export function DoctorBlogPostsTab({ currentUserId }: { currentUserId: string })
       if (error) throw error;
       toast.success("Post excluído com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["doctorBlogPosts", currentUserId] });
+      console.log("DoctorBlogPostsTab: Post deleted.");
     } catch (error: any) {
-      console.error("Erro ao excluir post:", error);
+      console.error("DoctorBlogPostsTab: Erro ao excluir post:", error);
       toast.error("Erro ao excluir post: " + error.message);
     }
   };
@@ -455,7 +489,11 @@ export function DoctorBlogPostsTab({ currentUserId }: { currentUserId: string })
           <BookOpen className="h-6 w-6 text-primary" />
           Gerenciar Posts do Blog
         </CardTitle>
-        <Button onClick={() => { setEditingPost(null); setIsFormDialogOpen(true); }}>
+        <Button onClick={() => { 
+          setEditingPost(null); 
+          setIsFormDialogOpen(true); 
+          console.log("DoctorBlogPostsTab: 'Novo Post' button clicked. Opening dialog.");
+        }}>
           <PlusCircle className="mr-2 h-4 w-4" /> Novo Post
         </Button>
       </CardHeader>
@@ -478,7 +516,11 @@ export function DoctorBlogPostsTab({ currentUserId }: { currentUserId: string })
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => { setEditingPost(post); setIsFormDialogOpen(true); }}
+                      onClick={() => { 
+                        setEditingPost(post); 
+                        setIsFormDialogOpen(true); 
+                        console.log("DoctorBlogPostsTab: 'Editar Post' button clicked for ID:", post.id, ". Opening dialog.");
+                      }}
                     >
                       <Edit className="h-4 w-4" />
                       <span className="sr-only">Editar Post</span>
@@ -503,7 +545,13 @@ export function DoctorBlogPostsTab({ currentUserId }: { currentUserId: string })
         )}
       </CardContent>
 
-      <Dialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
+      <Dialog open={isFormDialogOpen} onOpenChange={(open) => {
+        setIsFormDialogOpen(open);
+        if (!open) {
+          setEditingPost(null); // Clear editingPost when dialog closes
+          console.log("DoctorBlogPostsTab: Dialog closed. Clearing editingPost.");
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingPost ? "Editar Post do Blog" : "Criar Novo Post do Blog"}</DialogTitle>
@@ -514,7 +562,11 @@ export function DoctorBlogPostsTab({ currentUserId }: { currentUserId: string })
           <BlogPostForm
             initialData={editingPost || undefined}
             onSave={editingPost ? handleUpdatePost : handleCreatePost}
-            onCancel={() => { setIsFormDialogOpen(false); setEditingPost(null); }}
+            onCancel={() => { 
+              setIsFormDialogOpen(false); 
+              setEditingPost(null); 
+              console.log("DoctorBlogPostsTab: BlogPostForm 'Cancelar' clicked. Closing dialog.");
+            }}
             isSaving={isSaving}
           />
         </DialogContent>
