@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import ReactMarkdown from 'react-markdown'; // Importar ReactMarkdown
 import remarkGfm from 'remark-gfm'; // Importar remarkGfm
+import { Link } from 'react-router-dom'; // Importar Link
 
 type BlogPost = Tables<'blog_posts'> & { author_profile?: { full_name: string } };
 
@@ -95,12 +96,19 @@ const BlogSection = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {blogPosts.map((post) => (
               <div key={post.id} className="bg-white border border-gray-200 p-8 rounded-2xl transition-all hover:shadow-md">
-                {post.image_url && (
-                  <img src={post.image_url} alt={post.title} className="w-full h-48 object-cover rounded-lg mb-4" />
-                )}
-                {/* Campo de texto fino acima do título */}
-                <p className="text-xs text-gray-600 mb-1">{post.category || "Categoria do Post"}</p>
-                <h3 className="text-xl font-semibold mb-2 text-red-700 tracking-tight">{post.title}</h3>
+                <Link to={`/blog/${post.slug}`} className="block"> {/* Link para a imagem e título */}
+                  {post.image_url && (
+                    <img src={post.image_url} alt={post.title} className="w-full h-48 object-cover rounded-lg mb-4" />
+                  )}
+                  {/* Campo de texto fino acima do título */}
+                  <p className="text-xs text-gray-600 mb-1">
+                    <BookOpen className="h-3 w-3 mr-1 inline-block" />
+                    {post.category || "Categoria do Post"}
+                  </p>
+                  <h3 className="text-xl font-semibold mb-2 text-red-700 tracking-tight hover:underline">
+                    {post.title}
+                  </h3>
+                </Link>
                 {/* Meta-informações combinadas */}
                 <p className="text-sm text-muted-foreground mb-4">
                   Por: {post.author_profile?.full_name || 'Autor Desconhecido'} —{' '}
@@ -112,9 +120,9 @@ const BlogSection = () => {
                     {post.excerpt || post.content}
                   </ReactMarkdown>
                 </div>
-                <a href={`/blog/${post.slug}`} className="text-blue-700 hover:underline font-medium">
+                <Link to={`/blog/${post.slug}`} className="text-blue-700 hover:underline font-medium">
                   Leia Mais &rarr;
-                </a>
+                </Link>
               </div>
             ))}
           </div>
