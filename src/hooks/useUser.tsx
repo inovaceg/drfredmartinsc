@@ -14,8 +14,10 @@ export function useUser() {
   const [profile, setProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
+    console.log("useUser: useEffect triggered. supabaseUser:", supabaseUser ? supabaseUser.id : "null", "current profile:", profile ? profile.id : "null");
     async function fetchProfile() {
       if (supabaseUser && !profile) {
+        console.log("useUser: Fetching profile for user:", supabaseUser.id);
         setIsLoading(true);
         try {
           const { data, error } = await supabase
@@ -26,20 +28,26 @@ export function useUser() {
 
           if (error) throw error;
           setProfile(data);
+          console.log("useUser: Profile fetched successfully:", data);
         } catch (error) {
-          console.error("Error fetching user profile:", error);
+          console.error("useUser: Error fetching user profile:", error);
           setProfile(null);
         } finally {
           setIsLoading(false);
+          console.log("useUser: Profile fetch finished. isLoading set to false.");
         }
       } else if (!supabaseUser) {
+        console.log("useUser: No supabaseUser found. Resetting profile.");
         setProfile(null);
         setIsLoading(false);
+      } else if (supabaseUser && profile) {
+        console.log("useUser: supabaseUser and profile already exist. Not refetching.");
+        setIsLoading(false); // Ensure isLoading is false if already loaded
       }
     }
 
     fetchProfile();
-  }, [supabaseUser, profile]);
+  }, [supabaseUser, profile]); // Depend on supabaseUser and profile to avoid infinite loops
 
   return {
     session,
