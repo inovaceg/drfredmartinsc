@@ -42,7 +42,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
         const { data: fetchedMessages, error: messagesError } = await supabase
           .from("patient_doctor_messages")
           .select("*")
-          .or(`(sender_id.eq.${currentUserId},receiver_id.eq.${receiverId}),(sender_id.eq.${receiverId},receiver_id.eq.${currentUserId})`)
+          .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`) // Simplificado para buscar mensagens onde o usuário atual é o remetente OU o destinatário
           .order("created_at", { ascending: true });
 
         if (messagesError) throw messagesError;
@@ -94,7 +94,26 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
           event: "INSERT",
           schema: "public",
           table: "patient_doctor_messages",
-          filter: `(sender_id.eq.${currentUserId},receiver_id.eq.${receiverId})`,
+          filter: `(sender_id.eq.${currentUserId}.and.receiver_id.eq.${receiverId})`, // Filtro para mensagens enviadas por este usuário para o receiver
+        },
+        async (payload) => {
+          const newMessage = payload.new as Message;
+          // Fetch sender name for the new message
+          const { data: senderProfile, error } = await supabase.from('profiles').select('full_name').eq('id', newMessage.sender_id).single();
+          if (!error && senderProfile) {
+            setMessages((prev) => [...prev, { ...newMessage, sender_name: senderProfile.full_name }]);
+          } else {
+            setMessages((prev) => [...prev, { ...newMessage, sender_name: "Desconhecido" }]);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "patient_doctor_messages",
+          filter: `(sender_id.eq.${receiverId}.and.receiver_id.eq.${currentUserId})`, // Filtro para mensagens enviadas pelo receiver para este usuário
         },
         async (payload) => {
           const newMessage = payload.new as Message;
