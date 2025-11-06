@@ -39,11 +39,11 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
       setLoading(true);
       try {
         // Corrigindo a sintaxe do filtro 'or' para ser mais robusta
-        // A sintaxe correta é 'condition1,condition2' onde cada condição pode conter 'and'
+        // Usando a sintaxe explícita de 'and()' para cada condição dentro do 'or()'
         const { data: fetchedMessages, error: messagesError } = await supabase
           .from("patient_doctor_messages")
           .select("*")
-          .or(`sender_id.eq.${currentUserId}.and.receiver_id.eq.${receiverId},sender_id.eq.${receiverId}.and.receiver_id.eq.${currentUserId}`)
+          .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${currentUserId})`)
           .order("created_at", { ascending: true });
 
         if (messagesError) {
