@@ -52,8 +52,8 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
         const { data: fetchedMessages, error: messagesError } = await supabase
           .from("patient_doctor_messages")
           .select("*")
-          // CORREÇÃO APLICADA AQUI: Sintaxe correta para o filtro 'or' com 'and'
-          .or(`sender_id.eq.${currentUserId}.and.receiver_id.eq.${receiverId},sender_id.eq.${receiverId}.and.receiver_id.eq.${currentUserId}`)
+          // CORREÇÃO APLICADA AQUI: Usando a sintaxe explícita de PostgREST para 'and' dentro de 'or'
+          .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${currentUserId})`)
           .order("created_at", { ascending: true });
 
         if (messagesError) {
@@ -109,7 +109,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
           schema: "public",
           table: "patient_doctor_messages",
           // Filtro para mensagens enviadas por este usuário para o receiver
-          filter: `sender_id.eq.${currentUserId}.and.receiver_id.eq.${receiverId}`,
+          filter: `sender_id=eq.${currentUserId}&receiver_id=eq.${receiverId}`, // Usando & para AND
         },
         async (payload) => {
           const newMessage = payload.new as Message;
@@ -139,7 +139,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
           schema: "public",
           table: "patient_doctor_messages",
           // Filtro para mensagens enviadas pelo receiver para este usuário
-          filter: `sender_id.eq.${receiverId}.and.receiver_id.eq.${currentUserId}`,
+          filter: `sender_id=eq.${receiverId}&receiver_id=eq.${currentUserId}`, // Usando & para AND
         },
         async (payload) => {
           const newMessage = payload.new as Message;
