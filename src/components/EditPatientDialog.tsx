@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -13,16 +15,16 @@ import { Loader2 } from "lucide-react";
 import { BRAZILIAN_STATES } from "@/lib/brazilian-states";
 import { formatPhone, unformatPhone } from "@/lib/format-phone";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { formatDateToDisplay, parseDateFromInput, parseDDMMYYYYToLocalDate } from "@/lib/utils"; // Import parseDDMMYYYYToLocalDate
+import { formatDateToDisplay, parseDateFromInput, parseDDMMYYYYToLocalDate } from "@/lib/utils";
 import { Database } from "@/integrations/supabase/types";
 
 type PatientProfile = Database['public']['Tables']['profiles']['Row'];
 
 interface EditPatientDialogProps {
-  patientId: string | null; // Agora recebe apenas o ID do paciente
+  patientId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onPatientUpdated: (patientId: string) => void; // Passa o ID do paciente atualizado
+  onPatientUpdated: (patientId: string) => void;
 }
 
 export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpdated }: EditPatientDialogProps) {
@@ -39,13 +41,13 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
     city: "",
     state: "",
     zip_code: "",
-    birth_date: "", // Will store dd/mm/yyyy string
+    birth_date: "",
     mental_health_history: "",
     main_complaints: "",
     previous_diagnoses: "",
     current_medications: "",
     past_sessions_history: "",
-    therapist_id: "",
+    therapist_id: "", // Adicionado aqui
     consent_status: false,
     consent_date: "",
   });
@@ -67,16 +69,16 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
       if (error) throw error;
       return data;
     },
-    enabled: open && !!patientId, // Só executa a query se o diálogo estiver aberto e tiver um patientId
+    enabled: open && !!patientId,
   });
 
   // Query para buscar a lista de doutores
-  const { data: doctors, isLoading: isLoadingDoctors } = useQuery({
+  const { data: doctors, isLoading: isLoadingDoctors } = useQuery<Database['public']['Tables']['profiles']['Row'][], Error>({
     queryKey: ["doctors"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_doctors_public");
       if (error) throw error;
-      return data;
+      return data || [];
     },
   });
 
@@ -92,19 +94,19 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
         city: patient.city || "",
         state: patient.state || "",
         zip_code: patient.zip_code || "",
-        birth_date: patient.birth_date ? formatDateToDisplay(patient.birth_date) : "", // Format for display
+        birth_date: patient.birth_date ? formatDateToDisplay(patient.birth_date) : "",
         mental_health_history: patient.mental_health_history || "",
         main_complaints: patient.main_complaints || "",
         previous_diagnoses: patient.previous_diagnoses || "",
         current_medications: patient.current_medications || "",
         past_sessions_history: patient.past_sessions_history || "",
-        therapist_id: patient.therapist_id || "",
+        therapist_id: patient.therapist_id || "", // Inicializa com o valor do paciente
         consent_status: patient.consent_status || false,
         consent_date: patient.consent_status ? (patient.consent_date ? format(new Date(patient.consent_date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd")) : "",
       });
       fetchDoctorNotes();
     }
-  }, [patient, open]); // Depende do objeto patient carregado
+  }, [patient, open]);
 
   const handleZipCodeLookup = async (cep: string) => {
     const cleanedCep = cep.replace(/\D/g, '');
@@ -162,9 +164,8 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
     setLoadingNotes(false);
   };
 
-  // New: Input mask for date field
   const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+    let value = e.target.value.replace(/\D/g, '');
     let formattedValue = '';
 
     if (value.length > 0) {
@@ -190,10 +191,8 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
     }
 
     try {
-      // Parse birth_date from dd/mm/yyyy to yyyy-MM-dd for Supabase
       const parsedBirthDate = formData.birth_date ? parseDateFromInput(formData.birth_date) : null;
 
-      // Add validation feedback for birth_date
       if (formData.birth_date && !parsedBirthDate) {
         toast({
           title: "Erro de Data",
@@ -201,10 +200,9 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
           variant: "destructive",
         });
         setLoading(false);
-        return; // Stop submission if date is invalid
+        return;
       }
 
-      // Update profile
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -217,13 +215,13 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
           city: formData.city,
           state: formData.state,
           zip_code: formData.zip_code,
-          birth_date: parsedBirthDate, // Use parsed date for DB
+          birth_date: parsedBirthDate,
           mental_health_history: formData.mental_health_history || null,
           main_complaints: formData.main_complaints || null,
           previous_diagnoses: formData.previous_diagnoses || null,
           current_medications: formData.current_medications || null,
           past_sessions_history: formData.past_sessions_history || null,
-          therapist_id: formData.therapist_id || null,
+          therapist_id: formData.therapist_id || null, // Salva o therapist_id
           consent_status: formData.consent_status,
           consent_date: formData.consent_status ? (formData.consent_date || new Date().toISOString()) : null,
           updated_at: new Date().toISOString(),
@@ -235,7 +233,6 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
         throw profileError;
       }
 
-      // Add doctor note if there's text
       if (doctorNotes.trim()) {
         const user = await supabase.auth.getUser();
         const { error: notesError } = await supabase
@@ -257,13 +254,12 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
         description: "Dados do paciente atualizados com sucesso!",
       });
 
-      // Invalida o cache do react-query para o paciente específico e a lista de pacientes
       queryClient.invalidateQueries({ queryKey: ["patientProfile", patientId] });
-      queryClient.invalidateQueries({ queryKey: ["doctorPatients"] }); // Invalida a lista geral de pacientes
-      queryClient.invalidateQueries({ queryKey: ["patientSessions", patientId] }); // Invalida sessões
-      queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", patientId] }); // Invalida prontuários
+      queryClient.invalidateQueries({ queryKey: ["doctorPatients"] });
+      queryClient.invalidateQueries({ queryKey: ["patientSessions", patientId] });
+      queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", patientId] });
       
-      onPatientUpdated(patientId); // Notifica o pai com o ID do paciente atualizado
+      onPatientUpdated(patientId);
       
       onOpenChange(false);
       setDoctorNotes("");
@@ -363,9 +359,9 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
               id="birth_date"
               type="text"
               value={formData.birth_date}
-              onChange={handleDateInputChange} // Using the new input mask handler
+              onChange={handleDateInputChange}
               placeholder="DD/MM/AAAA"
-              maxLength={10} // Max length for dd/mm/yyyy
+              maxLength={10}
             />
           </div>
 
