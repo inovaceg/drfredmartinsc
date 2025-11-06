@@ -38,17 +38,18 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
     const fetchMessagesAndReceiverProfile = async () => {
       setLoading(true);
       try {
-        // Construir a string do filtro para mensagens entre os dois usuários
-        const filterString = `or(and(sender_id.eq.${currentUserId},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${currentUserId}))`;
-        console.log("ChatWindow: Filter string for fetching messages:", filterString);
-
+        // Corrigindo a sintaxe do filtro 'or' para ser mais robusta
+        // O Supabase espera que as condições 'and' sejam passadas como argumentos separados para 'or'
         const { data: fetchedMessages, error: messagesError } = await supabase
           .from("patient_doctor_messages")
           .select("*")
-          .or(filterString) // Usar a string do filtro corrigida
+          .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${currentUserId})`)
           .order("created_at", { ascending: true });
 
-        if (messagesError) throw messagesError;
+        if (messagesError) {
+          console.error("ChatWindow: Erro ao buscar mensagens:", messagesError);
+          throw messagesError;
+        }
 
         // Fetch sender names for all messages
         const messagesWithSenderNames = await Promise.all(
