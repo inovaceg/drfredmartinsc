@@ -49,23 +49,32 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
           return;
         }
 
+        // Simplificando a consulta: buscar todas as mensagens onde o sender_id OU receiver_id
+        // seja um dos dois usuários envolvidos no chat.
         const { data: fetchedMessages, error: messagesError } = await supabase
           .from("patient_doctor_messages")
           .select("*")
-          // CORREÇÃO APLICADA AQUI: Usando a sintaxe explícita de PostgREST para 'and' dentro de 'or'
-          // com parênteses para agrupar as condições AND.
-          .or(`(sender_id.eq.${currentUserId},receiver_id.eq.${receiverId}),(sender_id.eq.${receiverId},receiver_id.eq.${currentUserId})`)
+          .or(`sender_id.eq.${currentUserId},sender_id.eq.${receiverId},receiver_id.eq.${currentUserId},receiver_id.eq.${receiverId}`)
           .order("created_at", { ascending: true });
 
         if (messagesError) {
           console.error("ChatWindow: Erro ao buscar mensagens:", messagesError);
           throw messagesError;
         }
-        console.log("ChatWindow: Mensagens carregadas com sucesso:", fetchedMessages);
+        console.log("ChatWindow: Mensagens carregadas (pré-filtragem):", fetchedMessages);
+
+        // Filtrar mensagens no lado do cliente para garantir que apenas as mensagens
+        // entre currentUserId e receiverId sejam exibidas.
+        const filteredMessages = (fetchedMessages || []).filter(msg =>
+          (msg.sender_id === currentUserId && msg.receiver_id === receiverId) ||
+          (msg.sender_id === receiverId && msg.receiver_id === currentUserId)
+        );
+        console.log("ChatWindow: Mensagens filtradas (pós-filtragem):", filteredMessages);
+
 
         // Fetch sender names for all messages
         const messagesWithSenderNames = await Promise.all(
-          (fetchedMessages || []).map(async (msg) => {
+          (filteredMessages || []).map(async (msg) => {
             const { data: senderProfile, error: senderError } = await supabase
               .from("profiles")
               .select("full_name")
@@ -160,7 +169,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
                   setMessages((current) => [...current, { ...newMessage, sender_name: "Desconhecido" }]);
                 }
               })
-              .catch(err => console.error("Error fetching sender profile for new message (received by me):", err.message));
+              .catch(err => console.error("Error fetching sender profile for new message:", err.message));
             return prev;
           });
         }
