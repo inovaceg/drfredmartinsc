@@ -113,14 +113,22 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
         async (payload) => {
           const newMessage = payload.new as Message;
           // Verifica se a mensagem já foi adicionada otimisticamente
-          if (!messages.some(msg => msg.id === newMessage.id)) {
-            const { data: senderProfile, error } = await supabase.from('profiles').select('full_name').eq('id', newMessage.sender_id).single();
-            if (!error && senderProfile) {
-              setMessages((prev) => [...prev, { ...newMessage, sender_name: senderProfile.full_name }]);
-            } else {
-              setMessages((prev) => [...prev, { ...newMessage, sender_name: "Desconhecido" }]);
+          setMessages((prev) => {
+            if (prev.some(msg => msg.id === newMessage.id)) {
+              return prev; // Evita duplicatas se já adicionado otimisticamente
             }
-          }
+            // Busca o nome do remetente para a nova mensagem
+            supabase.from('profiles').select('full_name').eq('id', newMessage.sender_id).single()
+              .then(({ data: senderProfile, error }) => {
+                if (!error && senderProfile) {
+                  setMessages((current) => [...current, { ...newMessage, sender_name: senderProfile.full_name }]);
+                } else {
+                  setMessages((current) => [...current, { ...newMessage, sender_name: "Desconhecido" }]);
+                }
+              })
+              .catch(err => console.error("Error fetching sender profile for new message:", err.message));
+            return prev; // Retorna o estado anterior por enquanto, a atualização real virá do then/catch acima
+          });
         }
       )
       .on(
@@ -134,12 +142,22 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
         },
         async (payload) => {
           const newMessage = payload.new as Message;
-          const { data: senderProfile, error } = await supabase.from('profiles').select('full_name').eq('id', newMessage.sender_id).single();
-          if (!error && senderProfile) {
-            setMessages((prev) => [...prev, { ...newMessage, sender_name: senderProfile.full_name }]);
-          } else {
-            setMessages((prev) => [...prev, { ...newMessage, sender_name: "Desconhecido" }]);
-          }
+          setMessages((prev) => {
+            if (prev.some(msg => msg.id === newMessage.id)) {
+              return prev; // Evita duplicatas se já adicionado otimisticamente
+            }
+            // Busca o nome do remetente para a nova mensagem
+            supabase.from('profiles').select('full_name').eq('id', newMessage.sender_id).single()
+              .then(({ data: senderProfile, error }) => {
+                if (!error && senderProfile) {
+                  setMessages((current) => [...current, { ...newMessage, sender_name: senderProfile.full_name }]);
+                } else {
+                  setMessages((current) => [...current, { ...newMessage, sender_name: "Desconhecido" }]);
+                }
+              })
+              .catch(err => console.error("Error fetching sender profile for new message:", err.message));
+            return prev; // Retorna o estado anterior por enquanto, a atualização real virá do then/catch acima
+          });
         }
       )
       .subscribe();
@@ -147,7 +165,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUserId, receiverId, messages]); // Adicionado 'messages' para o useEffect de Realtime
+  }, [currentUserId, receiverId]); // Removido 'messages' das dependências
 
   useEffect(() => {
     scrollToBottom();
