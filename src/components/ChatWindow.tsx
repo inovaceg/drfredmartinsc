@@ -52,7 +52,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
         const { data: fetchedMessages, error: messagesError } = await supabase
           .from("patient_doctor_messages")
           .select("*")
-          // CORREÇÃO FINAL: Usando o operador '.and.' diretamente para as condições aninhadas dentro do 'or()'
+          // CORREÇÃO FINAL: Removendo os parênteses extras em torno de cada condição AND
           .or(`sender_id.eq.${currentUserId}.and.receiver_id.eq.${receiverId},sender_id.eq.${receiverId}.and.receiver_id.eq.${currentUserId}`)
           .order("created_at", { ascending: true });
 
