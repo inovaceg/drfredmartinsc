@@ -33,13 +33,22 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
   };
 
   useEffect(() => {
-    if (!currentUserId) return;
+    if (!currentUserId || !receiverId) {
+      console.warn("ChatWindow: currentUserId ou receiverId ausentes. Não é possível buscar mensagens.");
+      setLoading(false);
+      return;
+    }
 
     const fetchMessagesAndReceiverProfile = async () => {
       setLoading(true);
       try {
-        // Corrigindo a sintaxe do filtro 'or' para ser mais robusta
-        // Usando a sintaxe explícita de 'and()' para cada condição dentro do 'or()'
+        // Validação adicional para garantir que os IDs são válidos antes de construir a query
+        if (!currentUserId || !receiverId || !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(currentUserId) || !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(receiverId)) {
+          console.error("ChatWindow: currentUserId ou receiverId não são UUIDs válidos. Interrompendo fetch.");
+          setLoading(false);
+          return;
+        }
+
         const { data: fetchedMessages, error: messagesError } = await supabase
           .from("patient_doctor_messages")
           .select("*")
@@ -90,7 +99,6 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
     fetchMessagesAndReceiverProfile();
 
     // Setup real-time subscription
-    // Os filtros de realtime já estavam corretos, pois usam 'and' separadamente
     const channel = supabase
       .channel(`chat_room_${currentUserId}_${receiverId}`)
       .on(
@@ -99,15 +107,19 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
           event: "INSERT",
           schema: "public",
           table: "patient_doctor_messages",
+          // Filtro para mensagens enviadas por este usuário para o receiver
           filter: `sender_id.eq.${currentUserId}.and.receiver_id.eq.${receiverId}`,
         },
         async (payload) => {
           const newMessage = payload.new as Message;
-          const { data: senderProfile, error } = await supabase.from('profiles').select('full_name').eq('id', newMessage.sender_id).single();
-          if (!error && senderProfile) {
-            setMessages((prev) => [...prev, { ...newMessage, sender_name: senderProfile.full_name }]);
-          } else {
-            setMessages((prev) => [...prev, { ...newMessage, sender_name: "Desconhecido" }]);
+          // Verifica se a mensagem já foi adicionada otimisticamente
+          if (!messages.some(msg => msg.id === newMessage.id)) {
+            const { data: senderProfile, error } = await supabase.from('profiles').select('full_name').eq('id', newMessage.sender_id).single();
+            if (!error && senderProfile) {
+              setMessages((prev) => [...prev, { ...newMessage, sender_name: senderProfile.full_name }]);
+            } else {
+              setMessages((prev) => [...prev, { ...newMessage, sender_name: "Desconhecido" }]);
+            }
           }
         }
       )
@@ -117,6 +129,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
           event: "INSERT",
           schema: "public",
           table: "patient_doctor_messages",
+          // Filtro para mensagens enviadas pelo receiver para este usuário
           filter: `sender_id.eq.${receiverId}.and.receiver_id.eq.${currentUserId}`,
         },
         async (payload) => {
@@ -134,16 +147,34 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUserId, receiverId]);
+  }, [currentUserId, receiverId, messages]); // Adicionado 'messages' para o useEffect de Realtime
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   const handleSendMessage = async (content: string, fileUrl?: string, fileType?: string) => {
-    if (!content.trim() && !fileUrl || !currentUserId) return;
+    if (!content.trim() && !fileUrl || !currentUserId || !receiverId) return;
+
+    // 1. Adicionar a mensagem otimisticamente ao estado local
+    const tempId = `temp-${Date.now()}`; // ID temporário para a mensagem
+    const newMessage: Message = {
+      id: tempId,
+      sender_id: currentUserId,
+      receiver_id: receiverId,
+      appointment_id: appointmentId || null,
+      content: content.trim(),
+      is_read: false,
+      file_url: fileUrl || null,
+      file_type: fileType || null,
+      created_at: new Date().toISOString(), // Usar o tempo atual
+      sender_name: "Você", // Nome do remetente para exibição imediata
+    };
+    setMessages((prev) => [...prev, newMessage]);
+    scrollToBottom(); // Rola para a nova mensagem imediatamente
 
     try {
+      // 2. Enviar a mensagem para o Supabase
       const { data, error } = await supabase
         .from("patient_doctor_messages")
         .insert({
@@ -160,10 +191,17 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
 
       if (error) throw error;
 
-      // The subscription will handle adding the message to the state
+      // 3. Atualizar a mensagem otimista com o ID real do banco de dados
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === tempId ? { ...msg, id: data.id, created_at: data.created_at } : msg))
+      );
+      // A assinatura em tempo real também receberá esta mensagem, mas a verificação `!messages.some(msg => msg.id === newMessage.id)`
+      // no listener de Realtime evitará duplicatas.
     } catch (error: any) {
       console.error("Error sending message:", error.message);
       toast.error("Erro ao enviar mensagem: " + error.message);
+      // Em caso de erro, remover a mensagem otimista ou marcar como falha
+      setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
     }
   };
 
