@@ -51,6 +51,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
 
         // Simplificando a consulta: buscar todas as mensagens onde o sender_id OU receiver_id
         // seja um dos dois usuários envolvidos no chat.
+        // Isso é mais fácil para o PostgREST interpretar.
         const { data: fetchedMessages, error: messagesError } = await supabase
           .from("patient_doctor_messages")
           .select("*")
