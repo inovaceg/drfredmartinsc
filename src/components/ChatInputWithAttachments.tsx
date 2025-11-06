@@ -52,6 +52,7 @@ export function ChatInputWithAttachments({ onSendMessage, disabled }: ChatInputW
   };
 
   const uploadFile = async (file: File | Blob, customType?: string) => {
+    console.log("ChatInputWithAttachments: Attempting to upload file:", file);
     const fileExtension = file instanceof File ? file.name.split('.').pop() : (customType === "audio/webm" ? "webm" : "bin");
     const fileName = `${uuidv4()}.${fileExtension}`;
     const bucket = "chat_attachments"; // You'll need to create this bucket in Supabase Storage
@@ -65,7 +66,7 @@ export function ChatInputWithAttachments({ onSendMessage, disabled }: ChatInputW
       });
 
     if (error) {
-      console.error("Error uploading file:", error);
+      console.error("ChatInputWithAttachments: Error uploading file to Supabase Storage:", error);
       toast.error("Erro ao fazer upload do arquivo: " + error.message);
       throw error;
     }
@@ -74,6 +75,7 @@ export function ChatInputWithAttachments({ onSendMessage, disabled }: ChatInputW
       .from(bucket)
       .getPublicUrl(data.path);
 
+    console.log("ChatInputWithAttachments: File uploaded successfully. Public URL:", publicUrlData.publicUrl, "Type:", customType || (file instanceof File ? file.type : undefined));
     return { url: publicUrlData.publicUrl, type: customType || (file instanceof File ? file.type : undefined) };
   };
 

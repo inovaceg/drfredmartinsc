@@ -60,6 +60,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
           console.error("ChatWindow: Erro ao buscar mensagens:", messagesError);
           throw messagesError;
         }
+        console.log("ChatWindow: Mensagens carregadas com sucesso:", fetchedMessages);
 
         // Fetch sender names for all messages
         const messagesWithSenderNames = await Promise.all(
@@ -90,7 +91,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
         if (profileError) throw profileError;
         setReceiverProfile(profileData);
       } catch (error: any) {
-        console.error("Error fetching chat data:", error.message);
+        console.error("ChatWindow: Error fetching chat data:", error.message);
         toast.error("Erro ao carregar o chat: " + error.message);
       } finally {
         setLoading(false);
@@ -100,23 +101,24 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
     fetchMessagesAndReceiverProfile();
 
     // Setup real-time subscription
+    // SIMPLIFICANDO OS FILTROS DE REALTIME AQUI
     const channel = supabase
       .channel(`chat_room_${currentUserId}_${receiverId}`)
+      // Listener para mensagens ENVIADAS PELO USUÁRIO ATUAL para o RECEIVER
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "patient_doctor_messages",
-          // Filtro para mensagens enviadas por este usuário para o receiver
-          filter: `sender_id=eq.${currentUserId}&receiver_id=eq.${receiverId}`, // Usando & para AND
+          filter: `sender_id=eq.${currentUserId}&receiver_id=eq.${receiverId}`,
         },
         async (payload) => {
           const newMessage = payload.new as Message;
-          // Verifica se a mensagem já foi adicionada otimisticamente
+          console.log("ChatWindow: Realtime - Nova mensagem ENVIADA por MIM:", newMessage);
           setMessages((prev) => {
             if (prev.some(msg => msg.id === newMessage.id)) {
-              return prev; // Evita duplicatas se já adicionado otimisticamente
+              return prev;
             }
             // Busca o nome do remetente para a nova mensagem
             supabase.from('profiles').select('full_name').eq('id', newMessage.sender_id).single()
@@ -127,25 +129,26 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
                   setMessages((current) => [...current, { ...newMessage, sender_name: "Desconhecido" }]);
                 }
               })
-              .catch(err => console.error("Error fetching sender profile for new message:", err.message));
-            return prev; // Retorna o estado anterior por enquanto, a atualização real virá do then/catch acima
+              .catch(err => console.error("Error fetching sender profile for new message (sent by me):", err.message));
+            return prev;
           });
         }
       )
+      // Listener para mensagens RECEBIDAS PELO USUÁRIO ATUAL do RECEIVER
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "patient_doctor_messages",
-          // Filtro para mensagens enviadas pelo receiver para este usuário
-          filter: `sender_id=eq.${receiverId}&receiver_id=eq.${currentUserId}`, // Usando & para AND
+          filter: `sender_id=eq.${receiverId}&receiver_id=eq.${currentUserId}`,
         },
         async (payload) => {
           const newMessage = payload.new as Message;
+          console.log("ChatWindow: Realtime - Nova mensagem RECEBIDA do OUTRO:", newMessage);
           setMessages((prev) => {
             if (prev.some(msg => msg.id === newMessage.id)) {
-              return prev; // Evita duplicatas se já adicionado otimisticamente
+              return prev;
             }
             // Busca o nome do remetente para a nova mensagem
             supabase.from('profiles').select('full_name').eq('id', newMessage.sender_id).single()
@@ -156,8 +159,8 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
                   setMessages((current) => [...current, { ...newMessage, sender_name: "Desconhecido" }]);
                 }
               })
-              .catch(err => console.error("Error fetching sender profile for new message:", err.message));
-            return prev; // Retorna o estado anterior por enquanto, a atualização real virá do then/catch acima
+              .catch(err => console.error("Error fetching sender profile for new message (received by me):", err.message));
+            return prev;
           });
         }
       )
@@ -173,7 +176,11 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
   }, [messages]);
 
   const handleSendMessage = async (content: string, fileUrl?: string, fileType?: string) => {
-    if (!content.trim() && !fileUrl || !currentUserId || !receiverId) return;
+    console.log("ChatWindow: handleSendMessage chamado. Content:", content, "File URL:", fileUrl, "File Type:", fileType);
+    if (!content.trim() && !fileUrl || !currentUserId || !receiverId) {
+      console.warn("ChatWindow: handleSendMessage - Condições de envio não atendidas (conteúdo/arquivo ou IDs ausentes).");
+      return;
+    }
 
     // 1. Adicionar a mensagem otimisticamente ao estado local
     const tempId = `temp-${Date.now()}`; // ID temporário para a mensagem
@@ -193,7 +200,15 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
     scrollToBottom(); // Rola para a nova mensagem imediatamente
 
     try {
-      // 2. Enviar a mensagem para o Supabase
+      console.log("ChatWindow: Tentando inserir mensagem no Supabase:", {
+        sender_id: currentUserId,
+        receiver_id: receiverId,
+        appointment_id: appointmentId || null,
+        content: content.trim(),
+        is_read: false,
+        file_url: fileUrl || null,
+        file_type: fileType || null,
+      });
       const { data, error } = await supabase
         .from("patient_doctor_messages")
         .insert({
@@ -208,8 +223,12 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("ChatWindow: Erro ao inserir mensagem no Supabase:", error);
+        throw error;
+      }
 
+      console.log("ChatWindow: Mensagem inserida com sucesso no Supabase. Dados:", data);
       // 3. Atualizar a mensagem otimista com o ID real do banco de dados
       setMessages((prev) =>
         prev.map((msg) => (msg.id === tempId ? { ...msg, id: data.id, created_at: data.created_at } : msg))
@@ -217,7 +236,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
       // A assinatura em tempo real também receberá esta mensagem, mas a verificação `!messages.some(msg => msg.id === newMessage.id)`
       // no listener de Realtime evitará duplicatas.
     } catch (error: any) {
-      console.error("Error sending message:", error.message);
+      console.error("ChatWindow: Erro ao enviar mensagem (catch block):", error.message);
       toast.error("Erro ao enviar mensagem: " + error.message);
       // Em caso de erro, remover a mensagem otimista ou marcar como falha
       setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
