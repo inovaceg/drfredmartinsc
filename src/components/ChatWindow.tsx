@@ -53,7 +53,8 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
           .from("patient_doctor_messages")
           .select("*")
           // CORREÇÃO APLICADA AQUI: Usando a sintaxe explícita de PostgREST para 'and' dentro de 'or'
-          .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${currentUserId})`)
+          // com parênteses para agrupar as condições AND.
+          .or(`(sender_id.eq.${currentUserId},receiver_id.eq.${receiverId}),(sender_id.eq.${receiverId},receiver_id.eq.${currentUserId})`)
           .order("created_at", { ascending: true });
 
         if (messagesError) {
@@ -91,7 +92,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
         if (profileError) throw profileError;
         setReceiverProfile(profileData);
       } catch (error: any) {
-        console.error("ChatWindow: Error fetching chat data:", error.message);
+        console.error("Error fetching chat data:", error.message);
         toast.error("Erro ao carregar o chat: " + error.message);
       } finally {
         setLoading(false);
