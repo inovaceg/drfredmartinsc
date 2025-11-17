@@ -173,8 +173,8 @@ const Doctor = () => {
       console.log("fetchOverview: Raw appointments data (without join):", apptsData);
 
       // Fetch patient profiles separately
-      const patientIds = [...new Set(apptsData.map(a => a.patient_id))];
-      let patientProfiles: PatientProfile[] = [];
+      const patientIds = [...new Set((apptsData || []).map(a => a.patient_id))];
+      let patientProfiles: Pick<PatientProfile, 'id' | 'full_name'>[] = [];
       if (patientIds.length > 0) {
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
@@ -184,21 +184,21 @@ const Doctor = () => {
           console.error("fetchOverview: Error fetching patient profiles:", profilesError);
           throw profilesError;
         }
-        patientProfiles = profilesData || [];
+        patientProfiles = (profilesData || []) as Pick<PatientProfile, 'id' | 'full_name'>[];
       }
       const patientMap = new Map(patientProfiles.map(p => [p.id, p.full_name]));
 
       // Map patient names to appointments
-      const apptsWithPatientNames = apptsData.map(apt => ({
+      const apptsWithPatientNames = (apptsData || []).map(apt => ({
         ...apt,
         patient_name: patientMap.get(apt.patient_id) || "Paciente Desconhecido"
       }));
       console.log("fetchOverview: Appointments with patient names:", apptsWithPatientNames);
 
       // índice de slot_id -> existe consulta
-      const occupiedSet = new Set(apptsData.map(a => a.slot_id));
-      const total = slots.length;
-      const occupied = slots.filter(s => occupiedSet.has(s.id) || !s.is_available).length;
+      const occupiedSet = new Set((apptsData || []).map(a => a.slot_id));
+      const total = (slots || []).length;
+      const occupied = (slots || []).filter(s => occupiedSet.has(s.id) || !s.is_available).length;
       const available = Math.max(0, total - occupied);
 
       console.log("fetchOverview: Calculated overview - Total:", total, "Available:", available, "Occupied:", occupied);
@@ -245,7 +245,7 @@ const Doctor = () => {
       throw error; // Propagate error
     }
     if (appts && appts.length > 0) {
-      const withPatients = appts.map((a: any) => ({
+      const withPatients = (appts as any[]).map((a: any) => ({
         ...a,
         patient_profile: { 
           id: a.patient_id, 
@@ -314,7 +314,7 @@ const Doctor = () => {
             setDoctorProfile(doctorProfileData);
             setSlots(availabilitySlotsResult.slots);
             setAppointments(appointmentsData);
-            setPatients(patientsData);
+            setPatients(patientsData as PatientProfile[]); // Cast para PatientProfile[]
             setIsLoadingScheduleSlots(false); // Specific to schedule tab
             // No need to set isLoadingOverview here, as it's managed by its own useEffect
           } catch (error) {
@@ -825,7 +825,7 @@ const Doctor = () => {
         <main className="flex-1 container mx-auto px-4 py-8 md:py-12">
           <div className="mb-8 flex justify-between items-center">
             <div className="flex-1 min-w-0"> {/* Adicionado flex-1 e min-w-0 para permitir que o texto ocupe o espaço e quebre */}
-              <h1 className="text-xl md:text-2xl font-bold break-words">Portal do Profissional</h1> {/* Ajustado o tamanho da fonte */}
+              <h1 className="text-xl md:text-xl font-bold">Portal do Profissional</h1> {/* Ajustado o tamanho da fonte para text-xl */}
               <p className="text-muted-foreground mt-2">
                 Bem-vindo(a), {doctorProfile?.full_name || user?.email}
               </p>
