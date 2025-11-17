@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -820,15 +822,15 @@ const Doctor = () => {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <ErrorBoundary> {/* Adicionado ErrorBoundary aqui */}
-        <main className="flex-1 container mx-auto px-4 py-8">
+        <main className="flex-1 container mx-auto px-4 py-8 md:py-12">
           <div className="mb-8 flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold">Portal do Profissional</h1>
+            <div className="flex-1 min-w-0"> {/* Adicionado flex-1 e min-w-0 para permitir que o texto ocupe o espaço e quebre */}
+              <h1 className="text-xl md:text-2xl font-bold break-words">Portal do Profissional</h1> {/* Ajustado o tamanho da fonte */}
               <p className="text-muted-foreground mt-2">
                 Bem-vindo(a), {doctorProfile?.full_name || user?.email}
               </p>
             </div>
-            <Button variant="outline" onClick={handleSignOut}>
+            <Button variant="outline" onClick={handleSignOut} className="flex-shrink-0 ml-4"> {/* Adicionado flex-shrink-0 e ml-4 */}
               <LogOut className="mr-2 h-4 w-4" />
               Sair
             </Button>
