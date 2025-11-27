@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { RemoteTrackPublication, RemoteVideoTrack, RemoteAudioTrack, LocalVideoTrack, LocalAudioTrack } from 'twilio-video';
+import { RemoteTrackPublication, RemoteVideoTrack, RemoteAudioTrack, LocalVideoTrack, LocalAudioTrack, RemoteTrack, LocalTrack } from 'twilio-video';
 import { MicOff, VideoOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -11,19 +11,26 @@ interface VideoParticipantProps {
   displayName: string;
 }
 
+// Define a type guard for media tracks
+type MediaTrack = RemoteVideoTrack | RemoteAudioTrack | LocalVideoTrack | LocalAudioTrack;
+
+const isMediaTrack = (track: RemoteTrack | LocalTrack | null): track is MediaTrack => {
+  return track !== null && (track.kind === 'audio' || track.kind === 'video');
+};
+
+const trackpubsToTracks = (trackMap: Map<string, RemoteTrackPublication>) =>
+  Array.from(trackMap.values())
+    .map((publication) => publication.track)
+    .filter(isMediaTrack); // Use the type guard to filter only media tracks
+
 export const VideoParticipant: React.FC<VideoParticipantProps> = ({ participant, isLocal = false, displayName }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [isVideoDisabled, setIsVideoDisabled] = useState(false);
 
-  const trackpubsToTracks = (trackMap: Map<string, RemoteTrackPublication>) =>
-    Array.from(trackMap.values())
-      .map((publication) => publication.track)
-      .filter((track) => track !== null);
-
   useEffect(() => {
-    const attachTracks = (tracks: (RemoteVideoTrack | RemoteAudioTrack | LocalVideoTrack | LocalAudioTrack)[]) => {
+    const attachTracks = (tracks: MediaTrack[]) => {
       tracks.forEach((track) => {
         if (track.kind === 'video' && videoRef.current) {
           track.attach(videoRef.current);
@@ -35,7 +42,7 @@ export const VideoParticipant: React.FC<VideoParticipantProps> = ({ participant,
       });
     };
 
-    const detachTracks = (tracks: (RemoteVideoTrack | RemoteAudioTrack | LocalVideoTrack | LocalAudioTrack)[]) => {
+    const detachTracks = (tracks: MediaTrack[]) => {
       tracks.forEach((track) => {
         track.detach().forEach((element) => element.remove());
         if (track.kind === 'video') setIsVideoDisabled(true);
@@ -44,11 +51,17 @@ export const VideoParticipant: React.FC<VideoParticipantProps> = ({ participant,
     };
 
     const handleTrackPublication = (publication: RemoteTrackPublication) => {
+      if (!isMediaTrack(publication.track)) return; // Ignore DataTracks
+
       if (publication.isSubscribed) {
-        attachTracks([publication.track!]);
+        attachTracks([publication.track! as MediaTrack]); // Cast is safe due to check above
       }
-      publication.on('subscribed', (track) => attachTracks([track]));
-      publication.on('unsubscribed', (track) => detachTracks([track]));
+      publication.on('subscribed', (track) => {
+        if (isMediaTrack(track)) attachTracks([track]);
+      });
+      publication.on('unsubscribed', (track) => {
+        if (isMediaTrack(track)) detachTracks([track]);
+      });
       publication.on('disabled', (track) => {
         if (track.kind === 'video') setIsVideoDisabled(true);
         if (track.kind === 'audio') setIsAudioMuted(true);
@@ -66,8 +79,12 @@ export const VideoParticipant: React.FC<VideoParticipantProps> = ({ participant,
 
     // Listen for new tracks
     participant.on('trackPublished', handleTrackPublication);
-    participant.on('trackSubscribed', attachTracks);
-    participant.on('trackUnsubscribed', detachTracks);
+    participant.on('trackSubscribed', (track: RemoteTrack | LocalTrack) => {
+      if (isMediaTrack(track)) attachTracks([track]);
+    });
+    participant.on('trackUnsubscribed', (track: RemoteTrack | LocalTrack) => {
+      if (isMediaTrack(track)) detachTracks([track]);
+    });
     participant.on('trackDisabled', (track: any) => {
       if (track.kind === 'video') setIsVideoDisabled(true);
       if (track.kind === 'audio') setIsAudioMuted(true);

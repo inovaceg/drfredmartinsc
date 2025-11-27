@@ -126,7 +126,7 @@ export function OnlineConsultationTab({ isDoctorView }: OnlineConsultationTabPro
         callerName: callerName || "Doutor(a) Desconhecido",
         onAccept: handleAcceptCall,
         onReject: handleRejectCall,
-      });
+      }) as string; // Explicitamente tipar como string (o ID do toast)
       setIncomingCallToastId(newToastId);
     } else if (!ringingSession && incomingCallToastId) {
       // Se não houver sessão de ringing, dispensa qualquer notificação ativa

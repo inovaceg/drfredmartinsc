@@ -7,7 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Loader2, Mic, MicOff, Video, VideoOff, PhoneOff } from "lucide-react";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
-import { connect, LocalVideoTrack, LocalAudioTrack, RemoteVideoTrack, RemoteAudioTrack, Room, Participant } from 'twilio-video';
+import { connect, LocalVideoTrack, LocalAudioTrack, RemoteVideoTrack, RemoteAudioTrack, Room, Participant, LocalTrack } from 'twilio-video';
 import { VideoParticipant } from "./VideoParticipant";
 
 type VideoSession = Tables<'video_sessions'>;
@@ -21,6 +21,11 @@ interface VideoCallWindowProps {
   isDoctor: boolean;
   onClose: () => void;
 }
+
+// Type guard to check if a track is a LocalTrack (which has enable/disable)
+const isLocalTrack = (track: any): track is LocalAudioTrack | LocalVideoTrack => {
+  return track && (track instanceof LocalAudioTrack || track instanceof LocalVideoTrack);
+};
 
 export function VideoCallWindow({
   currentUserId,
@@ -192,10 +197,13 @@ export function VideoCallWindow({
     if (localParticipant) {
       const audioTracks = Array.from(localParticipant.audioTracks.values());
       audioTracks.forEach(publication => {
-        if (isMuted) {
-          publication.track?.enable();
-        } else {
-          publication.track?.disable();
+        const track = publication.track;
+        if (isLocalTrack(track)) { // Check if it's a LocalTrack
+          if (isMuted) {
+            track.enable();
+          } else {
+            track.disable();
+          }
         }
       });
       setIsMuted(!isMuted);
@@ -206,10 +214,13 @@ export function VideoCallWindow({
     if (localParticipant) {
       const videoTracks = Array.from(localParticipant.videoTracks.values());
       videoTracks.forEach(publication => {
-        if (isVideoOff) {
-          publication.track?.enable();
-        } else {
-          publication.track?.disable();
+        const track = publication.track;
+        if (isLocalTrack(track)) { // Check if it's a LocalTrack
+          if (isVideoOff) {
+            track.enable();
+          } else {
+            track.disable();
+          }
         }
       });
       setIsVideoOff(!isVideoOff);

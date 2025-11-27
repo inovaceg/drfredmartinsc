@@ -1,176 +1,228 @@
-"use client";
-
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useUser } from "@/hooks/useUser"; // Import useUser
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Calendar as CalendarIcon, Trash2 } from "lucide-react";
-import { toast } from "sonner";
-import { format, parseISO } from "date-fns";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Calendar, Clock, CheckCircle, Hourglass, XCircle, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { User } from "@supabase/supabase-js";
+import { formatPhone } from "@/lib/format-phone"; // Importar formatPhone
 import { Tables } from "@/integrations/supabase/types";
 
-type Appointment = Tables<'appointments'>;
 type Profile = Tables<'profiles'>;
+// Definir o tipo de retorno esperado do RPC get_doctor_profiles_by_ids
+type DoctorProfileRpc = { id: string; full_name: string | null; created_at: string | null };
 
-interface AppointmentWithDoctor extends Appointment {
-  doctor_profile?: Profile | null;
+
+interface PatientAppointmentsTabProps {
+  user: User;
+  onAppointmentsChanged: () => void; // Callback to notify parent of changes
 }
 
-export function PatientAppointmentsTab() {
-  const { user } = useUser(); // Use the useUser hook
-  const [appointments, setAppointments] = useState<AppointmentWithDoctor[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [deleting, setDeleting] = useState(false);
+interface Appointment {
+  id: string;
+  patient_id: string;
+  doctor_id: string;
+  slot_id: string;
+  start_time: string;
+  end_time: string;
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  doctor_profile?: {
+    id: string;
+    full_name: string;
+    specialty?: string;
+  };
+}
 
-  const patientId = user?.id;
+export const PatientAppointmentsTab: React.FC<PatientAppointmentsTabProps> = ({ user, onAppointmentsChanged }) => {
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const { toast } = useToast();
 
   const fetchAppointments = useCallback(async () => {
-    if (!patientId) return;
+    if (!user) return;
+    
+    const { data: appointmentsData, error } = await supabase
+      .from('appointments')
+      .select('*')
+      .eq('patient_id', user.id)
+      .order('start_time', { ascending: true });
+    
+    if (error) {
+      console.error("PatientAppointmentsTab: Error fetching patient appointments:", error);
+      toast({
+        title: "Erro ao carregar consultas",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else if (appointmentsData && appointmentsData.length > 0) {
+      const doctorIds = [...new Set(appointmentsData.map((a: any) => a.doctor_id))];
+      
+      // Usar o tipo de retorno correto para o RPC
+      const { data: doctorProfiles, error: doctorError } = await supabase
+        .rpc('get_doctor_profiles_by_ids', { _ids: doctorIds })
+        .returns<DoctorProfileRpc[]>(); // Especificar o tipo de retorno como array
 
-    setLoading(true);
-    try {
-      const { data: fetchedAppointments, error } = await supabase
-        .from('appointments')
-        .select('*')
-        .eq('patient_id', patientId)
-        .order('start_time', { ascending: true });
-
-      if (error) throw error;
-
-      const doctorIds = [...new Set((fetchedAppointments || []).map(apt => apt.doctor_id).filter(Boolean) as string[])];
-      let doctorProfiles: Profile[] = [];
-
-      if (doctorIds.length > 0) {
-        const { data: profilesData, error: profilesError } = await supabase.rpc('get_doctor_profiles_by_ids', { _ids: doctorIds }).returns<Profile[]>();
-        if (profilesError) {
-          console.error("Error fetching doctor profiles:", profilesError.message);
-        } else {
-          doctorProfiles = profilesData || [];
-        }
+      let profiles: DoctorProfileRpc[] = [];
+      if (doctorError) {
+        console.error("PatientAppointmentsTab: Error fetching doctor profiles for appointments:", doctorError);
+        toast({
+          title: "Erro ao carregar perfis de médicos",
+          description: doctorError.message,
+          variant: "destructive",
+        });
+      } else {
+        // Atribuição segura, pois o retorno foi tipado como array
+        profiles = doctorProfiles || [];
       }
-
-      const appointmentsWithDoctors = (fetchedAppointments || []).map(apt => ({
+      
+      const appointmentsWithDoctors = appointmentsData.map((apt: any) => ({
         ...apt,
-        doctor_profile: doctorProfiles?.find((p: Profile) => p.id === apt.doctor_id)
+        doctor_profile: profiles.find((p: any) => p.id === apt.doctor_id)
       }));
-
       setAppointments(appointmentsWithDoctors);
-    } catch (error: any) {
-      console.error("Error fetching appointments:", error.message);
-      toast.error("Erro ao carregar agendamentos: " + error.message);
-    } finally {
-      setLoading(false);
+    } else {
+      setAppointments([]);
     }
-  }, [patientId]);
+  }, [user, toast]);
 
   useEffect(() => {
     fetchAppointments();
   }, [fetchAppointments]);
 
-  const handleDeleteAppointment = async (appointmentId: string, slotId: string | null) => {
-    if (!patientId) return;
+  const deleteAppointment = useCallback(async (appointmentId: string, slotId: string) => {
+    if (!user) {
+      toast({
+        title: "Erro",
+        description: "Você precisa estar logado para excluir agendamentos.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    setDeleting(true);
-    try {
-      // Delete the appointment
-      const { error: deleteError } = await supabase
-        .from('appointments')
-        .delete()
-        .eq('id', appointmentId)
-        .eq('patient_id', patientId);
+    // First, delete the appointment
+    const { error: deleteError } = await supabase
+      .from('appointments')
+      .delete()
+      .eq('id', appointmentId)
+      .eq('patient_id', user.id);
 
-      if (deleteError) throw deleteError;
-
-      // Make the slot available again if it exists
+    if (deleteError) {
+      console.error("PatientAppointmentsTab: Error deleting appointment:", deleteError);
+      toast({
+        title: "Erro ao excluir",
+        description: deleteError.message || "Não foi possível excluir o agendamento.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Agendamento Excluído",
+        description: "Sua consulta foi excluída com sucesso.",
+      });
+      // If deletion is successful, also mark the slot as available again
       if (slotId) {
         const { error: slotUpdateError } = await supabase
           .from('availability_slots')
           .update({ is_available: true })
           .eq('id', slotId);
-        if (slotUpdateError) console.error("Error making slot available:", slotUpdateError.message);
+        
+        if (slotUpdateError) {
+          console.error("PatientAppointmentsTab: Error reverting slot availability:", slotUpdateError);
+          toast({
+            title: "Aviso",
+            description: "Agendamento excluído, mas houve um erro ao liberar o horário. Contate o suporte.",
+            variant: "destructive",
+          });
+        }
       }
+      onAppointmentsChanged(); // Notify parent to refresh
+    }
+  }, [user, toast, onAppointmentsChanged]);
 
-      toast.success("Agendamento cancelado com sucesso!");
-      fetchAppointments(); // Refresh the list
-    } catch (error: any) {
-      console.error("Error deleting appointment:", error.message);
-      toast.error("Erro ao cancelar agendamento: " + error.message);
-    } finally {
-      setDeleting(false);
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <Hourglass className="h-4 w-4 text-yellow-500" />;
+      case 'confirmed':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'completed':
+        return <CheckCircle className="h-4 w-4 text-blue-500" />;
+      case 'cancelled':
+        return <XCircle className="h-4 w-4 text-red-500" />;
+      default:
+        return null;
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'Pendente';
+      case 'confirmed':
+        return 'Confirmada';
+      case 'completed':
+        return 'Concluída';
+      case 'cancelled':
+        return 'Cancelada';
+      default:
+        return status;
+    }
+  };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Meus Agendamentos</CardTitle>
+        <CardTitle>Minhas Consultas</CardTitle>
+        <CardDescription>Visualize suas consultas agendadas e seus detalhes.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {appointments.length === 0 ? (
-          <p className="text-center text-muted-foreground">Nenhum agendamento futuro.</p>
-        ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {appointments.map((appointment) => (
-              <Card key={appointment.id} className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-lg font-semibold">
-                      Consulta com {appointment.doctor_profile?.full_name || "Doutor(a) Desconhecido"}
-                    </p>
-                    <p className="text-muted-foreground text-sm">
-                      <CalendarIcon className="inline-block h-4 w-4 mr-1" />
-                      {format(parseISO(appointment.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                    <p className="text-muted-foreground text-sm">Status: {appointment.status}</p>
-                  </div>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="destructive" size="sm" disabled={deleting}>
-                        <Trash2 className="h-4 w-4 mr-2" /> Cancelar
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Confirmar Cancelamento</DialogTitle>
-                        <DialogDescription>
-                          Tem certeza que deseja cancelar esta consulta? Esta ação não pode ser desfeita.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => {}}>
-                          Manter Agendamento
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          onClick={() => handleDeleteAppointment(appointment.id, appointment.slot_id)}
-                          disabled={deleting}
-                        >
-                          {deleting ? (
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          ) : (
-                            "Sim, Cancelar"
-                          )}
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              </Card>
-            ))}
+      <CardContent className="space-y-3">
+        {appointments.map((apt) => (
+          <div
+            key={apt.id}
+            className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg shadow-sm"
+          >
+            <div className="space-y-1 mb-2 sm:mb-0">
+              <p className="font-semibold text-lg">
+                Dr(a). {apt.doctor_profile?.full_name || 'Médico Desconhecido'}
+              </p>
+              {apt.doctor_profile?.specialty && (
+                <p className="text-sm text-muted-foreground">
+                  Especialidade: {apt.doctor_profile.specialty}
+                </p>
+              )}
+              <p className="text-md">
+                <Calendar className="inline-block h-4 w-4 mr-1 text-primary" />
+                Data: {format(new Date(apt.start_time), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+              </p>
+              <p className="text-md">
+                <Clock className="inline-block h-4 w-4 mr-1 text-primary" />
+                Horário: {format(new Date(apt.start_time), "HH:mm")} - {format(new Date(apt.end_time), "HH:mm")}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {getStatusIcon(apt.status)}
+              <p className="text-md font-medium">
+                Status: {getStatusText(apt.status)}
+              </p>
+              {apt.status === 'pending' && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => deleteAppointment(apt.id, apt.slot_id)}
+                  className="ml-4"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" /> Excluir
+                </Button>
+              )}
+            </div>
           </div>
+        ))}
+        {appointments.length === 0 && (
+          <p className="text-muted-foreground text-center py-4">
+            Nenhuma consulta agendada. Agende sua primeira consulta na aba "Agendar"!
+          </p>
         )}
       </CardContent>
     </Card>
   );
-}
+};

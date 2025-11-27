@@ -76,11 +76,7 @@ export function Footer() {
                 Serviços
               </Link>
             </li>
-            <li>
-              <Link to="/#testimonials" className="hover:underline">
-                Depoimentos
-              </Link>
-            </li>
+            {/* Removido: Depoimentos */}
             <li>
               <Link to="/#blog" className="hover:underline">
                 Blog
@@ -96,16 +92,8 @@ export function Footer() {
                 Contato
               </Link>
             </li>
-            <li>
-              <Link to="/patient" className="hover:underline">
-                Portal do Paciente
-              </Link>
-            </li>
-            <li>
-              <Link to="/doctor" className="hover:underline">
-                Portal do Profissional
-              </Link>
-            </li>
+            {/* Removido: Portal do Paciente */}
+            {/* Removido: Portal do Profissional */}
           </ul>
         </div>
         <div>

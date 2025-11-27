@@ -825,7 +825,7 @@ const Doctor = () => {
         <main className="flex-1 container mx-auto px-4 py-8 md:py-12">
           <div className="mb-8 flex justify-between items-center">
             <div className="flex-1 min-w-0"> {/* Adicionado flex-1 e min-w-0 para permitir que o texto ocupe o espaço e quebre */}
-              <h1 className="text-xl md:text-xl font-bold">Portal do Profissional</h1> {/* Ajustado o tamanho da fonte para text-xl */}
+              <h1 className="text-xl font-bold">Portal do Profissional</h1> {/* Ajustado o tamanho da fonte para text-xl e removido md:text-xl */}
               <p className="text-muted-foreground mt-2">
                 Bem-vindo(a), {doctorProfile?.full_name || user?.email}
               </p>

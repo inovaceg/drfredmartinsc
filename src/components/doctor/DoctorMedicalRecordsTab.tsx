@@ -248,7 +248,7 @@ const AddMedicalRecordDialog: React.FC<AddMedicalRecordDialogProps> = ({ onSave,
 };
 
 
-export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: { currentUserId: string; setSelectedPatient: React.Dispatch<React.SetStateAction<Profile | null>> }) {
+export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: { currentUserId: string; setSelectedPatient: (patientId: string | null) => void }) {
   const queryClient = useQueryClient();
 
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
@@ -267,7 +267,8 @@ export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: {
     queryKey: ["patientsForDoctor", currentUserId],
     queryFn: async () => {
       if (!currentUserId) return [];
-      const { data, error } = await supabase.rpc("get_patients_for_doctor").returns<Profile[]>(); // Explicitly type RPC return
+      // Garantindo que o RPC retorna um array de Profile
+      const { data, error } = await supabase.rpc("get_patients_for_doctor").returns<Profile[]>(); 
       if (error) throw error;
       return data || [];
     },
@@ -467,7 +468,10 @@ export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: {
         <div>
           <Label htmlFor="patient-select">Selecionar Paciente</Label>
           <Select
-            onValueChange={(value) => setSelectedPatientId(value)}
+            onValueChange={(value) => {
+              setSelectedPatientId(value);
+              setSelectedPatient(value); // Atualiza o estado no componente pai
+            }}
             value={selectedPatientId || ""}
           >
             <SelectTrigger>

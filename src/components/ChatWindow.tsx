@@ -131,16 +131,19 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
             if (prev.some(msg => msg.id === newMessage.id)) {
               return prev;
             }
-            // Busca o nome do remetente para a nova mensagem
-            supabase.from('profiles').select('full_name').eq('id', newMessage.sender_id).single()
+            // Retorna a Promise da busca de perfil para permitir o .catch
+            const profilePromise = supabase.from('profiles').select('full_name').eq('id', newMessage.sender_id).single()
               .then(({ data: senderProfile, error }) => {
                 if (!error && senderProfile) {
                   setMessages((current) => [...current, { ...newMessage, sender_name: senderProfile.full_name }]);
                 } else {
                   setMessages((current) => [...current, { ...newMessage, sender_name: "Desconhecido" }]);
                 }
-              })
-              .catch(err => console.error("Error fetching sender profile for new message (sent by me):", err.message));
+              });
+            
+            // Adiciona o catch ao profilePromise
+            profilePromise.catch(err => console.error("Error fetching sender profile for new message (sent by me):", err.message));
+            
             return prev;
           });
         }
@@ -161,16 +164,19 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
             if (prev.some(msg => msg.id === newMessage.id)) {
               return prev;
             }
-            // Busca o nome do remetente para a nova mensagem
-            supabase.from('profiles').select('full_name').eq('id', newMessage.sender_id).single()
+            // Retorna a Promise da busca de perfil para permitir o .catch
+            const profilePromise = supabase.from('profiles').select('full_name').eq('id', newMessage.sender_id).single()
               .then(({ data: senderProfile, error }) => {
                 if (!error && senderProfile) {
                   setMessages((current) => [...current, { ...newMessage, sender_name: senderProfile.full_name }]);
                 } else {
                   setMessages((current) => [...current, { ...newMessage, sender_name: "Desconhecido" }]);
                 }
-              })
-              .catch(err => console.error("Error fetching sender profile for new message:", err.message));
+              });
+            
+            // Adiciona o catch ao profilePromise
+            profilePromise.catch(err => console.error("Error fetching sender profile for new message:", err.message));
+            
             return prev;
           });
         }
