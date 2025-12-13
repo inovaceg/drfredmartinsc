@@ -15,15 +15,19 @@ export function useUser() {
 
   useEffect(() => {
     console.log("useUser: useEffect triggered. supabaseUser:", supabaseUser ? supabaseUser.id : "null", "current profile:", profile ? profile.id : "null");
+    
+    // Flag para saber se precisamos buscar o perfil
+    const shouldFetch = supabaseUser && (!profile || profile.id !== supabaseUser.id);
+
     async function fetchProfile() {
-      if (supabaseUser && !profile) {
-        console.log("useUser: Fetching profile for user:", supabaseUser.id);
+      if (shouldFetch) {
+        console.log("useUser: Fetching profile for user:", supabaseUser!.id);
         setIsLoading(true);
         try {
           const { data, error } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', supabaseUser.id)
+            .eq('id', supabaseUser!.id)
             .single();
 
           if (error) throw error;
@@ -40,8 +44,8 @@ export function useUser() {
         console.log("useUser: No supabaseUser found. Resetting profile.");
         setProfile(null);
         setIsLoading(false);
-      } else if (supabaseUser && profile) {
-        console.log("useUser: supabaseUser and profile already exist. Not refetching.");
+      } else if (supabaseUser && profile && profile.id === supabaseUser.id) {
+        console.log("useUser: supabaseUser and profile already exist and match. Not refetching.");
         setIsLoading(false); // Ensure isLoading is false if already loaded
       }
     }
