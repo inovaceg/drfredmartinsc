@@ -50,7 +50,8 @@ export function PatientScheduleTab() {
             console.error(`Error fetching dates for doctor ${doctor.id}:`, datesError.message);
             return { ...doctor, availableDates: [] };
           }
-          return { ...doctor, availableDates: (datesData || []).map((d: string) => parseISO(d)) };
+          // Corrigido: Garantir que datesData é um array antes de mapear
+          return { ...doctor, availableDates: (datesData as string[] || []).map((d: string) => parseISO(d)) };
         })
       );
       setDoctors(doctorsWithDates);
@@ -77,7 +78,8 @@ export function PatientScheduleTab() {
       }).returns<AvailabilitySlot[]>(); // Explicitly type RPC return
 
       if (error) throw error;
-      setAvailableSlots(data || []);
+      // Corrigido: Garantir que data é um array antes de definir o estado
+      setAvailableSlots((data as AvailabilitySlot[] | null) || []);
     } catch (error: any) {
       console.error("Error fetching available slots:", error.message);
       toast.error("Erro ao carregar horários disponíveis: " + error.message);

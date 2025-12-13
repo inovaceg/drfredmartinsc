@@ -60,7 +60,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({ initialData, onSave, onCanc
       content: initialData?.content || "",
       excerpt: initialData?.excerpt || "",
       image_url: initialData?.image_url || "",
-      status: initialData?.status || "draft",
+      status: (initialData?.status as "draft" | "published") || "draft", // Corrigido: Cast explícito
       category: initialData?.category || "", // Valor padrão para categoria
     },
   });

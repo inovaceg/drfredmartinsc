@@ -124,7 +124,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
           table: "patient_doctor_messages",
           filter: `sender_id=eq.${currentUserId}&receiver_id=eq.${receiverId}`,
         },
-        async (payload) => {
+        (payload) => {
           const newMessage = payload.new as Message;
           console.log("ChatWindow: Realtime - Nova mensagem ENVIADA por MIM:", newMessage);
           setMessages((prev) => {
@@ -139,7 +139,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
                 } else {
                   setMessages((current) => [...current, { ...newMessage, sender_name: "Desconhecido" }]);
                 }
-              });
+              }) as Promise<void>; // Adicionando cast para Promise<void>
             
             // Adiciona o catch ao profilePromise
             profilePromise.catch(err => console.error("Error fetching sender profile for new message (sent by me):", err.message));
@@ -157,7 +157,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
           table: "patient_doctor_messages",
           filter: `sender_id=eq.${receiverId}&receiver_id=eq.${currentUserId}`,
         },
-        async (payload) => {
+        (payload) => {
           const newMessage = payload.new as Message;
           console.log("ChatWindow: Realtime - Nova mensagem RECEBIDA do OUTRO:", newMessage);
           setMessages((prev) => {
@@ -172,7 +172,7 @@ export function ChatWindow({ currentUserId, receiverId, appointmentId }: ChatWin
                 } else {
                   setMessages((current) => [...current, { ...newMessage, sender_name: "Desconhecido" }]);
                 }
-              });
+              }) as Promise<void>; // Adicionando cast para Promise<void>
             
             // Adiciona o catch ao profilePromise
             profilePromise.catch(err => console.error("Error fetching sender profile for new message:", err.message));

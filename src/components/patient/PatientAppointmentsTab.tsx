@@ -72,8 +72,8 @@ export const PatientAppointmentsTab: React.FC<PatientAppointmentsTabProps> = ({ 
           variant: "destructive",
         });
       } else {
-        // Atribuição segura, pois o retorno foi tipado como array
-        profiles = doctorProfiles || [];
+        // Corrigido: Garantir que doctorProfiles é um array antes de atribuir
+        profiles = (doctorProfiles as DoctorProfileRpc[] | null) || [];
       }
       
       const appointmentsWithDoctors = appointmentsData.map((apt: any) => ({

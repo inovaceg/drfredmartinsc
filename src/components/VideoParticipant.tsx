@@ -18,7 +18,7 @@ const isMediaTrack = (track: RemoteTrack | LocalTrack | null): track is MediaTra
   return track !== null && (track.kind === 'audio' || track.kind === 'video');
 };
 
-const trackpubsToTracks = (trackMap: Map<string, RemoteTrackPublication>) =>
+const trackpubsToTracks = (trackMap: Map<string, RemoteTrackPublication>): MediaTrack[] =>
   Array.from(trackMap.values())
     .map((publication) => publication.track)
     .filter(isMediaTrack); // Use the type guard to filter only media tracks

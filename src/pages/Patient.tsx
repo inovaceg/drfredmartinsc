@@ -26,6 +26,7 @@ export default function Patient() {
   const { toast } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [appointmentsKey, setAppointmentsKey] = useState(0); // Key para forçar o refresh de agendamentos
 
   console.log("Patient.tsx: Componente Patient renderizado.");
   console.log("Patient.tsx: isUserLoading:", isUserLoading, "loadingProfile:", loadingProfile);
@@ -80,6 +81,10 @@ export default function Patient() {
     }
   };
 
+  const handleAppointmentsChanged = () => {
+    setAppointmentsKey(prev => prev + 1);
+  };
+
   if (isUserLoading || loadingProfile) {
     console.log("Patient.tsx: Exibindo Loader2. isUserLoading:", isUserLoading, "loadingProfile:", loadingProfile);
     return (
@@ -125,7 +130,11 @@ export default function Patient() {
               <PatientScheduleTab />
             </TabsContent>
             <TabsContent value="appointments" className="mt-6">
-              <PatientAppointmentsTab />
+              <PatientAppointmentsTab 
+                key={appointmentsKey} // Força o refresh quando um agendamento é alterado
+                user={user} 
+                onAppointmentsChanged={handleAppointmentsChanged} 
+              />
             </TabsContent>
             <TabsContent value="medical-records" className="mt-6">
               <PatientMedicalRecordsTab />
