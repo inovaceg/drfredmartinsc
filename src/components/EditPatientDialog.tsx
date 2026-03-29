@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,12 +11,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { Loader2 } from "lucide-react";
-import { BRAZILIAN_STATES } from "@/lib/brazilian-states";
+import { Loader2, Camera, X } from "lucide-react";
 import { formatPhone, unformatPhone } from "@/lib/format-phone";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { formatDateToDisplay, parseDateFromInput, parseDDMMYYYYToLocalDate } from "@/lib/utils";
+import { formatDateToDisplay, parseDateFromInput } from "@/lib/utils";
 import { Database } from "@/integrations/supabase/types";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { v4 as uuidv4 } from 'uuid';
 
 type PatientProfile = Database['public']['Tables']['profiles']['Row'];
 
@@ -31,6 +32,9 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [formData, setFormData] = useState({
     full_name: "",
     phone: "",
@@ -47,17 +51,17 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
     previous_diagnoses: "",
     current_medications: "",
     past_sessions_history: "",
-    therapist_id: "", // Adicionado aqui
+    therapist_id: "",
     consent_status: false,
     consent_date: "",
+    avatar_url: "",
   });
   const [isFetchingCep, setIsFetchingCep] = useState(false);
   const [doctorNotes, setDoctorNotes] = useState("");
   const [existingNotes, setExistingNotes] = useState<any[]>([]);
   const [loadingNotes, setLoadingNotes] = useState(false);
 
-  // Query para buscar os detalhes do paciente
-  const { data: patient, isLoading: isLoadingPatient, isError: isErrorPatient } = useQuery<PatientProfile | null, Error>({
+  const { data: patient, isLoading: isLoadingPatient } = useQuery<PatientProfile | null, Error>({
     queryKey: ["patientProfile", patientId],
     queryFn: async () => {
       if (!patientId) return null;
@@ -72,7 +76,6 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
     enabled: open && !!patientId,
   });
 
-  // Query para buscar a lista de doutores
   const { data: doctors, isLoading: isLoadingDoctors } = useQuery<Database['public']['Tables']['profiles']['Row'][], Error>({
     queryKey: ["doctors"],
     queryFn: async () => {
@@ -100,13 +103,43 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
         previous_diagnoses: patient.previous_diagnoses || "",
         current_medications: patient.current_medications || "",
         past_sessions_history: patient.past_sessions_history || "",
-        therapist_id: patient.therapist_id || "", // Inicializa com o valor do paciente
+        therapist_id: patient.therapist_id || "",
         consent_status: patient.consent_status || false,
         consent_date: patient.consent_status ? (patient.consent_date ? format(new Date(patient.consent_date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd")) : "",
+        avatar_url: patient.avatar_url || "",
       });
       fetchDoctorNotes();
     }
   }, [patient, open]);
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${uuidv4()}.${fileExt}`;
+      const filePath = `patient-avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      setFormData(prev => ({ ...prev, avatar_url: publicUrl }));
+      toast({ title: "Sucesso", description: "Foto atualizada!" });
+    } catch (error: any) {
+      toast({ title: "Erro no upload", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleZipCodeLookup = async (cep: string) => {
     const cleanedCep = cep.replace(/\D/g, '');
@@ -121,10 +154,9 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
         if (data.erro) {
           toast({
             title: "CEP não encontrado",
-            description: "Verifique o CEP digitado e tente novamente.",
+            description: "Verifique o CEP digitado.",
             variant: "destructive",
           });
-          setFormData((prev) => ({ ...prev, state: "", city: "", street: "", neighborhood: "" }));
         } else {
           setFormData((prev) => ({
             ...prev,
@@ -136,30 +168,20 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
         }
       } catch (error) {
         console.error("Erro ao buscar CEP:", error);
-        toast({
-          title: "Erro na consulta de CEP",
-          description: "Não foi possível buscar o CEP. Tente novamente mais tarde.",
-          variant: "destructive",
-        });
-        setFormData((prev) => ({ ...prev, state: "", city: "", street: "", neighborhood: "" }));
       } finally {
         setIsFetchingCep(false);
       }
-    } else if (cleanedCep.length < 8) {
-      setFormData((prev) => ({ ...prev, state: "", city: "", street: "", neighborhood: "" }));
     }
   };
 
   const fetchDoctorNotes = async () => {
     if (!patient) return;
-    
     setLoadingNotes(true);
     const { data } = await supabase
       .from('doctor_notes')
       .select('*')
       .eq('patient_id', patient.id)
       .order('created_at', { ascending: false });
-    
     setExistingNotes(data || []);
     setLoadingNotes(false);
   };
@@ -167,15 +189,10 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
   const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, '');
     let formattedValue = '';
-
     if (value.length > 0) {
       formattedValue += value.substring(0, 2);
-      if (value.length > 2) {
-        formattedValue += '/' + value.substring(2, 4);
-      }
-      if (value.length > 4) {
-        formattedValue += '/' + value.substring(4, 8);
-      }
+      if (value.length > 2) formattedValue += '/' + value.substring(2, 4);
+      if (value.length > 4) formattedValue += '/' + value.substring(4, 8);
     }
     setFormData((prev) => ({ ...prev, birth_date: formattedValue }));
   };
@@ -184,24 +201,10 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
     e.preventDefault();
     setLoading(true);
 
-    if (!patientId) {
-      toast({ title: "Erro", description: "ID do paciente não fornecido.", variant: "destructive" });
-      setLoading(false);
-      return;
-    }
+    if (!patientId) return;
 
     try {
       const parsedBirthDate = formData.birth_date ? parseDateFromInput(formData.birth_date) : null;
-
-      if (formData.birth_date && !parsedBirthDate) {
-        toast({
-          title: "Erro de Data",
-          description: "O formato da data de nascimento deve ser DD/MM/AAAA e ser uma data válida.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
 
       const { error: profileError } = await supabase
         .from('profiles')
@@ -221,55 +224,33 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
           previous_diagnoses: formData.previous_diagnoses || null,
           current_medications: formData.current_medications || null,
           past_sessions_history: formData.past_sessions_history || null,
-          therapist_id: formData.therapist_id || null, // Salva o therapist_id
+          therapist_id: formData.therapist_id || null,
           consent_status: formData.consent_status,
           consent_date: formData.consent_status ? (formData.consent_date || new Date().toISOString()) : null,
+          avatar_url: formData.avatar_url || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', patientId);
 
-      if (profileError) {
-        console.error('Profile update error:', profileError);
-        throw profileError;
-      }
+      if (profileError) throw profileError;
 
       if (doctorNotes.trim()) {
         const user = await supabase.auth.getUser();
-        const { error: notesError } = await supabase
-          .from('doctor_notes')
-          .insert({
-            patient_id: patientId,
-            doctor_id: user.data.user?.id,
-            notes: doctorNotes.trim(),
-          });
-
-        if (notesError) {
-          console.error('Notes insert error:', notesError);
-          throw notesError;
-        }
+        await supabase.from('doctor_notes').insert({
+          patient_id: patientId,
+          doctor_id: user.data.user?.id,
+          notes: doctorNotes.trim(),
+        });
       }
 
-      toast({
-        title: "Sucesso",
-        description: "Dados do paciente atualizados com sucesso!",
-      });
-
+      toast({ title: "Sucesso", description: "Dados atualizados!" });
       queryClient.invalidateQueries({ queryKey: ["patientProfile", patientId] });
       queryClient.invalidateQueries({ queryKey: ["doctorPatients"] });
-      queryClient.invalidateQueries({ queryKey: ["patientSessions", patientId] });
-      queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", patientId] });
-      
       onPatientUpdated(patientId);
-      
       onOpenChange(false);
       setDoctorNotes("");
     } catch (error: any) {
-      console.error('Error updating patient:', error);
-      toast({
-        title: "Erro",
-        description: error.message || "Não foi possível atualizar os dados",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -278,28 +259,8 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
   if (isLoadingPatient) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <div className="flex justify-center items-center h-48">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  if (isErrorPatient || !patient) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Erro ao Carregar Paciente</DialogTitle>
-            <DialogDescription>
-              Não foi possível carregar os dados do paciente. Por favor, tente novamente.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end">
-            <Button onClick={() => onOpenChange(false)}>Fechar</Button>
-          </div>
+        <DialogContent className="max-w-2xl flex justify-center items-center h-48">
+          <Loader2 className="h-8 w-8 animate-spin" />
         </DialogContent>
       </Dialog>
     );
@@ -310,13 +271,50 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar Dados do Paciente</DialogTitle>
-          <DialogDescription>
-            Atualize as informações do paciente e adicione observações
-          </DialogDescription>
+          <DialogDescription>Atualize as informações e adicione observações</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <h3 className="font-semibold text-lg mt-4">Informações Pessoais</h3>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="flex flex-col items-center gap-4 py-4">
+            <div className="relative group">
+              <Avatar className="w-24 h-24 border-2 border-muted">
+                <AvatarImage src={formData.avatar_url} />
+                <AvatarFallback className="bg-primary/10">
+                  <Camera className="w-8 h-8 text-primary/40" />
+                </AvatarFallback>
+              </Avatar>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="absolute bottom-0 right-0 rounded-full shadow-lg"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+              >
+                {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+              </Button>
+              {formData.avatar_url && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -top-2 -right-2 rounded-full w-6 h-6"
+                  onClick={() => setFormData(prev => ({ ...prev, avatar_url: "" }))}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={handleFileChange}
+            />
+          </div>
+
+          <h3 className="font-semibold text-lg">Informações Pessoais</h3>
           <div className="space-y-2">
             <Label htmlFor="full_name">Nome Completo *</Label>
             <Input
@@ -332,19 +330,16 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
               <Label htmlFor="phone">Telefone</Label>
               <Input
                 id="phone"
-                type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: formatPhone(e.target.value) })}
                 placeholder="99-9-9999-9999"
                 maxLength={15}
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="whatsapp">WhatsApp</Label>
               <Input
                 id="whatsapp"
-                type="tel"
                 value={formData.whatsapp}
                 onChange={(e) => setFormData({ ...formData, whatsapp: formatPhone(e.target.value) })}
                 placeholder="99-9-9999-9999"
@@ -357,7 +352,6 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
             <Label htmlFor="birth_date">Data de Nascimento (DD/MM/AAAA)</Label>
             <Input
               id="birth_date"
-              type="text"
               value={formData.birth_date}
               onChange={handleDateInputChange}
               placeholder="DD/MM/AAAA"
@@ -366,7 +360,6 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
           </div>
 
           <h3 className="font-semibold text-lg mt-8">Endereço</h3>
-          
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="zip_code">CEP</Label>
@@ -374,49 +367,24 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
                 id="zip_code"
                 value={formData.zip_code}
                 onChange={(e) => handleZipCodeLookup(e.target.value)}
-                onBlur={(e) => handleZipCodeLookup(e.target.value)}
                 placeholder="00000-000"
                 maxLength={9}
-                disabled={isFetchingCep}
               />
-              {isFetchingCep && <p className="text-xs text-muted-foreground mt-1">Buscando CEP...</p>}
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="state">Estado</Label>
-              <Input
-                id="state"
-                value={formData.state}
-                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                placeholder="Estado"
-                readOnly
-                disabled={isFetchingCep}
-              />
+              <Input id="state" value={formData.state} readOnly className="bg-muted" />
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="city">Cidade</Label>
-            <Input
-              id="city"
-              value={formData.city}
-              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-              placeholder="Cidade"
-              readOnly
-              disabled={isFetchingCep}
-            />
+            <Input id="city" value={formData.city} readOnly className="bg-muted" />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="street">Rua/Avenida</Label>
-            <Input
-              id="street"
-              value={formData.street}
-              onChange={(e) => setFormData({ ...formData, street: e.target.value })}
-              placeholder="Nome da rua ou avenida"
-              readOnly
-              disabled={isFetchingCep}
-            />
+            <Input id="street" value={formData.street} readOnly className="bg-muted" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -426,21 +394,11 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
                 id="street_number"
                 value={formData.street_number}
                 onChange={(e) => setFormData({ ...formData, street_number: e.target.value })}
-                placeholder="123"
-                disabled={isFetchingCep}
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="neighborhood">Bairro</Label>
-              <Input
-                id="neighborhood"
-                value={formData.neighborhood}
-                onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
-                placeholder="Nome do bairro"
-                readOnly
-                disabled={isFetchingCep}
-              />
+              <Input id="neighborhood" value={formData.neighborhood} readOnly className="bg-muted" />
             </div>
           </div>
 
@@ -451,47 +409,6 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
               id="mental_health_history"
               value={formData.mental_health_history}
               onChange={(e) => setFormData({ ...formData, mental_health_history: e.target.value })}
-              placeholder="Histórico de saúde mental do paciente..."
-              rows={3}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="main_complaints">Queixas Principais</Label>
-            <Textarea
-              id="main_complaints"
-              value={formData.main_complaints}
-              onChange={(e) => setFormData({ ...formData, main_complaints: e.target.value })}
-              placeholder="Queixas principais do paciente..."
-              rows={3}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="previous_diagnoses">Diagnósticos Anteriores</Label>
-            <Textarea
-              id="previous_diagnoses"
-              value={formData.previous_diagnoses}
-              onChange={(e) => setFormData({ ...formData, previous_diagnoses: e.target.value })}
-              placeholder="Diagnósticos anteriores (se houver)..."
-              rows={3}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="current_medications">Medicamentos Atuais</Label>
-            <Textarea
-              id="current_medications"
-              value={formData.current_medications}
-              onChange={(e) => setFormData({ ...formData, current_medications: e.target.value })}
-              placeholder="Medicamentos que o paciente está tomando atualmente..."
-              rows={3}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="past_sessions_history">Histórico de Sessões Passadas (Resumo)</Label>
-            <Textarea
-              id="past_sessions_history"
-              value={formData.past_sessions_history}
-              onChange={(e) => setFormData({ ...formData, past_sessions_history: e.target.value })}
-              placeholder="Resumo do histórico de sessões passadas (se houver registros externos)..."
               rows={3}
             />
           </div>
@@ -503,10 +420,10 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
               onValueChange={(value) => setFormData({ ...formData, therapist_id: value })}
               disabled={isLoadingDoctors}
             >
-              <SelectTrigger id="therapist_id" className="bg-background">
-                <SelectValue placeholder={isLoadingDoctors ? "Carregando terapeutas..." : "Selecione um terapeuta"} />
+              <SelectTrigger id="therapist_id">
+                <SelectValue placeholder="Selecione um terapeuta" />
               </SelectTrigger>
-              <SelectContent className="bg-background z-50">
+              <SelectContent>
                 {doctors?.map((doctor) => (
                   <SelectItem key={doctor.id} value={doctor.id}>
                     {doctor.full_name}
@@ -516,26 +433,14 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
             </Select>
           </div>
 
-          <h3 className="font-semibold text-lg mt-8">Termo de Consentimento</h3>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 mt-4">
             <Checkbox
               id="consent_status"
               checked={formData.consent_status}
-              onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, consent_status: checked as boolean, consent_date: checked ? (prev.consent_date || format(new Date(), "yyyy-MM-dd")) : "" }))}
+              onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, consent_status: checked as boolean }))}
             />
             <Label htmlFor="consent_status">Consentimento Assinado</Label>
           </div>
-          {formData.consent_status && (
-            <div className="space-y-2">
-              <Label htmlFor="consent_date">Data do Consentimento</Label>
-              <Input
-                id="consent_date"
-                type="date"
-                value={formData.consent_date}
-                onChange={(e) => setFormData({ ...formData, consent_date: e.target.value })}
-              />
-            </div>
-          )}
 
           <div className="space-y-2">
             <Label htmlFor="notes">Adicionar Observação Médica</Label>
@@ -543,38 +448,16 @@ export function EditPatientDialog({ patientId, open, onOpenChange, onPatientUpda
               id="notes"
               value={doctorNotes}
               onChange={(e) => setDoctorNotes(e.target.value)}
-              placeholder="Escreva suas observações sobre o paciente..."
+              placeholder="Escreva suas observações..."
               rows={4}
             />
           </div>
-
-          {existingNotes.length > 0 && (
-            <div className="space-y-2">
-              <Label>Observações Anteriores</Label>
-              <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-3">
-                {loadingNotes ? (
-                  <div className="flex justify-center p-4">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : (
-                  existingNotes.map((note) => (
-                    <div key={note.id} className="border-b pb-2 last:border-b-0">
-                      <p className="text-sm text-muted-foreground">
-                        {format(new Date(note.created_at), "dd/MM/yyyy 'às' HH:mm")}
-                      </p>
-                      <p className="text-sm mt-1">{note.notes}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading || isFetchingCep}>
+            <Button type="submit" disabled={loading || isUploading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Salvar Alterações
             </Button>

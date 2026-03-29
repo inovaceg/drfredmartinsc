@@ -1,17 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UserPlus } from "lucide-react";
+import { Loader2, UserPlus, Camera, X } from "lucide-react";
 import { formatPhone, unformatPhone } from "@/lib/format-phone";
 import { useQueryClient } from "@tanstack/react-query";
 import { parseDateFromInput } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { v4 as uuidv4 } from 'uuid';
 
 interface AddPatientDialogProps {
   open: boolean;
@@ -24,6 +25,8 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [isFetchingCep, setIsFetchingCep] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
     full_name: "",
@@ -37,6 +40,7 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
     street: "",
     street_number: "",
     neighborhood: "",
+    avatar_url: "",
   });
 
   const handleZipCodeLookup = async (cep: string) => {
@@ -72,6 +76,39 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
     }
   };
 
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${uuidv4()}.${fileExt}`;
+      const filePath = `patient-avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars') // Certifique-se que o bucket 'avatars' existe e é público
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      setFormData(prev => ({ ...prev, avatar_url: publicUrl }));
+      toast({ title: "Sucesso", description: "Foto carregada com sucesso!" });
+    } catch (error: any) {
+      toast({
+        title: "Erro no upload",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, '');
     let formattedValue = '';
@@ -89,9 +126,6 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
 
     try {
       const parsedBirthDate = formData.birth_date ? parseDateFromInput(formData.birth_date) : null;
-      
-      // Geramos um UUID para o paciente, já que ele está sendo cadastrado manualmente pelo médico
-      // Nota: Este paciente não terá um login associado inicialmente até que um usuário auth seja criado/vinculado.
       const newPatientId = crypto.randomUUID();
 
       const { error } = await supabase
@@ -109,6 +143,7 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
           street: formData.street,
           street_number: formData.street_number,
           neighborhood: formData.neighborhood,
+          avatar_url: formData.avatar_url || null,
           therapist_id: doctorId,
           is_doctor: false,
           is_active: true,
@@ -135,6 +170,7 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
         street: "",
         street_number: "",
         neighborhood: "",
+        avatar_url: "",
       });
     } catch (error: any) {
       console.error('Error adding patient:', error);
@@ -161,7 +197,47 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="flex flex-col items-center gap-4 py-4">
+            <div className="relative group">
+              <Avatar className="w-24 h-24 border-2 border-muted">
+                <AvatarImage src={formData.avatar_url} />
+                <AvatarFallback className="bg-primary/10">
+                  <Camera className="w-8 h-8 text-primary/40" />
+                </AvatarFallback>
+              </Avatar>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="absolute bottom-0 right-0 rounded-full shadow-lg"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+              >
+                {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+              </Button>
+              {formData.avatar_url && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -top-2 -right-2 rounded-full w-6 h-6"
+                  onClick={() => setFormData(prev => ({ ...prev, avatar_url: "" }))}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={handleFileChange}
+            />
+            <p className="text-xs text-muted-foreground">Clique na câmera para adicionar uma foto</p>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="full_name">Nome Completo *</Label>
@@ -264,7 +340,7 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading || isFetchingCep}>
+            <Button type="submit" disabled={loading || isFetchingCep || isUploading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Cadastrar Paciente
             </Button>

@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format, addDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditPatientDialog } from "@/components/EditPatientDialog";
-import { AddPatientDialog } from "@/components/doctor/AddPatientDialog"; // Importar o novo diálogo
+import { AddPatientDialog } from "@/components/doctor/AddPatientDialog";
 import { formatPhone } from "@/lib/format-phone";
 import { DoctorProfileForm } from "@/components/DoctorProfileForm";
 import { DoctorMedicalRecordsTab } from "@/components/doctor/DoctorMedicalRecordsTab";
@@ -28,6 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn, createLocalDateFromISOString, formatDateToDisplay } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Drawer,
   DrawerClose,
@@ -103,7 +104,7 @@ const Doctor = () => {
   const [patients, setPatients] = useState<PatientProfile[]>([]);
   const [selectedPatientIdToEdit, setSelectedPatientIdToEdit] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [addPatientDialogOpen, setAddPatientDialogOpen] = useState(false); // Novo estado para o diálogo de adição
+  const [addPatientDialogOpen, setAddPatientDialogOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedPatientForBookingId, setSelectedPatientForBookingId] = useState<string | null>(null);
   const [selectedSlotForBooking, setSelectedSlotForBooking] = useState<{ id: string; start_time: string; end_time: string } | null>(null);
@@ -327,40 +328,6 @@ const Doctor = () => {
     }
   };
 
-  const handleBulkDeleteSlots = async () => {
-    if (selectedSlotIds.length === 0) return;
-    setIsLoadingScheduleSlots(true);
-    try {
-      const { error } = await supabase.from('availability_slots').delete().in('id', selectedSlotIds);
-      if (error) throw error;
-      setSelectedSlotIds([]);
-      const dateObj = createLocalDateFromISOString(selectedDate!);
-      const scheduleSlots = await getDoctorAvailabilitySlots(user!.id, toUtcIso(startOfDay(dateObj)), toUtcIso(endOfDay(dateObj)));
-      setSlots(scheduleSlots.slots);
-    } catch (error: any) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-    } finally {
-      setIsLoadingScheduleSlots(false);
-    }
-  };
-
-  const handleBulkToggleAvailability = async (makeAvailable: boolean) => {
-    if (selectedSlotIds.length === 0) return;
-    setIsLoadingScheduleSlots(true);
-    try {
-      const { error } = await supabase.from('availability_slots').update({ is_available: makeAvailable }).in('id', selectedSlotIds);
-      if (error) throw error;
-      setSelectedSlotIds([]);
-      const dateObj = createLocalDateFromISOString(selectedDate!);
-      const scheduleSlots = await getDoctorAvailabilitySlots(user!.id, toUtcIso(startOfDay(dateObj)), toUtcIso(endOfDay(dateObj)));
-      setSlots(scheduleSlots.slots);
-    } catch (error: any) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-    } finally {
-      setIsLoadingScheduleSlots(false);
-    }
-  };
-
   const updateAppointmentStatus = async (id: string, status: string) => {
     try {
       const { error } = await supabase.from('appointments').update({ status }).eq('id', id);
@@ -386,35 +353,6 @@ const Doctor = () => {
       fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate);
     }
   };
-
-  async function handleBookSlotForPatient() {
-    if (!user?.id || !selectedSlotForBooking || !selectedPatientForBookingId) return;
-    setIsBookingForPatient(true);
-    try {
-      const { error: aptErr } = await supabase.from("appointments").insert({
-        doctor_id: user.id,
-        patient_id: selectedPatientForBookingId,
-        slot_id: selectedSlotForBooking.id,
-        start_time: toUtcIso(new Date(selectedSlotForBooking.start_time)),
-        end_time: toUtcIso(new Date(selectedSlotForBooking.end_time)),
-        status: "confirmed"
-      });
-      if (aptErr) throw aptErr;
-      await supabase.from("availability_slots").update({ is_available: false }).eq('id', selectedSlotForBooking.id);
-      toast({ title: "Sucesso", description: "Consulta agendada!" });
-      setSelectedPatientForBookingId(null);
-      setSelectedSlotForBooking(null);
-      const dateObj = createLocalDateFromISOString(selectedDate!);
-      const scheduleSlots = await getDoctorAvailabilitySlots(user.id, toUtcIso(startOfDay(dateObj)), toUtcIso(endOfDay(dateObj)));
-      setSlots(scheduleSlots.slots);
-      const updatedAppts = await fetchAppointments();
-      setAppointments(updatedAppts);
-    } catch (e: any) {
-      toast({ title: "Erro ao agendar", description: e.message, variant: "destructive" });
-    } finally {
-      setIsBookingForPatient(false);
-    }
-  }
 
   const handleDeletePatient = useCallback(async () => {
     if (!patientToDelete) return;
@@ -625,9 +563,15 @@ const Doctor = () => {
                   {appointments.length === 0 ? <p className="text-muted-foreground text-center py-4">Nenhuma consulta agendada</p> : appointments.map((apt) => (
                     <div key={apt.id} className="border rounded-lg p-4">
                       <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <p className="font-medium text-lg">{apt.patient_profile?.full_name || 'Paciente Desconhecido'}</p>
-                          <p className="text-sm text-muted-foreground">{format(new Date(apt.start_time), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}</p>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={apt.patient_profile?.avatar_url} />
+                            <AvatarFallback><UserIcon className="h-5 w-5" /></AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-lg">{apt.patient_profile?.full_name || 'Paciente Desconhecido'}</p>
+                            <p className="text-sm text-muted-foreground">{format(new Date(apt.start_time), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}</p>
+                          </div>
                         </div>
                         <Badge variant={apt.status === 'confirmed' ? 'default' : apt.status === 'pending' ? 'secondary' : 'outline'}>{apt.status}</Badge>
                       </div>
@@ -661,9 +605,15 @@ const Doctor = () => {
                     <div className="grid grid-cols-1 gap-4">
                       {patients.map((patient) => (
                         <Card key={patient.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between">
-                          <div>
-                            <p className="font-medium text-lg">{patient.full_name}</p>
-                            <p className="text-sm text-muted-foreground">{patient.whatsapp ? `WhatsApp: ${formatPhone(patient.whatsapp)}` : 'WhatsApp não informado'}</p>
+                          <div className="flex items-center gap-4">
+                            <Avatar className="h-12 w-12">
+                              <AvatarImage src={patient.avatar_url || ""} />
+                              <AvatarFallback><UserIcon className="h-6 w-6" /></AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium text-lg">{patient.full_name}</p>
+                              <p className="text-sm text-muted-foreground">{patient.whatsapp ? `WhatsApp: ${formatPhone(patient.whatsapp)}` : 'WhatsApp não informado'}</p>
+                            </div>
                           </div>
                           <div className="flex flex-wrap gap-2 mt-3 sm:mt-0">
                             <Button variant="outline" size="sm" onClick={() => handleInitiateVideoSession(patient.id)} disabled={initiatingCallForPatientId === patient.id}>
