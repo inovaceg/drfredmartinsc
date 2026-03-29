@@ -110,9 +110,9 @@ const Doctor = () => {
 
   const fetchPatients = useCallback(async (doctorId: string) => {
     if (!doctorId) return [];
-    const { data, error } = await supabase.rpc('get_patients_for_doctor').returns<PatientProfile[]>();
+    const { data, error } = await supabase.rpc('get_patients_for_doctor');
     if (error) throw error;
-    return data || [];
+    return (data as PatientProfile[]) || [];
   }, []);
 
   useEffect(() => {
@@ -135,7 +135,7 @@ const Doctor = () => {
             setDoctorProfile(doctorProfileData);
             setSlots(availabilitySlotsResult.slots);
             setAppointments(appointmentsData);
-            setPatients(patientsData as PatientProfile[]);
+            setPatients(patientsData);
           } catch (error: any) {
             toast({ title: "Erro ao carregar dados", description: error.message, variant: "destructive" });
           } finally {

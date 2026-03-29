@@ -21,7 +21,7 @@ const isMediaTrack = (track: RemoteTrack | LocalTrack | null): track is MediaTra
 const trackpubsToTracks = (trackMap: Map<string, RemoteTrackPublication>): MediaTrack[] =>
   Array.from(trackMap.values())
     .map((publication) => publication.track)
-    .filter(isMediaTrack); // Use the type guard to filter only media tracks
+    .filter((track): track is MediaTrack => isMediaTrack(track)); // Explicit narrowing
 
 export const VideoParticipant: React.FC<VideoParticipantProps> = ({ participant, isLocal = false, displayName }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -54,7 +54,7 @@ export const VideoParticipant: React.FC<VideoParticipantProps> = ({ participant,
       if (!isMediaTrack(publication.track)) return; // Ignore DataTracks
 
       if (publication.isSubscribed) {
-        attachTracks([publication.track! as MediaTrack]); // Cast is safe due to check above
+        attachTracks([publication.track! as MediaTrack]);
       }
       publication.on('subscribed', (track) => {
         if (isMediaTrack(track)) attachTracks([track]);
@@ -107,13 +107,13 @@ export const VideoParticipant: React.FC<VideoParticipantProps> = ({ participant,
         ref={videoRef}
         autoPlay
         playsInline
-        muted={isLocal} // Mute local video to avoid echo
+        muted={isLocal}
         className={cn(
           "w-full h-full object-cover transition-opacity duration-300",
           isVideoDisabled ? "opacity-0" : "opacity-100"
         )}
       />
-      <audio ref={audioRef} autoPlay muted={isLocal} /> {/* Mute local audio to avoid echo */}
+      <audio ref={audioRef} autoPlay muted={isLocal} />
 
       {isVideoDisabled && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 text-white">

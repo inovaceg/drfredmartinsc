@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useUser } from "@/hooks/useUser"; // Import useUser
+import { useUser } from "@/hooks/useUser";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -22,7 +22,7 @@ interface DoctorWithAvailability extends Profile {
 }
 
 export function PatientScheduleTab() {
-  const { user } = useUser(); // Use the useUser hook
+  const { user } = useUser();
   const patientId = user?.id;
 
   const [doctors, setDoctors] = useState<DoctorWithAvailability[]>([]);
@@ -36,22 +36,23 @@ export function PatientScheduleTab() {
   const fetchDoctors = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc("get_doctors_public").returns<Profile[]>(); // Explicitly type RPC return
+      const { data, error } = await supabase.rpc("get_doctors_public");
 
       if (error) throw error;
 
+      const doctorsData = (data as Profile[]) || [];
+
       const doctorsWithDates = await Promise.all(
-        (data || []).map(async (doctor: Profile) => {
+        doctorsData.map(async (doctor: Profile) => {
           const { data: datesData, error: datesError } = await supabase.rpc("get_doctor_available_dates", {
             _doctor_id: doctor.id,
-          }).returns<string[]>(); // Explicitly type RPC return
+          });
 
           if (datesError) {
             console.error(`Error fetching dates for doctor ${doctor.id}:`, datesError.message);
             return { ...doctor, availableDates: [] };
           }
-          // Corrigido: Garantir que datesData é um array antes de mapear
-          return { ...doctor, availableDates: (datesData as string[] || []).map((d: string) => parseISO(d)) };
+          return { ...doctor, availableDates: ((datesData as string[]) || []).map((d: string) => parseISO(d)) };
         })
       );
       setDoctors(doctorsWithDates);
@@ -68,18 +69,17 @@ export function PatientScheduleTab() {
 
     setLoading(true);
     try {
-      const startOfDay = format(selectedDate, "yyyy-MM-dd'T'00:00:00-03:00"); // Start of day in São Paulo timezone
-      const endOfDay = format(selectedDate, "yyyy-MM-dd'T'23:59:59-03:00"); // End of day in São Paulo timezone
+      const startOfDay = format(selectedDate, "yyyy-MM-dd'T'00:00:00-03:00");
+      const endOfDay = format(selectedDate, "yyyy-MM-dd'T'23:59:59-03:00");
 
       const { data, error } = await supabase.rpc("get_truly_available_slots", {
         _doctor_id: selectedDoctor.id,
         _start_time_gte: startOfDay,
         _end_time_lte: endOfDay,
-      }).returns<AvailabilitySlot[]>(); // Explicitly type RPC return
+      });
 
       if (error) throw error;
-      // Corrigido: Garantir que data é um array antes de definir o estado
-      setAvailableSlots((data as AvailabilitySlot[] | null) || []);
+      setAvailableSlots((data as AvailabilitySlot[]) || []);
     } catch (error: any) {
       console.error("Error fetching available slots:", error.message);
       toast.error("Erro ao carregar horários disponíveis: " + error.message);
@@ -104,13 +104,13 @@ export function PatientScheduleTab() {
 
     setBookingLoading(true);
     try {
-      const { data, error } = await supabase.rpc("book_slot_and_create_appointment", {
+      const { error } = await supabase.rpc("book_slot_and_create_appointment", {
         _slot_id: selectedSlot.id,
         _patient_id: patientId,
         _doctor_id: selectedDoctor.id,
         _start_time: selectedSlot.start_time,
         _end_time: selectedSlot.end_time,
-      }).returns<{ appointment_id: string }[]>(); // Explicitly type RPC return
+      });
 
       if (error) throw error;
 
@@ -119,7 +119,7 @@ export function PatientScheduleTab() {
       setSelectedDate(undefined);
       setSelectedSlot(null);
       setAvailableSlots([]);
-      fetchDoctors(); // Refresh doctors to update availability
+      fetchDoctors();
     } catch (error: any) {
       console.error("Error booking appointment:", error.message);
       toast.error("Erro ao agendar consulta: " + error.message);

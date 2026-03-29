@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useUser } from "@/hooks/useUser";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, PlusCircle, Edit, Trash2 } from "lucide-react";
@@ -12,8 +11,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -31,7 +28,6 @@ type Profile = Tables<'profiles'>;
 type Session = Tables<'sessions'>;
 type MedicalRecord = Tables<'medical_records'>;
 
-// New component for adding a therapy session
 interface AddTherapySessionDialogProps {
   onSave: (formData: {
     session_date: Date;
@@ -152,7 +148,6 @@ const AddTherapySessionDialog: React.FC<AddTherapySessionDialogProps> = ({ onSav
   );
 };
 
-// New component for adding a medical record
 interface AddMedicalRecordDialogProps {
   onSave: (formData: {
     diagnosis: string;
@@ -259,7 +254,7 @@ export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: {
 
   // Fetch Patients
   const {
-    data: patients,
+    data: patients = [],
     isLoading: isLoadingPatients,
     isError: isErrorPatients,
     error: errorPatients,
@@ -267,43 +262,24 @@ export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: {
     queryKey: ["patientsForDoctor", currentUserId],
     queryFn: async () => {
       if (!currentUserId) return [];
-      // Garantindo que o RPC retorna um array de Profile
-      const { data, error } = await supabase.rpc("get_patients_for_doctor").returns<Profile[]>(); 
+      const { data, error } = await supabase.rpc("get_patients_for_doctor"); 
       if (error) throw error;
-      return data || [];
+      return (data as Profile[]) || [];
     },
     enabled: !!currentUserId,
-    onSuccess: (data) => { // Add onSuccess callback to automatically select the first patient
-      if (data && data.length > 0 && !selectedPatientId) {
-        setSelectedPatientId(data[0].id);
-      }
-    },
   });
 
-  // Fetch Selected Patient Profile
-  const {
-    data: selectedPatientProfile,
-    isLoading: isLoadingSelectedPatient,
-    isError: isErrorSelectedPatient,
-    error: errorSelectedPatient,
-  } = useQuery<Profile | null, Error>({
-    queryKey: ["selectedPatientProfile", selectedPatientId],
-    queryFn: async () => {
-      if (!selectedPatientId) return null;
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', selectedPatientId)
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!selectedPatientId,
-  });
+  // Auto-select first patient if none selected
+  useEffect(() => {
+    if (patients.length > 0 && !selectedPatientId) {
+      setSelectedPatientId(patients[0].id);
+      setSelectedPatient(patients[0].id);
+    }
+  }, [patients, selectedPatientId, setSelectedPatient]);
 
   // Fetch Sessions for Selected Patient
   const {
-    data: patientSessions,
+    data: patientSessions = [],
     isLoading: isLoadingSessions,
     isError: isErrorSessions,
     error: errorSessions,
@@ -324,7 +300,7 @@ export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: {
 
   // Fetch Medical Records for Selected Patient
   const {
-    data: patientMedicalRecords,
+    data: patientMedicalRecords = [],
     isLoading: isLoadingMedicalRecords,
     isError: isErrorMedicalRecords,
     error: errorMedicalRecords,
@@ -356,20 +332,17 @@ export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: {
     }
 
     try {
-      const sessionToInsert = {
-        patient_id: selectedPatientId,
-        therapist_id: currentUserId,
-        session_date: formData.session_date.toISOString(),
-        session_theme: formData.session_theme || null,
-        interventions_used: formData.interventions_used || null,
-        notes: formData.notes || null,
-        homework: formData.homework || null,
-      };
-
       const { error } = await supabase
         .from('sessions')
-        .insert(sessionToInsert)
-        .select();
+        .insert({
+          patient_id: selectedPatientId,
+          therapist_id: currentUserId,
+          session_date: formData.session_date.toISOString(),
+          session_theme: formData.session_theme || null,
+          interventions_used: formData.interventions_used || null,
+          notes: formData.notes || null,
+          homework: formData.homework || null,
+        });
 
       if (error) throw error;
 
@@ -377,7 +350,6 @@ export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: {
       setIsAddSessionDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ["patientSessions", selectedPatientId] });
     } catch (error: any) {
-      console.error("Error adding session:", error.message);
       toast.error("Erro ao adicionar sessão: " + error.message);
     }
   };
@@ -393,18 +365,15 @@ export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: {
     }
 
     try {
-      const recordToInsert = {
-        patient_id: selectedPatientId,
-        doctor_id: currentUserId,
-        diagnosis: formData.diagnosis || null,
-        prescription: formData.prescription || null,
-        notes: formData.notes || null,
-      };
-
       const { error } = await supabase
         .from('medical_records')
-        .insert(recordToInsert)
-        .select();
+        .insert({
+          patient_id: selectedPatientId,
+          doctor_id: currentUserId,
+          diagnosis: formData.diagnosis || null,
+          prescription: formData.prescription || null,
+          notes: formData.notes || null,
+        });
 
       if (error) throw error;
 
@@ -412,7 +381,6 @@ export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: {
       setIsAddMedicalRecordDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", selectedPatientId] });
     } catch (error: any) {
-      console.error("Error adding medical record:", error.message);
       toast.error("Erro ao adicionar prontuário: " + error.message);
     }
   };
@@ -425,7 +393,6 @@ export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: {
       toast.success("Sessão excluída com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["patientSessions", selectedPatientId] });
     } catch (error: any) {
-      console.error("Error deleting session:", error.message);
       toast.error("Erro ao excluir sessão: " + error.message);
     }
   };
@@ -438,7 +405,6 @@ export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: {
       toast.success("Prontuário excluído com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["patientMedicalRecords", selectedPatientId] });
     } catch (error: any) {
-      console.error("Error deleting medical record:", error.message);
       toast.error("Erro ao excluir prontuário: " + error.message);
     }
   };
@@ -470,15 +436,15 @@ export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: {
           <Select
             onValueChange={(value) => {
               setSelectedPatientId(value);
-              setSelectedPatient(value); // Atualiza o estado no componente pai
+              setSelectedPatient(value);
             }}
             value={selectedPatientId || ""}
           >
             <SelectTrigger>
-              <SelectValue placeholder={isLoadingPatients ? "Carregando pacientes..." : (patients && patients.length > 0 ? "Selecione um paciente" : "Nenhum paciente encontrado")} />
+              <SelectValue placeholder={isLoadingPatients ? "Carregando pacientes..." : (patients.length > 0 ? "Selecione um paciente" : "Nenhum paciente encontrado")} />
             </SelectTrigger>
             <SelectContent>
-              {patients?.map((patient) => (
+              {patients.map((patient) => (
                 <SelectItem key={patient.id} value={patient.id}>
                   {patient.full_name}
                 </SelectItem>
@@ -494,12 +460,6 @@ export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: {
                 <CardTitle className="text-lg font-semibold">
                   Sessões de Terapia
                 </CardTitle>
-                <AddTherapySessionDialog
-                  open={isAddSessionDialogOpen}
-                  onClose={() => setIsAddSessionDialogOpen(false)}
-                  onSave={handleAddSession}
-                  patientId={selectedPatientId}
-                />
                 <Button size="sm" onClick={() => setIsAddSessionDialogOpen(true)}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Sessão
                 </Button>
@@ -513,7 +473,7 @@ export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: {
                   <p className="text-red-500">
                     Erro ao carregar sessões: {errorSessions?.message}
                   </p>
-                ) : patientSessions && patientSessions.length > 0 ? (
+                ) : patientSessions.length > 0 ? (
                   <div className="space-y-3">
                     {patientSessions.map((session) => (
                       <div key={session.id} className="border rounded-lg p-3 bg-background">
@@ -548,12 +508,6 @@ export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: {
                 <CardTitle className="text-lg font-semibold">
                   Prontuários Médicos
                 </CardTitle>
-                <AddMedicalRecordDialog
-                  open={isAddMedicalRecordDialogOpen}
-                  onClose={() => setIsAddMedicalRecordDialogOpen(false)}
-                  onSave={handleAddMedicalRecord}
-                  patientId={selectedPatientId}
-                />
                 <Button size="sm" onClick={() => setIsAddMedicalRecordDialogOpen(true)}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Prontuário
                 </Button>
@@ -567,7 +521,7 @@ export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: {
                   <p className="text-red-500">
                     Erro ao carregar prontuários: {errorMedicalRecords?.message}
                   </p>
-                ) : patientMedicalRecords && patientMedicalRecords.length > 0 ? (
+                ) : patientMedicalRecords.length > 0 ? (
                   <div className="space-y-3">
                     {patientMedicalRecords.map((record) => (
                       <div key={record.id} className="border rounded-lg p-3 bg-background">
@@ -599,6 +553,20 @@ export function DoctorMedicalRecordsTab({ currentUserId, setSelectedPatient }: {
             </Card>
           </>
         )}
+
+        <AddTherapySessionDialog
+          open={isAddSessionDialogOpen}
+          onClose={() => setIsAddSessionDialogOpen(false)}
+          onSave={handleAddSession}
+          patientId={selectedPatientId || ""}
+        />
+
+        <AddMedicalRecordDialog
+          open={isAddMedicalRecordDialogOpen}
+          onClose={() => setIsAddMedicalRecordDialogOpen(false)}
+          onSave={handleAddMedicalRecord}
+          patientId={selectedPatientId || ""}
+        />
 
         {editingSession && (
           <EditTherapySessionDialog
