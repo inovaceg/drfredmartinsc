@@ -10,14 +10,14 @@ interface IncomingCallNotificationProps {
   onReject: (sessionId: string) => void;
 }
 
-export const IncomingCallNotification: React.FC<IncomingCallNotificationProps> = ({
+export const showIncomingCallToast = ({
   sessionId,
   callerName,
   onAccept,
   onReject,
-}) => {
+}: IncomingCallNotificationProps) => {
   return sonnerToast.custom((t) => (
-    <div className="bg-card p-4 rounded-lg shadow-lg flex items-center justify-between gap-4 w-full max-w-sm">
+    <div className="bg-card p-4 rounded-lg shadow-lg flex items-center justify-between gap-4 w-full max-w-sm border border-border">
       <div className="flex items-center gap-3">
         <PhoneCall className="h-6 w-6 text-primary animate-pulse" />
         <div>
@@ -34,5 +34,5 @@ export const IncomingCallNotification: React.FC<IncomingCallNotificationProps> =
         </Button>
       </div>
     </div>
-  ), { id: sessionId, duration: Infinity }); // Keep toast open indefinitely until action is taken
+  ), { id: sessionId, duration: Infinity });
 };

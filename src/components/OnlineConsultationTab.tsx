@@ -10,12 +10,11 @@ import { toast } from "sonner";
 import { ChatWindow } from "@/components/ChatWindow";
 import { VideoCallWindow } from "@/components/VideoCallWindow";
 import { Tables } from "@/integrations/supabase/types";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { IncomingCallNotification } from "@/components/IncomingCallNotification";
+import { showIncomingCallToast } from "@/components/IncomingCallNotification";
 
 type Profile = Tables<'profiles'>;
-type Appointment = Tables<'appointments'>;
 type VideoSession = Tables<'video_sessions'>;
 
 interface ActiveSession extends VideoSession {
@@ -36,13 +35,12 @@ export function OnlineConsultationTab({ isDoctorView }: OnlineConsultationTabPro
   const [selectedSession, setSelectedSession] = useState<ActiveSession | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
-  const [incomingCallToastId, setIncomingCallToastId] = useState<string | null>(null); // Renomeado para clareza
+  const [incomingCallToastId, setIncomingCallToastId] = useState<string | number | null>(null);
 
   const fetchActiveSessions = useCallback(async () => {
     if (!currentUserId) return;
 
     setLoading(true);
-    console.log("OnlineConsultationTab: Fetching active sessions for user:", currentUserId, "isDoctorView:", isDoctorView);
     try {
       let query = supabase
         .from("video_sessions")
@@ -58,18 +56,15 @@ export function OnlineConsultationTab({ isDoctorView }: OnlineConsultationTabPro
         query = query.eq("patient_id", currentUserId);
       }
 
-      // Incluir 'ringing' status para detectar chamadas recebidas
       query = query.in("status", ["ringing", "active"]).order("created_at", { ascending: false });
 
       const { data, error } = await query;
 
       if (error) throw error;
-
-      console.log("OnlineConsultationTab: Active sessions fetched:", data);
-      setActiveSessions(data || []);
+      setActiveSessions(data as ActiveSession[]);
     } catch (error: any) {
       console.error("Error fetching active sessions:", error.message);
-      toast.error("Erro ao carregar sessões ativas: " + error.message);
+      toast.error("Erro ao carregar sessões ativas.");
     } finally {
       setLoading(false);
     }
@@ -83,54 +78,44 @@ export function OnlineConsultationTab({ isDoctorView }: OnlineConsultationTabPro
       .on(
         "postgres_changes",
         {
-          event: "*", // Ouvir todos os eventos (INSERT, UPDATE, DELETE)
+          event: "*",
           schema: "public",
           table: "video_sessions",
           filter: isDoctorView ? `doctor_id=eq.${currentUserId}` : `patient_id=eq.${currentUserId}`,
         },
-        (payload) => {
-          console.log("OnlineConsultationTab: Realtime change received:", payload);
-          fetchActiveSessions(); // Re-fetch sessions on any change
+        () => {
+          fetchActiveSessions();
         }
       )
       .subscribe();
 
-    console.log("OnlineConsultationTab: Subscribing to video_sessions_changes channel.");
-
     return () => {
-      console.log("OnlineConsultationTab: Unsubscribing from video_sessions_changes channel.");
       supabase.removeChannel(channel);
     };
   }, [fetchActiveSessions, currentUserId, isDoctorView]);
 
-  // Effect para lidar com notificações de chamada recebida (apenas para pacientes)
   useEffect(() => {
-    if (isDoctorView || !currentUserId) return; // Apenas para pacientes
+    if (isDoctorView || !currentUserId) return;
 
     const ringingSession = activeSessions.find(
       (session) => session.status === "ringing" && session.patient_id === currentUserId
     );
 
     if (ringingSession && incomingCallToastId !== ringingSession.id) {
-      console.log("OnlineConsultationTab (Patient View): Incoming ringing session detected:", ringingSession);
-      // Dispensa o toast anterior se houver um novo
       if (incomingCallToastId) {
         toast.dismiss(incomingCallToastId);
       }
       
       const callerName = ringingSession.doctor_profile?.full_name;
       
-      // Chama a função IncomingCallNotification para exibir o toast e armazena o ID
-      const newToastId = IncomingCallNotification({
+      const newToastId = showIncomingCallToast({
         sessionId: ringingSession.id,
         callerName: callerName || "Doutor(a) Desconhecido",
         onAccept: handleAcceptCall,
         onReject: handleRejectCall,
-      }) as string; // Explicitamente tipar como string (o ID do toast)
+      });
       setIncomingCallToastId(newToastId);
     } else if (!ringingSession && incomingCallToastId) {
-      // Se não houver sessão de ringing, dispensa qualquer notificação ativa
-      console.log("OnlineConsultationTab (Patient View): No ringing session, dismissing active toast:", incomingCallToastId);
       toast.dismiss(incomingCallToastId);
       setIncomingCallToastId(null);
     }
@@ -139,30 +124,23 @@ export function OnlineConsultationTab({ isDoctorView }: OnlineConsultationTabPro
 
   const handleEndSession = async (sessionId: string) => {
     try {
-      console.log("OnlineConsultationTab: Ending session:", sessionId);
       const { error } = await supabase
         .from("video_sessions")
         .update({ status: "ended", ended_at: new Date().toISOString() })
         .eq("id", sessionId);
 
       if (error) throw error;
-      toast.success("Sessão encerrada com sucesso!");
+      toast.success("Sessão encerrada!");
       fetchActiveSessions();
       setSelectedSession(null);
       setIsChatOpen(false);
       setIsVideoCallOpen(false);
-      if (incomingCallToastId === sessionId) { // Se for o toast da chamada recebida
-        toast.dismiss(incomingCallToastId);
-        setIncomingCallToastId(null);
-      }
     } catch (error: any) {
-      console.error("Error ending session:", error.message);
-      toast.error("Erro ao encerrar sessão: " + error.message);
+      toast.error("Erro ao encerrar sessão.");
     }
   };
 
   const handleAcceptCall = async (sessionId: string) => {
-    console.log("OnlineConsultationTab: Accepting call for session:", sessionId);
     try {
       const { error } = await supabase
         .from("video_sessions")
@@ -177,30 +155,25 @@ export function OnlineConsultationTab({ isDoctorView }: OnlineConsultationTabPro
         setIsVideoCallOpen(true);
         setIsChatOpen(false);
       }
-      toast.dismiss(sessionId); // Dispensa o toast da chamada recebida
       setIncomingCallToastId(null);
     } catch (error: any) {
-      console.error("Error accepting call:", error.message);
-      toast.error("Erro ao aceitar chamada: " + error.message);
+      toast.error("Erro ao aceitar chamada.");
     }
   };
 
   const handleRejectCall = async (sessionId: string) => {
-    console.log("OnlineConsultationTab: Rejecting call for session:", sessionId);
     try {
       const { error } = await supabase
         .from("video_sessions")
-        .update({ status: "cancelled", ended_at: new Date().toISOString() }) // Marca como cancelled
+        .update({ status: "cancelled", ended_at: new Date().toISOString() })
         .eq("id", sessionId);
 
       if (error) throw error;
       toast.info("Chamada rejeitada.");
-      fetchActiveSessions(); // Atualiza para remover a sessão de ringing
-      toast.dismiss(sessionId); // Dispensa o toast da chamada recebida
+      fetchActiveSessions();
       setIncomingCallToastId(null);
     } catch (error: any) {
-      console.error("Error rejecting call:", error.message);
-      toast.error("Erro ao rejeitar chamada: " + error.message);
+      toast.error("Erro ao rejeitar chamada.");
     }
   };
 
@@ -214,11 +187,6 @@ export function OnlineConsultationTab({ isDoctorView }: OnlineConsultationTabPro
     setSelectedSession(session);
     setIsVideoCallOpen(true);
     setIsChatOpen(false);
-  };
-
-  const handleCloseChat = () => {
-    setIsChatOpen(false);
-    setSelectedSession(null);
   };
 
   const handleCloseVideoCall = () => {
@@ -238,7 +206,7 @@ export function OnlineConsultationTab({ isDoctorView }: OnlineConsultationTabPro
     const otherUserId = isDoctorView ? selectedSession.patient_id! : selectedSession.doctor_id!;
     return (
       <ChatWindow
-        currentUserId={currentUserId} // Pass currentUserId
+        currentUserId={currentUserId}
         receiverId={otherUserId}
         appointmentId={selectedSession.appointment_id || undefined}
       />
@@ -249,7 +217,7 @@ export function OnlineConsultationTab({ isDoctorView }: OnlineConsultationTabPro
     const otherUserId = isDoctorView ? selectedSession.patient_id! : selectedSession.doctor_id!;
     return (
       <VideoCallWindow
-        currentUserId={currentUserId} // Pass currentUserId
+        currentUserId={currentUserId}
         sessionId={selectedSession.id}
         otherUserId={otherUserId}
         appointmentId={selectedSession.appointment_id || undefined}
@@ -292,7 +260,7 @@ export function OnlineConsultationTab({ isDoctorView }: OnlineConsultationTabPro
                     <span className="sr-only">Iniciar Vídeo Chamada</span>
                   </Button>
                   <Button variant="destructive" size="sm" onClick={() => handleEndSession(session.id)}>
-                    <Loader2 className="h-4 w-4 mr-2" /> Encerrar
+                    Encerrar
                   </Button>
                 </div>
               </Card>

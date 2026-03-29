@@ -6,12 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
-import { Tables } from "@/integrations/supabase/types"; // Import Tables
+import { Tables } from "@/integrations/supabase/types";
 
-// 1. Atualizar a interface para incluir 'name' e 'whatsapp'
 type NewsletterSubscription = Tables<'newsletter_subscriptions'>;
 
-// 2. Definir as colunas da tabela, incluindo 'Nome' e 'WhatsApp'
 const columns: ColumnDef<NewsletterSubscription>[] = [
   {
     accessorKey: "name",
@@ -47,7 +45,6 @@ export function DoctorNewsletterSubscriptionsTab() {
       setLoading(true);
       setError(null);
       try {
-        // 3. Atualizar a query do Supabase para selecionar 'name' e 'whatsapp'
         const { data, error } = await supabase
           .from("newsletter_subscriptions")
           .select("id, email, name, whatsapp, created_at");
@@ -57,10 +54,9 @@ export function DoctorNewsletterSubscriptionsTab() {
         }
 
         setNewsletterSubscriptions(data || []);
-        console.log("Dyad Debug: Dados da newsletter recebidos do Supabase:", data);
       } catch (err: any) {
         console.error("Erro ao buscar inscrições na newsletter:", err.message);
-        setError("Erro ao carregar inscrições: " + err.message);
+        setError("Erro ao carregar inscrições.");
       } finally {
         setLoading(false);
       }
@@ -72,8 +68,7 @@ export function DoctorNewsletterSubscriptionsTab() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Inscrições na Newsletter 
-        </CardTitle>
+        <CardTitle>Inscrições na Newsletter</CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (

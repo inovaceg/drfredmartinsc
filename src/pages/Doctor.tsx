@@ -3,31 +3,28 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar as CalendarIcon, Clock, FileText, LogOut, Users, Video, BarChart3, Loader2, Edit, User as UserIcon, MessageSquare, Trash2, CheckCircle, XCircle, MessageSquareText, MapPin, Phone, Mail, BookOpen, Menu, ClipboardList, AlertCircle, UserPlus } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, FileText, LogOut, Users, Video, Loader2, Edit, User as UserIcon, MessageSquare, Trash2, BookOpen, Menu, ClipboardList, Mail, UserPlus } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useToast } from "@/hooks/use-toast";
-import { format, addDays, startOfDay, endOfDay } from "date-fns";
+import { format, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditPatientDialog } from "@/components/EditPatientDialog";
 import { AddPatientDialog } from "@/components/doctor/AddPatientDialog";
 import { formatPhone } from "@/lib/format-phone";
 import { DoctorProfileForm } from "@/components/DoctorProfileForm";
 import { DoctorMedicalRecordsTab } from "@/components/doctor/DoctorMedicalRecordsTab";
-import { DoctorOnlineConsultationTab } from "@/components/DoctorOnlineConsultationTab";
+import { OnlineConsultationTab } from "@/components/OnlineConsultationTab";
 import { DoctorFormResponsesTab } from "@/components/DoctorFormResponsesTab";
 import { DoctorNewsletterSubscriptionsTab } from "@/components/doctor/DoctorNewsletterSubscriptionsTab";
 import { DoctorBlogPostsTab } from "@/components/doctor/DoctorBlogPostsTab";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn, createLocalDateFromISOString, formatDateToDisplay } from "@/lib/utils";
+import { cn, createLocalDateFromISOString } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Drawer,
@@ -39,26 +36,12 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Database } from "@/integrations/supabase/types";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { DeletePatientAlertDialog } from "@/components/doctor/DeletePatientAlertDialog";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useUser } from "@/hooks/useUser";
 import ErrorBoundary from "@/components/ErrorBoundary";
-
-import { getDatesForTimeframe, toUtcIso } from "@/lib/dates";
+import { toUtcIso } from "@/lib/dates";
 import { getDoctorAvailabilitySlots } from "@/lib/supabase-queries";
 
 type AvailabilitySlot = Database['public']['Tables']['availability_slots']['Row'];
@@ -67,16 +50,10 @@ type Appointment = Database['public']['Tables']['appointments']['Row'] & {
     id: string;
     full_name: string;
     whatsapp: string;
-    street: string;
-    street_number: string;
-    neighborhood: string;
-    city: string;
-    state: string;
-    zip_code: string;
+    avatar_url?: string;
   };
 };
 type PatientProfile = Database['public']['Tables']['profiles']['Row'];
-type Timeframe = "today" | "7_days" | "14_days" | "custom";
 
 const Doctor = () => {
   const navigate = useNavigate();
@@ -88,17 +65,6 @@ const Doctor = () => {
   const [selectedDate, setSelectedDate] = useState<string | undefined>(format(new Date(), "yyyy-MM-dd"));
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [isLoadingScheduleSlots, setIsLoadingScheduleSlots] = useState(false);
-  const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
-
-  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>('today');
-  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
-  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
-
-  const [overview, setOverview] = useState<{total:number; available:number; occupied:number}>({total:0, available:0, occupied:0});
-  const [overviewAppointments, setOverviewAppointments] = useState<Array<{
-    id:string; patient_name:string; start_time:string; end_time:string;
-  }>>([]);
-  const [isLoadingOverview, setIsLoadingOverview] = useState(false);
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<PatientProfile[]>([]);
@@ -106,9 +72,6 @@ const Doctor = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addPatientDialogOpen, setAddPatientDialogOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedPatientForBookingId, setSelectedPatientForBookingId] = useState<string | null>(null);
-  const [selectedSlotForBooking, setSelectedSlotForBooking] = useState<{ id: string; start_time: string; end_time: string } | null>(null);
-  const [isBookingForPatient, setIsBookingForPatient] = useState(false);
 
   const [patientToDelete, setPatientToDelete] = useState<PatientProfile | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -128,75 +91,6 @@ const Doctor = () => {
     return data;
   }, []);
 
-  const fetchOverview = useCallback(async (doctorId: string, tf: Timeframe, customS?:Date, customE?:Date) => {
-    setIsLoadingOverview(true);
-    try {
-      const { start, end } = getDatesForTimeframe(tf, customS, customE);
-      const startIso = toUtcIso(start);
-      const endIso = toUtcIso(end);
-
-      const { data: slots, error: slotsErr } = await supabase
-        .from("availability_slots")
-        .select("id, start_time, end_time, is_available")
-        .eq("doctor_id", doctorId)
-        .gte("start_time", startIso)
-        .lte("end_time",   endIso)
-        .order("start_time", { ascending: true });
-      if (slotsErr) throw slotsErr;
-
-      const { data: apptsData, error: apptsErr } = await supabase
-        .from("appointments")
-        .select("id, slot_id, start_time, end_time, patient_id")
-        .eq("doctor_id", doctorId)
-        .gte("start_time", startIso)
-        .lte("end_time",   endIso)
-        .order("start_time", { ascending: true });
-      if (apptsErr) throw apptsErr;
-
-      const patientIds = [...new Set((apptsData || []).map(a => a.patient_id))];
-      let patientProfiles: Pick<PatientProfile, 'id' | 'full_name'>[] = [];
-      if (patientIds.length > 0) {
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, full_name')
-          .in('id', patientIds);
-        if (profilesError) throw profilesError;
-        patientProfiles = (profilesData || []) as Pick<PatientProfile, 'id' | 'full_name'>[];
-      }
-      const patientMap = new Map(patientProfiles.map(p => [p.id, p.full_name]));
-
-      const apptsWithPatientNames = (apptsData || []).map(apt => ({
-        ...apt,
-        patient_name: patientMap.get(apt.patient_id) || "Paciente Desconhecido"
-      }));
-
-      const occupiedSet = new Set((apptsData || []).map(a => a.slot_id));
-      const total = (slots || []).length;
-      const occupied = (slots || []).filter(s => occupiedSet.has(s.id) || !s.is_available).length;
-      const available = Math.max(0, total - occupied);
-
-      setOverview({ total, available, occupied });
-      setOverviewAppointments(apptsWithPatientNames.map(a => ({
-        id: a.id,
-        patient_name: a.patient_name,
-        start_time: a.start_time,
-        end_time: a.end_time
-      })));
-    } catch (e: any) {
-      console.error("fetchOverview error:", e);
-      setOverview({ total: 0, available: 0, occupied: 0 });
-      setOverviewAppointments([]);
-    } finally {
-      setIsLoadingOverview(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (user?.id && activeTab === 'overview') {
-      fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate);
-    }
-  }, [user, activeTab, selectedTimeframe, customStartDate, customEndDate, fetchOverview]);
-
   const fetchAppointments = useCallback(async () => {
     const { data: appts, error } = await supabase.rpc('get_appointments_for_doctor');
     if (error) throw error;
@@ -207,12 +101,7 @@ const Doctor = () => {
           id: a.patient_id, 
           full_name: a.patient_full_name,
           whatsapp: a.patient_whatsapp,
-          street: a.patient_street,
-          street_number: a.patient_street_number,
-          neighborhood: a.patient_neighborhood,
-          city: a.patient_city,
-          state: a.patient_state,
-          zip_code: a.patient_zip_code,
+          avatar_url: a.patient_avatar_url,
         }
       }));
     }
@@ -349,9 +238,6 @@ const Doctor = () => {
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     setIsDrawerOpen(false);
-    if (value === 'overview' && user?.id) {
-      fetchOverview(user.id, selectedTimeframe, customStartDate, customEndDate);
-    }
   };
 
   const handleDeletePatient = useCallback(async () => {
@@ -640,7 +526,7 @@ const Doctor = () => {
             </TabsContent>
 
             <TabsContent value="online-consultation">
-              {user && <DoctorOnlineConsultationTab isDoctorView={true} />}
+              {user && <OnlineConsultationTab isDoctorView={true} />}
             </TabsContent>
 
             <TabsContent value="blog-posts">
