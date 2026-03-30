@@ -124,6 +124,8 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
       const parsedBirthDate = formData.birth_date ? parseDateFromInput(formData.birth_date) : null;
       const newPatientId = uuidv4();
 
+      console.log("Tentando cadastrar paciente com ID:", newPatientId, "Doutor Responsável:", doctorId);
+
       const { error } = await supabase
         .from('profiles')
         .insert({
@@ -150,7 +152,7 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
 
       if (error) throw error;
 
-      toast({ title: "Sucesso", description: "Paciente cadastrado!" });
+      toast({ title: "Sucesso", description: "Paciente cadastrado com sucesso!" });
       queryClient.invalidateQueries({ queryKey: ["doctorPatients"] });
       onOpenChange(false);
       setFormData({
@@ -159,10 +161,10 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
         neighborhood: "", avatar_url: "",
       });
     } catch (error: any) {
-      console.error('Error adding patient:', error);
+      console.error('Erro detalhado ao cadastrar paciente:', error);
       toast({
         title: "Erro ao cadastrar",
-        description: error.message,
+        description: error.message || "Erro desconhecido no banco de dados.",
         variant: "destructive",
       });
     } finally {
