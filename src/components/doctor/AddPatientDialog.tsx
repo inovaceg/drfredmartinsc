@@ -124,9 +124,9 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
       const parsedBirthDate = formData.birth_date ? parseDateFromInput(formData.birth_date) : null;
       const newPatientId = uuidv4();
 
-      console.log("Tentando cadastrar paciente com ID:", newPatientId, "Doutor Responsável:", doctorId);
+      console.log("Tentando cadastrar paciente...", { newPatientId, doctorId });
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .insert({
           id: newPatientId,
@@ -146,11 +146,13 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
           is_doctor: false,
           is_active: true,
           is_public: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
+        })
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro detalhado do Supabase:", error);
+        throw error;
+      }
 
       toast({ title: "Sucesso", description: "Paciente cadastrado com sucesso!" });
       queryClient.invalidateQueries({ queryKey: ["doctorPatients"] });
@@ -161,10 +163,9 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
         neighborhood: "", avatar_url: "",
       });
     } catch (error: any) {
-      console.error('Erro detalhado ao cadastrar paciente:', error);
       toast({
         title: "Erro ao cadastrar",
-        description: error.message || "Erro desconhecido no banco de dados.",
+        description: error.message || "Erro de permissão no banco de dados.",
         variant: "destructive",
       });
     } finally {
