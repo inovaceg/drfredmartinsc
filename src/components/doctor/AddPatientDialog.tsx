@@ -87,7 +87,7 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
       const filePath = `patient-avatars/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('avatars') // Certifique-se que o bucket 'avatars' existe e é público
+        .from('avatars')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
@@ -126,7 +126,7 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
 
     try {
       const parsedBirthDate = formData.birth_date ? parseDateFromInput(formData.birth_date) : null;
-      const newPatientId = crypto.randomUUID();
+      const newPatientId = uuidv4(); // Usando UUID v4 consistente
 
       const { error } = await supabase
         .from('profiles')
@@ -147,16 +147,22 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
           therapist_id: doctorId,
           is_doctor: false,
           is_active: true,
+          created_at: new Date().toISOString(),
         });
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error("Este e-mail já está cadastrado para outro paciente.");
+        }
+        throw error;
+      }
 
       toast({
         title: "Sucesso",
         description: "Paciente cadastrado com sucesso!",
       });
 
-      queryClient.invalidateQueries({ queryKey: ["doctorPatients", doctorId] });
+      queryClient.invalidateQueries({ queryKey: ["doctorPatients"] });
       onOpenChange(false);
       setFormData({
         full_name: "",
@@ -175,8 +181,8 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
     } catch (error: any) {
       console.error('Error adding patient:', error);
       toast({
-        title: "Erro",
-        description: error.message || "Não foi possível cadastrar o paciente.",
+        title: "Erro ao cadastrar",
+        description: error.message || "Verifique se você aplicou as políticas de banco de dados necessárias.",
         variant: "destructive",
       });
     } finally {
