@@ -97,13 +97,9 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
         .getPublicUrl(filePath);
 
       setFormData(prev => ({ ...prev, avatar_url: publicUrl }));
-      toast({ title: "Sucesso", description: "Foto carregada com sucesso!" });
+      toast({ title: "Sucesso", description: "Foto carregada!" });
     } catch (error: any) {
-      toast({
-        title: "Erro no upload",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Erro no upload", description: error.message, variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
@@ -126,7 +122,7 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
 
     try {
       const parsedBirthDate = formData.birth_date ? parseDateFromInput(formData.birth_date) : null;
-      const newPatientId = uuidv4(); // Usando UUID v4 consistente
+      const newPatientId = uuidv4();
 
       const { error } = await supabase
         .from('profiles')
@@ -134,55 +130,39 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
           id: newPatientId,
           full_name: formData.full_name,
           email: formData.email || null,
-          phone: unformatPhone(formData.phone),
-          whatsapp: unformatPhone(formData.whatsapp),
+          phone: unformatPhone(formData.phone) || null,
+          whatsapp: unformatPhone(formData.whatsapp) || null,
           birth_date: parsedBirthDate,
-          zip_code: formData.zip_code,
-          state: formData.state,
-          city: formData.city,
-          street: formData.street,
-          street_number: formData.street_number,
-          neighborhood: formData.neighborhood,
+          zip_code: formData.zip_code || null,
+          state: formData.state || null,
+          city: formData.city || null,
+          street: formData.street || null,
+          street_number: formData.street_number || null,
+          neighborhood: formData.neighborhood || null,
           avatar_url: formData.avatar_url || null,
           therapist_id: doctorId,
           is_doctor: false,
           is_active: true,
+          is_public: false,
           created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         });
 
-      if (error) {
-        if (error.code === '23505') {
-          throw new Error("Este e-mail já está cadastrado para outro paciente.");
-        }
-        throw error;
-      }
+      if (error) throw error;
 
-      toast({
-        title: "Sucesso",
-        description: "Paciente cadastrado com sucesso!",
-      });
-
+      toast({ title: "Sucesso", description: "Paciente cadastrado!" });
       queryClient.invalidateQueries({ queryKey: ["doctorPatients"] });
       onOpenChange(false);
       setFormData({
-        full_name: "",
-        email: "",
-        phone: "",
-        whatsapp: "",
-        birth_date: "",
-        zip_code: "",
-        state: "",
-        city: "",
-        street: "",
-        street_number: "",
-        neighborhood: "",
-        avatar_url: "",
+        full_name: "", email: "", phone: "", whatsapp: "", birth_date: "",
+        zip_code: "", state: "", city: "", street: "", street_number: "",
+        neighborhood: "", avatar_url: "",
       });
     } catch (error: any) {
       console.error('Error adding patient:', error);
       toast({
         title: "Erro ao cadastrar",
-        description: error.message || "Verifique se você aplicou as políticas de banco de dados necessárias.",
+        description: error.message,
         variant: "destructive",
       });
     } finally {
@@ -198,9 +178,7 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
             <UserPlus className="h-5 w-5 text-primary" />
             Cadastrar Novo Paciente
           </DialogTitle>
-          <DialogDescription>
-            Preencha os dados básicos para criar o prontuário do paciente.
-          </DialogDescription>
+          <DialogDescription>Preencha os dados para criar o prontuário.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -234,82 +212,41 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
                 </Button>
               )}
             </div>
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              accept="image/*"
-              onChange={handleFileChange}
-            />
-            <p className="text-xs text-muted-foreground">Clique na câmera para adicionar uma foto</p>
+            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="full_name">Nome Completo *</Label>
-              <Input
-                id="full_name"
-                value={formData.full_name}
-                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                required
-                placeholder="Nome do paciente"
-              />
+              <Input id="full_name" value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="email@exemplo.com"
-              />
+              <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="phone">Telefone</Label>
-              <Input
-                id="phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: formatPhone(e.target.value) })}
-                placeholder="(00) 0000-0000"
-              />
+              <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: formatPhone(e.target.value) })} placeholder="(00) 0000-0000" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="whatsapp">WhatsApp</Label>
-              <Input
-                id="whatsapp"
-                value={formData.whatsapp}
-                onChange={(e) => setFormData({ ...formData, whatsapp: formatPhone(e.target.value) })}
-                placeholder="(00) 00000-0000"
-              />
+              <Input id="whatsapp" value={formData.whatsapp} onChange={(e) => setFormData({ ...formData, whatsapp: formatPhone(e.target.value) })} placeholder="(00) 00000-0000" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="birth_date">Nascimento (DD/MM/AAAA)</Label>
-              <Input
-                id="birth_date"
-                value={formData.birth_date}
-                onChange={handleDateInputChange}
-                placeholder="DD/MM/AAAA"
-                maxLength={10}
-              />
+              <Label htmlFor="birth_date">Nascimento</Label>
+              <Input id="birth_date" value={formData.birth_date} onChange={handleDateInputChange} placeholder="DD/MM/AAAA" maxLength={10} />
             </div>
           </div>
 
-          <div className="border-t pt-4 mt-4">
+          <div className="border-t pt-4">
             <h3 className="font-semibold mb-4">Endereço</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="zip_code">CEP</Label>
-                <Input
-                  id="zip_code"
-                  value={formData.zip_code}
-                  onChange={(e) => handleZipCodeLookup(e.target.value)}
-                  placeholder="00000-000"
-                  maxLength={9}
-                />
+                <Input id="zip_code" value={formData.zip_code} onChange={(e) => handleZipCodeLookup(e.target.value)} placeholder="00000-000" maxLength={9} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="state">Estado</Label>
@@ -320,32 +257,10 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
                 <Input id="city" value={formData.city} readOnly className="bg-muted" />
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="street">Rua/Avenida</Label>
-                <Input id="street" value={formData.street} readOnly className="bg-muted" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-2">
-                  <Label htmlFor="street_number">Número</Label>
-                  <Input
-                    id="street_number"
-                    value={formData.street_number}
-                    onChange={(e) => setFormData({ ...formData, street_number: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="neighborhood">Bairro</Label>
-                  <Input id="neighborhood" value={formData.neighborhood} readOnly className="bg-muted" />
-                </div>
-              </div>
-            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-6">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button type="submit" disabled={loading || isFetchingCep || isUploading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Cadastrar Paciente
