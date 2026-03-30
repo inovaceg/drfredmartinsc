@@ -26,16 +26,6 @@ import { DoctorBlogPostsTab } from "@/components/doctor/DoctorBlogPostsTab";
 import { Label } from "@/components/ui/label";
 import { cn, createLocalDateFromISOString } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
 import { Database } from "@/integrations/supabase/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DeletePatientAlertDialog } from "@/components/doctor/DeletePatientAlertDialog";
@@ -58,7 +48,7 @@ type PatientProfile = Database['public']['Tables']['profiles']['Row'];
 const Doctor = () => {
   const navigate = useNavigate();
   const { user, isLoading: isUserLoading, profile } = useUser();
-  const [activeTab, setActiveTab] = useState("profile");
+  const [activeTab, setActiveTab] = useState("patients"); // Começar na aba de pacientes para facilitar
   const [selectedDate, setSelectedDate] = useState<string | undefined>(format(new Date(), "yyyy-MM-dd"));
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [isLoadingScheduleSlots, setIsLoadingScheduleSlots] = useState(false);
@@ -66,7 +56,6 @@ const Doctor = () => {
   const [selectedPatientIdToEdit, setSelectedPatientIdToEdit] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addPatientDialogOpen, setAddPatientDialogOpen] = useState(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState<PatientProfile | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -75,8 +64,8 @@ const Doctor = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Listagem de Pacientes com useQuery para atualização automática
-  const { data: patients = [], isLoading: isLoadingPatients, refetch: refetchPatients } = useQuery({
+  // Listagem de Pacientes
+  const { data: patients = [], isLoading: isLoadingPatients } = useQuery({
     queryKey: ["doctorPatients"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_patients_for_doctor');
@@ -86,83 +75,11 @@ const Doctor = () => {
     enabled: !!user?.id,
   });
 
-  const fetchAppointments = useCallback(async () => {
-    const { data: appts, error } = await supabase.rpc('get_appointments_for_doctor');
-    if (error) throw error;
-    if (appts && appts.length > 0) {
-      return (appts as any[]).map((a: any) => ({
-        ...a,
-        patient_profile: { 
-          id: a.patient_id, 
-          full_name: a.patient_full_name,
-          whatsapp: a.patient_whatsapp,
-          avatar_url: a.patient_avatar_url,
-        }
-      }));
-    }
-    return [];
-  }, []);
-
   useEffect(() => {
     if (!isUserLoading && (!user || !profile?.is_doctor)) {
       navigate("/auth");
     }
   }, [user, isUserLoading, profile, navigate]);
-
-  useEffect(() => {
-    const loadInitialData = async () => {
-      if (user?.id) {
-        try {
-          const appts = await fetchAppointments();
-          setAppointments(appts);
-        } catch (error: any) {
-          console.error("Erro ao carregar consultas:", error);
-        }
-      }
-    };
-    loadInitialData();
-  }, [user, fetchAppointments]);
-
-  const createDefaultSlots = async () => {
-    if (!user || !selectedDate) return;
-    setIsLoadingScheduleSlots(true);
-    try {
-      const newSlots: Database['public']['Tables']['availability_slots']['Insert'][] = [];
-      const date = createLocalDateFromISOString(selectedDate); 
-      let currentSlotTime = new Date(date);
-      currentSlotTime.setHours(8, 15, 0, 0);
-      const endOfDayLimit = new Date(date);
-      endOfDayLimit.setHours(20, 0, 0, 0);
-      
-      while (currentSlotTime.getTime() < endOfDayLimit.getTime()) {
-        const startTime = new Date(currentSlotTime);
-        const endTime = new Date(currentSlotTime.getTime() + 45 * 60 * 1000);
-        newSlots.push({ doctor_id: user.id, start_time: toUtcIso(startTime), end_time: toUtcIso(endTime), is_available: true });
-        currentSlotTime = endTime;
-      }
-      const { error } = await supabase.from('availability_slots').insert(newSlots);
-      if (error) throw error;
-      toast({ title: "Sucesso", description: "Horários criados!" });
-      const result = await getDoctorAvailabilitySlots(user.id, toUtcIso(startOfDay(date)), toUtcIso(endOfDay(date)));
-      setSlots(result.slots);
-    } catch (error: any) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-    } finally {
-      setIsLoadingScheduleSlots(false);
-    }
-  };
-
-  const toggleSlotAvailability = async (slotId: string, currentStatus: boolean) => {
-    if (!user) return;
-    try {
-      await supabase.from('availability_slots').update({ is_available: !currentStatus }).eq('id', slotId);
-      const dateObj = createLocalDateFromISOString(selectedDate!);
-      const result = await getDoctorAvailabilitySlots(user.id, toUtcIso(startOfDay(dateObj)), toUtcIso(endOfDay(dateObj)));
-      setSlots(result.slots);
-    } catch (error: any) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-    }
-  };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -218,23 +135,23 @@ const Doctor = () => {
         <main className="flex-1 container mx-auto px-4 py-8 md:py-12">
           <div className="mb-8 flex justify-between items-center">
             <div>
-              <h1 className="text-xl font-bold">Portal do Profissional</h1>
+              <h1 className="text-2xl font-bold">Portal do Profissional</h1>
               <p className="text-muted-foreground">Bem-vindo(a), {profile?.full_name || user?.email}</p>
             </div>
             <Button variant="outline" onClick={handleSignOut}><LogOut className="mr-2 h-4 w-4" /> Sair</Button>
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="hidden md:flex w-full bg-muted p-1 rounded-lg border overflow-x-auto">
-              <TabsTrigger value="profile"><UserIcon className="h-4 w-4 mr-2" /> Perfil</TabsTrigger>
-              <TabsTrigger value="schedule"><CalendarIcon className="h-4 w-4 mr-2" /> Agenda</TabsTrigger>
-              <TabsTrigger value="appointments"><Clock className="h-4 w-4 mr-2" /> Consultas</TabsTrigger>
-              <TabsTrigger value="patients"><Users className="h-4 w-4 mr-2" /> Pacientes</TabsTrigger>
-              <TabsTrigger value="medical-records"><BookOpen className="h-4 w-4 mr-2" /> Prontuários</TabsTrigger>
-              <TabsTrigger value="online-consultation"><MessageSquare className="h-4 w-4 mr-2" /> Online</TabsTrigger>
-              <TabsTrigger value="blog-posts"><ClipboardList className="h-4 w-4 mr-2" /> Blog</TabsTrigger>
-              <TabsTrigger value="contact-forms"><FileText className="h-4 w-4 mr-2" /> Contatos</TabsTrigger>
-              <TabsTrigger value="newsletter-subscriptions"><Mail className="h-4 w-4 mr-2" /> Newsletter</TabsTrigger>
+            <TabsList className="flex w-full bg-muted p-1 rounded-lg border overflow-x-auto whitespace-nowrap scrollbar-hide">
+              <TabsTrigger value="profile">Meu Perfil</TabsTrigger>
+              <TabsTrigger value="schedule">Gerenciar Agenda</TabsTrigger>
+              <TabsTrigger value="appointments">Agenda Consultas</TabsTrigger>
+              <TabsTrigger value="patients">Meus Pacientes</TabsTrigger>
+              <TabsTrigger value="medical-records">Prontuários</TabsTrigger>
+              <TabsTrigger value="online-consultation">Consulta Online</TabsTrigger>
+              <TabsTrigger value="blog-posts">Gerenciar Blog</TabsTrigger>
+              <TabsTrigger value="contact-forms">Formulário Contato</TabsTrigger>
+              <TabsTrigger value="newsletter">Newsletter</TabsTrigger>
             </TabsList>
 
             <TabsContent value="profile">
@@ -243,12 +160,14 @@ const Doctor = () => {
 
             <TabsContent value="patients">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                  <div className="space-y-1">
                     <CardTitle>Meus Pacientes</CardTitle>
                     <CardDescription>Gerencie os dados dos seus pacientes.</CardDescription>
                   </div>
-                  <Button onClick={() => setAddPatientDialogOpen(true)}><UserPlus className="mr-2 h-4 w-4" /> Novo Paciente</Button>
+                  <Button onClick={() => setAddPatientDialogOpen(true)}>
+                    <UserPlus className="mr-2 h-4 w-4" /> Novo Paciente
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {isLoadingPatients ? (
@@ -271,7 +190,7 @@ const Doctor = () => {
                           </div>
                           <div className="flex gap-2 mt-3 sm:mt-0">
                             <Button variant="outline" size="sm" onClick={() => handleInitiateVideoSession(patient.id)} disabled={initiatingCallForPatientId === patient.id}>
-                              <Video className="h-4 w-4 mr-2" /> Online
+                              <Video className="h-4 w-4 mr-2" /> Iniciar Consulta Online
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => { setSelectedPatientIdToEdit(patient.id); setEditDialogOpen(true); }}>
                               <Edit className="h-4 w-4 mr-2" /> Editar
@@ -304,7 +223,7 @@ const Doctor = () => {
               <DoctorFormResponsesTab />
             </TabsContent>
 
-            <TabsContent value="newsletter-subscriptions">
+            <TabsContent value="newsletter">
               <DoctorNewsletterSubscriptionsTab />
             </TabsContent>
           </Tabs>
