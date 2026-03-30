@@ -1,27 +1,35 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { RemoteTrackPublication, RemoteVideoTrack, RemoteAudioTrack, LocalVideoTrack, LocalAudioTrack, RemoteTrack, LocalTrack } from 'twilio-video';
+import { 
+  RemoteTrackPublication, 
+  LocalTrackPublication,
+  RemoteVideoTrack, 
+  RemoteAudioTrack, 
+  LocalVideoTrack, 
+  LocalAudioTrack, 
+  RemoteTrack, 
+  LocalTrack 
+} from 'twilio-video';
 import { MicOff, VideoOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface VideoParticipantProps {
-  participant: any; // Twilio Participant object (LocalParticipant or RemoteParticipant)
+  participant: any; // Objeto Participant do Twilio (LocalParticipant ou RemoteParticipant)
   isLocal?: boolean;
   displayName: string;
 }
 
-// Define a type guard for media tracks
+// Define os tipos de faixas que possuem os métodos attach/detach
 type MediaTrack = RemoteVideoTrack | RemoteAudioTrack | LocalVideoTrack | LocalAudioTrack;
+type TrackPublication = RemoteTrackPublication | LocalTrackPublication;
 
-const isMediaTrack = (track: RemoteTrack | LocalTrack | null): track is MediaTrack => {
-  return track !== null && (track.kind === 'audio' || track.kind === 'video');
-};
-
-const trackpubsToTracks = (trackMap: Map<string, RemoteTrackPublication>): MediaTrack[] =>
+const trackpubsToTracks = (trackMap: Map<string, TrackPublication>): MediaTrack[] =>
   Array.from(trackMap.values())
-    .map((publication) => publication.track)
-    .filter((track): track is MediaTrack => isMediaTrack(track)); // Explicit narrowing
+    .map((publication) => publication.track as any)
+    .filter((track): track is MediaTrack => 
+      !!track && (track.kind === 'audio' || track.kind === 'video')
+    );
 
 export const VideoParticipant: React.FC<VideoParticipantProps> = ({ participant, isLocal = false, displayName }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -51,50 +59,38 @@ export const VideoParticipant: React.FC<VideoParticipantProps> = ({ participant,
     };
 
     const handleTrackPublication = (publication: RemoteTrackPublication) => {
-      if (!isMediaTrack(publication.track)) return; // Ignore DataTracks
-
-      if (publication.isSubscribed) {
-        attachTracks([publication.track! as MediaTrack]);
+      if (publication.track && (publication.track.kind === 'audio' || publication.track.kind === 'video')) {
+        if (publication.isSubscribed) {
+          attachTracks([publication.track as MediaTrack]);
+        }
+        publication.on('subscribed', (track) => attachTracks([track as MediaTrack]));
+        publication.on('unsubscribed', (track) => detachTracks([track as MediaTrack]));
       }
-      publication.on('subscribed', (track) => {
-        if (isMediaTrack(track)) attachTracks([track]);
+      
+      publication.on('disabled', () => {
+        if (publication.kind === 'video') setIsVideoDisabled(true);
+        if (publication.kind === 'audio') setIsAudioMuted(true);
       });
-      publication.on('unsubscribed', (track) => {
-        if (isMediaTrack(track)) detachTracks([track]);
-      });
-      publication.on('disabled', (track) => {
-        if (track.kind === 'video') setIsVideoDisabled(true);
-        if (track.kind === 'audio') setIsAudioMuted(true);
-      });
-      publication.on('enabled', (track) => {
-        if (track.kind === 'video') setIsVideoDisabled(false);
-        if (track.kind === 'audio') setIsAudioMuted(false);
+      publication.on('enabled', () => {
+        if (publication.kind === 'video') setIsVideoDisabled(false);
+        if (publication.kind === 'audio') setIsAudioMuted(false);
       });
     };
 
-    // Initial attachment for existing tracks
+    // Inicialização das faixas existentes
     const videoTracks = trackpubsToTracks(participant.videoTracks);
     const audioTracks = trackpubsToTracks(participant.audioTracks);
     attachTracks([...videoTracks, ...audioTracks]);
 
-    // Listen for new tracks
+    // Ouvintes para novas faixas e mudanças de estado
     participant.on('trackPublished', handleTrackPublication);
     participant.on('trackSubscribed', (track: RemoteTrack | LocalTrack) => {
-      if (isMediaTrack(track)) attachTracks([track]);
+      if (track.kind !== 'data') attachTracks([track as MediaTrack]);
     });
     participant.on('trackUnsubscribed', (track: RemoteTrack | LocalTrack) => {
-      if (isMediaTrack(track)) detachTracks([track]);
-    });
-    participant.on('trackDisabled', (track: any) => {
-      if (track.kind === 'video') setIsVideoDisabled(true);
-      if (track.kind === 'audio') setIsAudioMuted(true);
-    });
-    participant.on('trackEnabled', (track: any) => {
-      if (track.kind === 'video') setIsVideoDisabled(false);
-      if (track.kind === 'audio') setIsAudioMuted(false);
+      if (track.kind !== 'data') detachTracks([track as MediaTrack]);
     });
 
-    // Cleanup
     return () => {
       detachTracks([...videoTracks, ...audioTracks]);
       participant.removeAllListeners();
