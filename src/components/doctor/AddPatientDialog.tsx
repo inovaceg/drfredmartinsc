@@ -38,7 +38,7 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
     state: "",
     city: "",
     street: "",
-    street_number: "",
+    street_number: "", // Campo adicionado ao estado
     neighborhood: "",
     avatar_url: "",
   });
@@ -124,9 +124,7 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
       const parsedBirthDate = formData.birth_date ? parseDateFromInput(formData.birth_date) : null;
       const newPatientId = uuidv4();
 
-      console.log("Tentando cadastrar paciente...", { newPatientId, doctorId });
-
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('profiles')
         .insert({
           id: newPatientId,
@@ -139,20 +137,16 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
           state: formData.state || null,
           city: formData.city || null,
           street: formData.street || null,
-          street_number: formData.street_number || null,
+          street_number: formData.street_number || null, // Enviando o número para o banco
           neighborhood: formData.neighborhood || null,
           avatar_url: formData.avatar_url || null,
           therapist_id: doctorId,
           is_doctor: false,
           is_active: true,
           is_public: false,
-        })
-        .select();
+        });
 
-      if (error) {
-        console.error("Erro detalhado do Supabase:", error);
-        throw error;
-      }
+      if (error) throw error;
 
       toast({ title: "Sucesso", description: "Paciente cadastrado com sucesso!" });
       queryClient.invalidateQueries({ queryKey: ["doctorPatients"] });
@@ -165,7 +159,7 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
     } catch (error: any) {
       toast({
         title: "Erro ao cadastrar",
-        description: error.message || "Erro de permissão no banco de dados.",
+        description: error.message,
         variant: "destructive",
       });
     } finally {
@@ -203,17 +197,6 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
               >
                 {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
               </Button>
-              {formData.avatar_url && (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  className="absolute -top-2 -right-2 rounded-full w-6 h-6"
-                  onClick={() => setFormData(prev => ({ ...prev, avatar_url: "" }))}
-                >
-                  <X className="w-3 h-3" />
-                </Button>
-              )}
             </div>
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
           </div>
@@ -246,7 +229,7 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
 
           <div className="border-t pt-4">
             <h3 className="font-semibold mb-4">Endereço</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="space-y-2">
                 <Label htmlFor="zip_code">CEP</Label>
                 <Input id="zip_code" value={formData.zip_code} onChange={(e) => handleZipCodeLookup(e.target.value)} placeholder="00000-000" maxLength={9} />
@@ -259,6 +242,22 @@ export function AddPatientDialog({ open, onOpenChange, doctorId }: AddPatientDia
                 <Label htmlFor="city">Cidade</Label>
                 <Input id="city" value={formData.city} readOnly className="bg-muted" />
               </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="md:col-span-3 space-y-2">
+                <Label htmlFor="street">Rua/Avenida</Label>
+                <Input id="street" value={formData.street} onChange={(e) => setFormData({ ...formData, street: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="street_number">Número</Label>
+                <Input id="street_number" value={formData.street_number} onChange={(e) => setFormData({ ...formData, street_number: e.target.value })} placeholder="Ex: 123" />
+              </div>
+            </div>
+            
+            <div className="space-y-2 mt-4">
+              <Label htmlFor="neighborhood">Bairro</Label>
+              <Input id="neighborhood" value={formData.neighborhood} onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })} />
             </div>
           </div>
 
